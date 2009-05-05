@@ -102,6 +102,11 @@ public:
         return (mRadius >= centers_len + other.mRadius);
     }
 
+    bool contains(const BoundingSphere& other, real epsilon) const {
+        real centers_len = (mCenter - other.mCenter).length();
+        return (mRadius + epsilon >= centers_len + other.mRadius);
+    }
+
     bool degenerate() const {
         return ( mRadius <= 0 );
     }

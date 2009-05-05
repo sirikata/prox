@@ -178,6 +178,40 @@ public:
         count++;
         bounding_sphere = bounding_sphere.merge(node->bounds());
     }
+
+    // NOTE: does not recalculate the bounding sphere
+    void erase(const Object* obj) {
+        assert(count > 0);
+        assert(leaf() == true);
+        // find obj
+        uint8 obj_idx;
+        for(obj_idx = 0; obj_idx < count; obj_idx++)
+            if (elements.objects[obj_idx] == obj) break;
+        // push all the other objects back one
+        for(uint8 rem_idx = obj_idx; rem_idx < count-1; rem_idx++)
+            elements.objects[rem_idx] = elements.objects[rem_idx+1];
+        count--;
+    }
+
+    // NOTE: does not recalculate the bounding sphere
+    void erase(const RTreeNode* node) {
+        assert(count > 0);
+        assert(leaf() == false);
+        // find node
+        uint8 node_idx;
+        for(node_idx = 0; node_idx < count; node_idx++)
+            if (elements.nodes[node_idx] == node) break;
+        // push all the other objects back one
+        for(uint8 rem_idx = node_idx; rem_idx < count-1; rem_idx++)
+            elements.nodes[rem_idx] = elements.nodes[rem_idx+1];
+        count--;
+    }
+
+    bool contains(const Object* obj) const {
+        for(uint8 obj_idx = 0; obj_idx < count; obj_idx++)
+            if (elements.objects[obj_idx] == obj) return true;
+        return false;
+    }
 };
 
 
@@ -379,6 +413,87 @@ void RTree_verify_bounds(RTreeNode* root, const Time& t) {
     }
 }
 
+/* Finds obj in the tree with the given root, assuming its at the position for time t. */
+RTreeNode* RTree_find_leaf(RTreeNode* root, const Object* obj, const BoundingSphere3f& bs) {
+    if (root == NULL) return NULL;
+
+    // For leaf nodes, simply check against all child objects
+    if (root->leaf())
+        return (root->contains(obj) ? root : NULL);
+
+    // For internal nodes, check against child bounds, and then recursively check child
+    for(uint8 child_idx = 0; child_idx < root->size(); child_idx++) {
+        RTreeNode* child = root->node(child_idx);
+        const BoundingSphere3f& child_bounds = child->bounds();
+        if ( !child_bounds.contains(bs, 0.1f) ) continue; // FIXME how should we choose this epsilon?
+        RTreeNode* result = RTree_find_leaf(child, obj, bs);
+        if (result != NULL) return result;
+    }
+
+    return NULL;
+}
+
+/* Takes a leaf node from which an object has been removed and, if it contains too few nodes,
+ *  redistributes the objects it contains and removes the node from the tree.
+ *  Returns the new root (which it may create because it might have to reinsert objects, which
+ *  can itself cause a new root to appear.
+ */
+RTreeNode* RTree_condense_tree(RTreeNode* leaf, const Time& t) {
+    RTreeNode* n = leaf;
+    std::queue<RTreeNode*> removedNodes;
+
+    while(n->parent() != NULL) {
+        RTreeNode* parent = n->parent();
+        if (n->size() < 1) { // FIXME should be some larger value
+            parent->erase(n);
+            removedNodes.push(n);
+        }
+        else {
+            n->recomputeBounds(t);
+        }
+        n = parent;
+    }
+
+    RTreeNode* root = n;
+    // FIXME this could reinsert entire nodes instead of individual objects, but we'd need a better idea of how to actually accomplish that...
+    while(!removedNodes.empty()) {
+        RTreeNode* removed = removedNodes.front();
+        removedNodes.pop();
+        if (removed->leaf()) {
+            for(uint8 idx = 0; idx < removed->size(); idx++)
+                root = RTree_insert_object(root, removed->object(idx), t);
+        }
+        else {
+            for(uint8 idx = 0; idx < removed->size(); idx++)
+                removedNodes.push(removed->node(idx));
+        }
+    }
+
+    return root;
+}
+
+/* Deletes the object from the given tree.  Returns the new root. */
+RTreeNode* RTree_delete_object(RTreeNode* root, const Object* obj, const Time& t) {
+    BoundingSphere3f obj_bs = obj->worldBounds(t);
+
+    RTreeNode* leaf_with_obj = RTree_find_leaf(root, obj, obj_bs);
+    if (leaf_with_obj == NULL) {
+        return root;
+    }
+
+    leaf_with_obj->erase(obj);
+    RTreeNode* new_root = RTree_condense_tree(leaf_with_obj, t);
+
+    // We might need to shorten the tree if the root is left with only one child.
+    if (!root->leaf() && root->size() == 1) {
+        new_root = root->node(0);
+        new_root->parent(NULL);
+        root->clear();
+        delete root;
+    }
+    return new_root;
+}
+
 RTreeQueryHandler::RTreeQueryHandler(uint8 elements_per_node)
  : QueryHandler(),
    ObjectChangeListener(),
@@ -427,6 +542,14 @@ bool RTreeQueryHandler::satisfiesConstraints(const Vector3f& qpos, const float q
 }
 
 void RTreeQueryHandler::tick(const Time& t) {
+    // FIXME we should have a better way of updating instead of delete + insert
+    for(ObjectSet::iterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
+        deleteObj(*obj_it, mLastTime);
+    }
+    for(ObjectSet::iterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
+        insert(*obj_it, t);
+    }
+
     //RTree_verify_bounds(mRTreeRoot, mLastTime);
     int count = 0;
     int ncount = 0;
@@ -475,17 +598,21 @@ void RTreeQueryHandler::tick(const Time& t) {
 }
 
 void RTreeQueryHandler::objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
-    // FIXME update info in RTree
+    // FIXME should use more efficient update approach
+    deleteObj(obj, mLastTime);
+    insert(obj, mLastTime);
 }
 
 void RTreeQueryHandler::objectBoundingSphereUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) {
-    // FIXME update bounding info in RTree, possibly removing and reinserting
+    // FIXME should use more efficient update approach
+    deleteObj(obj, mLastTime);
+    insert(obj, mLastTime);
 }
 
 void RTreeQueryHandler::objectDeleted(const Object* obj) {
     assert( mObjects.find(const_cast<Object*>(obj)) != mObjects.end() );
     mObjects.erase(const_cast<Object*>(obj));
-    // FIXME remove object from RTree
+    deleteObj(obj, mLastTime);
 }
 
 void RTreeQueryHandler::queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
@@ -502,6 +629,10 @@ void RTreeQueryHandler::queryDeleted(const Query* query) {
 
 void RTreeQueryHandler::insert(Object* obj, const Time& t) {
     mRTreeRoot = RTree_insert_object(mRTreeRoot, obj, t);
+}
+
+void RTreeQueryHandler::deleteObj(const Object* obj, const Time& t) {
+    mRTreeRoot = RTree_delete_object(mRTreeRoot, obj, t);
 }
 
 } // namespace Prox
