@@ -35,6 +35,8 @@
 #include <cassert>
 #include <float.h>
 
+#define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
+
 namespace Prox {
 
 struct RTreeNode {
@@ -349,11 +351,13 @@ RTreeNode* RTree_adjust_tree(RTreeNode* L, RTreeNode* LL, const Time& t) {
     RTreeNode* node = L;
     RTreeNode* nn = LL;
 
-    while(node->parent() != NULL) {
+    while(true) { // loop until root, enter for root as well so we recompute its bounds
         RTreeNode* parent = node->parent();
 
         // FIXME this is inefficient
         node->recomputeBounds(t);
+
+        if (parent == NULL) break;
 
         RTreeNode* pp = NULL;
         if (nn != NULL) {
@@ -398,19 +402,21 @@ RTreeNode* RTree_insert_object(RTreeNode* root, Object* obj, const Time& t) {
 }
 
 void RTree_verify_bounds(RTreeNode* root, const Time& t) {
-    for(int i = 0; i < root->size(); i++)
-//        if (root->bounds().merge(root->leaf() ? root->object(i)->bounds() : root->node(i)->bounds()) != root->bounds())
-        if (!root->bounds().contains( root->leaf() ? root->object(i)->worldBounds(t) : root->node(i)->bounds() )) {
+#ifdef PROXDEBUG
+    for(int i = 0; i < root->size(); i++) {
+        if (!root->bounds().contains( root->leaf() ? root->object(i)->worldBounds(t) : root->node(i)->bounds(), RTREE_BOUNDS_EPSILON )) {
             const BoundingSphere3f& child_bs = root->leaf() ? root->object(i)->worldBounds(t) : root->node(i)->bounds();
             printf("child exceeds bounds %s %f\n",
                 (root->leaf() ? "object" : "node"),
                 root->bounds().radius() - ((root->bounds().center() - child_bs.center()).length() + child_bs.radius())
             );
         }
+    }
     if (!root->leaf()) {
         for(int i = 0; i < root->size(); i++)
             RTree_verify_bounds(root->node(i), t);
     }
+#endif // def PROXDEBUG
 }
 
 /* Finds obj in the tree with the given root, assuming its at the position for time t. */
@@ -425,7 +431,7 @@ RTreeNode* RTree_find_leaf(RTreeNode* root, const Object* obj, const BoundingSph
     for(uint8 child_idx = 0; child_idx < root->size(); child_idx++) {
         RTreeNode* child = root->node(child_idx);
         const BoundingSphere3f& child_bounds = child->bounds();
-        if ( !child_bounds.contains(bs, 0.1f) ) continue; // FIXME how should we choose this epsilon?
+        if ( !child_bounds.contains(bs, RTREE_BOUNDS_EPSILON) ) continue;
         RTreeNode* result = RTree_find_leaf(child, obj, bs);
         if (result != NULL) return result;
     }
@@ -554,7 +560,7 @@ void RTreeQueryHandler::tick(const Time& t) {
         insert(*obj_it, t);
     }
 
-    //RTree_verify_bounds(mRTreeRoot, mLastTime);
+    RTree_verify_bounds(mRTreeRoot, t);
     int count = 0;
     int ncount = 0;
     for(QueryMap::iterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
