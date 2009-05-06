@@ -367,6 +367,7 @@ private:
         return NULL;
     }
 
+protected:
     BoundingSphere3f bounding_sphere;
 };
 
@@ -382,6 +383,74 @@ public:
      : BoundingSphereDataBase<BoundingSphereData>( obj, t )
     {
     }
+};
+
+/* Maintains the largest bounding sphere radius as well as the hierarchical bounding sphere.
+ * We can cull if the largest bounding sphere, centered at the closest point on the
+ * hierarchical bounding sphere, does not satisfy the constraints.
+ */
+class MaxSphereData : public BoundingSphereDataBase<MaxSphereData> {
+public:
+    typedef MaxSphereData NodeData; // For convenience/consistency
+
+    MaxSphereData()
+     : BoundingSphereDataBase<MaxSphereData>(),
+       mMaxRadius(0.f)
+    {
+    }
+
+    MaxSphereData(const Object* obj, const Time& t)
+     : BoundingSphereDataBase<MaxSphereData>( obj, t ),
+       mMaxRadius( obj->worldBounds(t).radius() )
+    {
+    }
+
+    NodeData merge(const NodeData& other) const {
+        NodeData result = BoundingSphereDataBase<MaxSphereData>::merge(other);
+        result.mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
+        return result;
+    }
+
+    // Merge the given info into this info
+    void mergeIn(const NodeData& other) {
+        BoundingSphereDataBase<MaxSphereData>::mergeIn(other);
+        mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
+    }
+
+    // Check if this data satisfies the query constraints given
+    bool satisfiesConstraints(const Vector3f& qpos, const float qradius, const SolidAngle& qangle) {
+        // We create a virtual stand in object which is the worst case object that could be in this subtree.
+        // It's centered at the closest point on the hierarchical bounding sphere to the query, and has the
+        // largest radius of any objects in the subtree.
+
+        // First, a special case is if the query is actually inside the hierarchical bounding sphere, in which
+        // case the above description isn't accurate: in this case the worst position for the stand in object
+        // is the exact location of the query.  So just let it pass.
+        if (bounding_sphere.contains(qpos))
+            return true;
+
+        Vector3f to_query = qpos - bounding_sphere.center();
+        Vector3f on_bounding_sphere = bounding_sphere.center() + (to_query.normal() * bounding_sphere.radius());
+        float test_radius = mMaxRadius;
+
+        Vector3f to_standin_center = on_bounding_sphere - qpos;
+        float standin_radius = mMaxRadius;
+
+        // Must satisfy radius constraint
+        if (qradius != Query::InfiniteRadius && (to_standin_center).lengthSquared() < (qradius+standin_radius)*(qradius+standin_radius))
+            return false;
+
+        // Must satisfy solid angle constraint
+        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_standin_center, standin_radius);
+
+        if (solid_angle < qangle)
+            return false;
+
+        return true;
+    }
+
+private:
+    float mMaxRadius;
 };
 
 template<typename NodeData>

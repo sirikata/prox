@@ -107,6 +107,10 @@ public:
         return (mRadius + epsilon >= centers_len + other.mRadius);
     }
 
+    bool contains(const CoordType& pt) const {
+        return ( (mCenter-pt).lengthSquared() <= mRadius*mRadius );
+    }
+
     bool degenerate() const {
         return ( mRadius <= 0 );
     }
