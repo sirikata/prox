@@ -41,7 +41,10 @@
 
 namespace Prox {
 
-class RTreeNode;
+struct RTreeBoundingInfo;
+
+template<typename NodeData>
+struct RTreeNode;
 
 class RTreeQueryHandler : public QueryHandler, public ObjectChangeListener, public QueryChangeListener {
 public:
@@ -64,7 +67,6 @@ public:
 private:
     void insert(Object* obj, const Time& t);
     void deleteObj(const Object* obj, const Time& t);
-    bool satisfiesConstraints(const Vector3f& qpos, const float qradius, const SolidAngle& qangle, const BoundingSphere3f& obounds);
 
     struct QueryState {
         QueryCache cache;
@@ -73,7 +75,8 @@ private:
     typedef std::set<Object*> ObjectSet;
     typedef std::map<Query*, QueryState*> QueryMap;
 
-    RTreeNode* mRTreeRoot;
+    typedef RTreeNode<RTreeBoundingInfo> RTree;
+    RTree* mRTreeRoot;
     ObjectSet mObjects;
     QueryMap mQueries;
     Time mLastTime;
