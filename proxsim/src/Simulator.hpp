@@ -52,6 +52,8 @@ public:
 
     void initialize(const Prox::Time& t, const Prox::BoundingBox3f& region, int nobjects, int nqueries);
 
+    const Prox::BoundingBox3f& region() const;
+
     void addListener(SimulatorListener* listener);
     void removeListener(SimulatorListener* listener);
 
@@ -65,6 +67,7 @@ public:
 
     QueryIterator queriesBegin();
     QueryIterator queriesEnd();
+
 private:
     void addObject(Prox::Object* obj);
     void removeObject(Prox::Object* obj);
@@ -72,6 +75,7 @@ private:
     void addQuery(Prox::Query* query);
     void removeQuery(Prox::Query* query);
 
+    Prox::BoundingBox3f mRegion;
     Prox::int64 mObjectIDSource;
     Prox::QueryHandler* mHandler;
     ObjectList mObjects;

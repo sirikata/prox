@@ -62,6 +62,7 @@ Simulator::~Simulator() {
 }
 
 void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int nobjects, int nqueries) {
+    mRegion = region;
     Vector3f region_min = region.min();
     Vector3f region_extents = region.extents();
 
@@ -70,13 +71,13 @@ void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int
         unsigned char oid_data[ObjectID::static_size]={0};
         memcpy(oid_data,&mObjectIDSource,ObjectID::static_size<sizeof(mObjectIDSource)?ObjectID::static_size:sizeof(mObjectIDSource));
         ObjectID oid(oid_data,ObjectID::static_size);;
-        
+
         Object* obj = new Object(
             ObjectID(oid_data,ObjectID::static_size),
             MotionVector3f(
                 t,
                 region_min + Vector3f(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
-                Vector3f(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f)
+                Vector3f(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
             ),
             BoundingBox3f( Vector3f(-1, -1, -1), Vector3f(1, 1, 1))
         );
@@ -94,6 +95,10 @@ void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int
         );
         addQuery(query);
     }
+}
+
+const BoundingBox3f& Simulator::region() const {
+    return mRegion;
 }
 
 void Simulator::addListener(SimulatorListener* listener) {

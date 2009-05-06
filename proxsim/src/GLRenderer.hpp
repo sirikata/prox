@@ -75,6 +75,7 @@ protected:
     Prox::Time mTime;
     std::set<Prox::ObjectID> mSeenObjects;
     Timer mTimer;
+    int mWinWidth, mWinHeight;
 }; // class Renderer
 
 } // namespace ProxSim

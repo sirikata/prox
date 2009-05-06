@@ -64,7 +64,8 @@ void glut_timer(int val) {
 
 GLRenderer::GLRenderer(Simulator* sim)
  : Renderer(sim),
-   mTime(0)
+   mTime(0),
+   mWinWidth(0), mWinHeight(0)
 {
     mSimulator->addListener(this);
 
@@ -91,6 +92,8 @@ GLRenderer::~GLRenderer() {
 }
 
 void GLRenderer::run() {
+    reshape(mWinWidth, mWinHeight);
+
     glutTimerFunc(16, glut_timer, 0);
     glutMainLoop();
 }
@@ -139,7 +142,11 @@ void GLRenderer::display() {
         else
             glColor3f(0.f, 0.f, 0.f);
 
-        drawbb(bb);
+        //drawbb(bb);
+        glPointSize(2.f);
+        glBegin(GL_POINTS);
+        glVertex3f(bb.center().x, bb.center().y, bb.center().z);
+        glEnd();
     }
 
     glColor3f(1.f, 0.f, 0.f);
@@ -156,15 +163,18 @@ void GLRenderer::display() {
 }
 
 void GLRenderer::reshape(int w, int h) {
+    mWinWidth = w; mWinHeight = h;
+
+    Prox::BoundingBox3f sim_bb = mSimulator->region();
+
     glClearColor( .3, .3, .3, 1 );
     glClearDepth(1.0);
 
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
 
-    glOrtho( -100, 100, -100, 100, -100, 100 );
-    glTranslatef(0.f, 0.f, 100.f);
-    glViewport( 0, 0, w, h );
+    glOrtho( sim_bb.min().x, sim_bb.max().x, sim_bb.min().y, sim_bb.max().y, sim_bb.max().z, sim_bb.min().z );
+    glViewport( 0, 0, mWinWidth, mWinHeight );
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
