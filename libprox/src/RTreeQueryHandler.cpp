@@ -455,6 +455,10 @@ RTreeNode* RTree_condense_tree(RTreeNode* leaf, const Time& t) {
     }
 
     RTreeNode* root = n;
+    // There's a chance that the root node ended up with no elements, in which case it should be marked as a leaf node
+    if (root->size() == 0)
+        root->leaf(true);
+
     // FIXME this could reinsert entire nodes instead of individual objects, but we'd need a better idea of how to actually accomplish that...
     while(!removedNodes.empty()) {
         RTreeNode* removed = removedNodes.front();
