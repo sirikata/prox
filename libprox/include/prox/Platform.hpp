@@ -80,6 +80,7 @@
 #include <set>
 #include <queue>
 #include <stack>
+#include <cstring>
 
 namespace Prox {
 
