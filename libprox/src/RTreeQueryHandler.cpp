@@ -449,6 +449,16 @@ public:
         return true;
     }
 
+    void verifyChild(const NodeData& child) const {
+        BoundingSphereDataBase<MaxSphereData>::verifyChild(child);
+
+        if ( child.mMaxRadius > mMaxRadius) {
+            printf(
+                "Child radius greater than recorded maximum child radius: %f > %f\n",
+                child.mMaxRadius, mMaxRadius
+            );
+        }
+    }
 private:
     float mMaxRadius;
 };
