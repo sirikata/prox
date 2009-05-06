@@ -229,28 +229,28 @@ static const int32 UnassignedGroup = -1;
 typedef std::vector<int32> SplitGroups;
 
 
-struct RTreeBoundingInfo {
-    BoundingSphere3f bounding_sphere;
-
-    RTreeBoundingInfo()
+template<typename NodeData>
+class BoundingSphereDataBase {
+public:
+    BoundingSphereDataBase()
      : bounding_sphere()
     {
     }
 
-    RTreeBoundingInfo(const Object* obj, const Time& t)
+    BoundingSphereDataBase(const Object* obj, const Time& t)
      : bounding_sphere( obj->worldBounds(t) )
     {
     }
 
     // Return the result of merging this info with the given info
-    RTreeBoundingInfo merge(const RTreeBoundingInfo& other) const {
-        RTreeBoundingInfo result;
+    NodeData merge(const NodeData& other) const {
+        NodeData result;
         result.bounding_sphere = bounding_sphere.merge(other.bounding_sphere);
         return result;
     }
 
     // Merge the given info into this info
-    void mergeIn(const RTreeBoundingInfo& other) {
+    void mergeIn(const NodeData& other) {
         bounding_sphere.mergeIn(other.bounding_sphere);
     }
 
@@ -273,14 +273,14 @@ struct RTreeBoundingInfo {
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNode<RTreeBoundingInfo>* selectBestChildNode(const RTreeNode<RTreeBoundingInfo>* node, const Object* obj, const Time& t) {
+    static RTreeNode<NodeData>* selectBestChildNode(const RTreeNode<NodeData>* node, const Object* obj, const Time& t) {
         float min_increase = 0.f;
-        RTreeNode<RTreeBoundingInfo>* min_increase_node = NULL;
+        RTreeNode<NodeData>* min_increase_node = NULL;
 
         BoundingSphere3f obj_bounds = obj->worldBounds(t);
 
         for(int i = 0; i < node->size(); i++) {
-            RTreeNode<RTreeBoundingInfo>* child_node = node->node(i);
+            RTreeNode<NodeData>* child_node = node->node(i);
             BoundingSphere3f merged = child_node->data().bounding_sphere.merge(obj_bounds);
             float increase = merged.volume() - child_node->data().bounding_sphere.volume();
             if (min_increase_node == NULL || increase < min_increase) {
@@ -292,33 +292,14 @@ struct RTreeBoundingInfo {
         return min_increase_node;
     }
 
-private:
-    static RTreeNode<RTreeBoundingInfo>* findLeafWithObject(RTreeNode<RTreeBoundingInfo>* node, const Object* obj, const BoundingSphere3f& bs) {
-        // For leaf nodes, simply check against all child objects
-        if (node->leaf())
-            return (node->contains(obj) ? node : NULL);
-
-        // For internal nodes, check against child bounds, and then recursively check child
-        for(uint8 child_idx = 0; child_idx < node->size(); child_idx++) {
-            RTreeNode<RTreeBoundingInfo>* child = node->node(child_idx);
-            BoundingSphere3f child_bs = child->data().bounding_sphere;
-            if ( !child_bs.contains(bs, RTREE_BOUNDS_EPSILON) ) continue;
-            RTreeNode<RTreeBoundingInfo>* result = findLeafWithObject(child, obj, bs);
-            if (result != NULL) return result;
-        }
-
-        return NULL;
-    }
-
-public:
     // Given a root node and object and a time, find the leaf node which contains that object
-    static RTreeNode<RTreeBoundingInfo>* findLeafWithObject(RTreeNode<RTreeBoundingInfo>* node, const Object* obj, const Time& t) {
+    static RTreeNode<NodeData>* findLeafWithObject(RTreeNode<NodeData>* node, const Object* obj, const Time& t) {
         BoundingSphere3f bs = obj->worldBounds(t);
         return findLeafWithObject(node, obj, bs);
     }
 
     // Given a list of child data, choose two seeds for the splitting process in quadratic time
-    static void pickSeedsQuadratic(const std::vector<RTreeBoundingInfo>& split_data, int32* seed0, int32* seed1) {
+    static void pickSeedsQuadratic(const std::vector<NodeData>& split_data, int32* seed0, int32* seed1) {
         *seed0 = -1; *seed1 = -1;
         float max_waste = -FLT_MAX;
         for(uint32 idx0 = 0; idx0 < split_data.size(); idx0++) {
@@ -337,7 +318,7 @@ public:
     }
 
     // Given list of split data and current group assignments as well as current group data, select the next child to be added and its group
-    static void pickNextChild(std::vector<RTreeBoundingInfo>& split_data, const SplitGroups& split_groups, const RTreeBoundingInfo& group_data_0, const RTreeBoundingInfo& group_data_1, int32* next_child, int32* selected_group) {
+    static void pickNextChild(std::vector<NodeData>& split_data, const SplitGroups& split_groups, const NodeData& group_data_0, const NodeData& group_data_1, int32* next_child, int32* selected_group) {
         float max_preference = -1.0f;
         *next_child = -1;
         *selected_group = -1;
@@ -360,17 +341,48 @@ public:
         }
     }
 
-    void verifyChild(const RTreeBoundingInfo& child) const {
+    void verifyChild(const NodeData& child) const {
         if (! bounding_sphere.contains( child.bounding_sphere, RTREE_BOUNDS_EPSILON )) {
             printf("child exceeds bounds %f\n",
                 bounding_sphere.radius() - ((bounding_sphere.center() - child.bounding_sphere.center()).length() + child.bounding_sphere.radius())
             );
         }
     }
+
+private:
+    static RTreeNode<NodeData>* findLeafWithObject(RTreeNode<NodeData>* node, const Object* obj, const BoundingSphere3f& bs) {
+        // For leaf nodes, simply check against all child objects
+        if (node->leaf())
+            return (node->contains(obj) ? node : NULL);
+
+        // For internal nodes, check against child bounds, and then recursively check child
+        for(uint8 child_idx = 0; child_idx < node->size(); child_idx++) {
+            RTreeNode<NodeData>* child = node->node(child_idx);
+            BoundingSphere3f child_bs = child->data().bounding_sphere;
+            if ( !child_bs.contains(bs, RTREE_BOUNDS_EPSILON) ) continue;
+            RTreeNode<NodeData>* result = findLeafWithObject(child, obj, bs);
+            if (result != NULL) return result;
+        }
+
+        return NULL;
+    }
+
+    BoundingSphere3f bounding_sphere;
 };
 
 
+class BoundingSphereData : public BoundingSphereDataBase<BoundingSphereData> {
+public:
+    BoundingSphereData()
+     : BoundingSphereDataBase<BoundingSphereData>()
+    {
+    }
 
+    BoundingSphereData(const Object* obj, const Time& t)
+     : BoundingSphereDataBase<BoundingSphereData>( obj, t )
+    {
+    }
+};
 
 template<typename NodeData>
 RTreeNode<NodeData>* RTree_choose_leaf(RTreeNode<NodeData>* root, Object* obj, const Time& t) {

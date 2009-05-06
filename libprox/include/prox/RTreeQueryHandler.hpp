@@ -41,7 +41,7 @@
 
 namespace Prox {
 
-struct RTreeBoundingInfo;
+class BoundingSphereData;
 
 template<typename NodeData>
 struct RTreeNode;
@@ -75,7 +75,7 @@ private:
     typedef std::set<Object*> ObjectSet;
     typedef std::map<Query*, QueryState*> QueryMap;
 
-    typedef RTreeNode<RTreeBoundingInfo> RTree;
+    typedef RTreeNode<BoundingSphereData> RTree;
     RTree* mRTreeRoot;
     ObjectSet mObjects;
     QueryMap mQueries;
