@@ -73,15 +73,13 @@ SolidAngle SolidAngle::fromRadius(const ArcAngle& al) {
 }
 
 SolidAngle SolidAngle::fromCenterRadius(const Vector3f& to_center, float radius) {
+    float to_center_len = to_center.length();
+    if (to_center_len <= radius)
+        return SolidAngle(MaxVal);
 
-    Vector3f ortho_to_obj = to_center.cross( Vector3f(1.f, 1.f, 1.f) ).normal(); // FIXME this could break in some cases
-    Vector3f to_bound = to_center + ortho_to_obj * radius;
-    Vector3f norm_to_center = to_center.normal();
-    to_bound.normalizeThis();
-    return SolidAngle( 2.0f * Pi * (1.0f - norm_to_center.dot(to_bound)) );
-/*
-    return SolidAngle( 2.f * Pi * (1.f-cos(atan(radius/to_center.length()))) );
-*/
+    float sin_alpha = radius / to_center_len;
+    float cos_alpha = sqrtf(1 - sin_alpha*sin_alpha);
+    return SolidAngle( 2.0f * Pi * (1.0f - cos_alpha) );
 }
 
 SolidAngle SolidAngle::operator+(const SolidAngle& rhs) const {
