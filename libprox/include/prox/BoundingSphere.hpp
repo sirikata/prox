@@ -34,7 +34,6 @@
 #define _BOUNDING_SPHERE_HPP_
 
 #include <prox/Platform.hpp>
-#include <prox/ArcAngle.hpp>
 #include <cmath>
 
 namespace Prox {
@@ -43,6 +42,7 @@ template<typename CoordType>
 class BoundingSphere {
 public:
     typedef typename CoordType::real real;
+    static const real Pi = 3.1415926536;
 
     BoundingSphere()
      : mCenter((real)0),
@@ -108,7 +108,7 @@ public:
 
     real volume() const {
         if (degenerate()) return 0.0;
-        return 4.0 / 3.0 * ArcAngle::Pi * mRadius * mRadius * mRadius;
+        return 4.0 / 3.0 * Pi * mRadius * mRadius * mRadius;
     }
 
     bool operator==(const BoundingSphere& rhs) {

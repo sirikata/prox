@@ -64,14 +64,6 @@ float SolidAngle::asFloat() const {
     return mSolidAngle;
 }
 
-ArcAngle SolidAngle::radius() const {
-    return ArcAngle( acos(1.0f - (mSolidAngle / (2.0f * Pi))) );
-}
-
-SolidAngle SolidAngle::fromRadius(const ArcAngle& al) {
-    return SolidAngle( 2.0f * Pi * (1.0f - cos(al.asFloat())) );
-}
-
 SolidAngle SolidAngle::fromCenterRadius(const Vector3f& to_center, float radius) {
     float to_center_len = to_center.length();
     if (to_center_len <= radius)

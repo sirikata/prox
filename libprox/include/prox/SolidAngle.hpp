@@ -33,7 +33,6 @@
 #ifndef _PROX_SOLID_ANGLE_HPP_
 #define _PROX_SOLID_ANGLE_HPP_
 
-#include <prox/ArcAngle.hpp>
 #include <prox/Vector3.hpp>
 
 namespace Prox {
@@ -49,11 +48,6 @@ public:
     SolidAngle(const SolidAngle& cpy);
     ~SolidAngle();
 
-    /// Get the approximate radius of the region
-    ArcAngle radius() const;
-
-    /// Get the solid angle represented by the circular area with the given angular radius
-    static SolidAngle fromRadius(const ArcAngle& al);
     /// Get the solid angle represented by the circular area with the given vector to its center and radius
     static SolidAngle fromCenterRadius(const Vector3f& to_center, float radius);
 
