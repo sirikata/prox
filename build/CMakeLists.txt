@@ -135,7 +135,6 @@ SET(LIBPROX_SOURCES
   ${LIBPROX_SOURCE_DIR}/ArcAngle.cpp
   ${LIBPROX_SOURCE_DIR}/BruteForceQueryHandler.cpp
   ${LIBPROX_SOURCE_DIR}/Duration.cpp
-  ${LIBPROX_SOURCE_DIR}/Quaternion.cpp
   ${LIBPROX_SOURCE_DIR}/Query.cpp
   ${LIBPROX_SOURCE_DIR}/QueryCache.cpp
   ${LIBPROX_SOURCE_DIR}/RTreeQueryHandler.cpp
