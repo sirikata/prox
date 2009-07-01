@@ -135,7 +135,6 @@ SET(LIBPROX_SOURCES
   ${LIBPROX_SOURCE_DIR}/ArcAngle.cpp
   ${LIBPROX_SOURCE_DIR}/BruteForceQueryHandler.cpp
   ${LIBPROX_SOURCE_DIR}/Duration.cpp
-  ${LIBPROX_SOURCE_DIR}/Object.cpp
   ${LIBPROX_SOURCE_DIR}/Quaternion.cpp
   ${LIBPROX_SOURCE_DIR}/Query.cpp
   ${LIBPROX_SOURCE_DIR}/QueryCache.cpp
@@ -147,6 +146,8 @@ SET(LIBPROX_SOURCES
 
 SET(PROXSIM_SOURCES
   ${PROXSIM_SOURCE_DIR}/GLRenderer.cpp
+  ${PROXSIM_SOURCE_DIR}/Object.cpp
+  ${PROXSIM_SOURCE_DIR}/ObjectLocationServiceCache.cpp
   ${PROXSIM_SOURCE_DIR}/Simulator.cpp
   ${PROXSIM_SOURCE_DIR}/Timer.cpp
   ${PROXSIM_SOURCE_DIR}/main.cpp

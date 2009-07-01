@@ -1,4 +1,4 @@
-/*  libprox
+/*  proxsim
  *  Object.cpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
@@ -30,8 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <prox/Object.hpp>
-#include <prox/ObjectChangeListener.hpp>
+#include "Object.hpp"
 #include <algorithm>
 
 namespace Prox {
@@ -51,7 +50,7 @@ Object::Object(const Object& cpy)
 }
 
 Object::~Object() {
-    for(ChangeListenerList::iterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+    for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
         (*it)->objectDeleted(this);
 }
 
@@ -78,32 +77,32 @@ BoundingSphere3f Object::worldBounds(const Time& t) const {
 void Object::position(const MotionVector3f& new_pos) {
     MotionVector3f old_pos = mPosition;
     mPosition = new_pos;
-    for(ChangeListenerList::iterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+    for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
         (*it)->objectPositionUpdated(this, old_pos, new_pos);
 }
 
 void Object::bounds(const BoundingSphere3f& new_bounds) {
     BoundingSphere3f old_bounds = mBounds;
     mBounds = new_bounds;
-    for(ChangeListenerList::iterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-        (*it)->objectBoundingSphereUpdated(this, old_bounds, new_bounds);
+    for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
+        (*it)->objectBoundsUpdated(this, old_bounds, new_bounds);
 }
 
-void Object::addChangeListener(ObjectChangeListener* listener) {
+void Object::addUpdateListener(ObjectUpdateListener* listener) {
     assert(listener != NULL);
-    assert(std::find(mChangeListeners.begin(), mChangeListeners.end(), listener) == mChangeListeners.end());
+    assert(std::find(mUpdateListeners.begin(), mUpdateListeners.end(), listener) == mUpdateListeners.end());
 
-    mChangeListeners.push_back(listener);
+    mUpdateListeners.push_back(listener);
 }
 
-void Object::removeChangeListener(ObjectChangeListener* listener) {
+void Object::removeUpdateListener(ObjectUpdateListener* listener) {
     assert(listener != NULL);
 
-    ChangeListenerList::iterator it = std::find(mChangeListeners.begin(), mChangeListeners.end(), listener);
-    if (it == mChangeListeners.end())
+    UpdateListenerList::iterator it = std::find(mUpdateListeners.begin(), mUpdateListeners.end(), listener);
+    if (it == mUpdateListeners.end())
         return;
 
-    mChangeListeners.erase(it);
+    mUpdateListeners.erase(it);
 }
 
 } // namespace Prox

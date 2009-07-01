@@ -34,7 +34,7 @@
 #define _PROX_RTREE_QUERY_HANDLER_HPP_
 
 #include <prox/QueryHandler.hpp>
-#include <prox/ObjectChangeListener.hpp>
+#include <prox/LocationUpdateListener.hpp>
 #include <prox/QueryChangeListener.hpp>
 #include <prox/QueryCache.hpp>
 #include <prox/BoundingBox.hpp>
@@ -47,37 +47,41 @@ class MaxSphereData;
 template<typename NodeData>
 struct RTreeNode;
 
-class RTreeQueryHandler : public QueryHandler, public ObjectChangeListener, public QueryChangeListener {
+class RTreeQueryHandler : public QueryHandler, public LocationUpdateListener, public QueryChangeListener {
 public:
     RTreeQueryHandler(uint8 elements_per_node);
     virtual ~RTreeQueryHandler();
 
-    virtual void registerObject(Object* obj);
+    virtual void initialize(LocationServiceCache* loc_cache);
+    virtual void registerObject(const ObjectID& obj);
     virtual void registerQuery(Query* query);
     virtual void tick(const Time& t);
 
-    // ObjectChangeListener Implementation
-    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void objectBoundingSphereUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
-    virtual void objectDeleted(const Object* obj);
+    // LocationUpdateListener Implementation
+    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
+    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
+    virtual void locationDisconnected(const ObjectID& obj_id);
 
     // QueryChangeListener Implementation
     virtual void queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
     virtual void queryDeleted(const Query* query);
 
 private:
-    void insert(Object* obj, const Time& t);
-    void deleteObj(const Object* obj, const Time& t);
+    void insert(const ObjectID& obj_id, const Time& t);
+    void deleteObj(const ObjectID& obj_id, const Time& t);
 
     struct QueryState {
         QueryCache cache;
     };
 
-    typedef std::set<Object*> ObjectSet;
+    typedef std::set<ObjectID> ObjectSet;
     typedef std::map<Query*, QueryState*> QueryMap;
 
     //typedef RTreeNode<BoundingSphereData> RTree;
     typedef RTreeNode<MaxSphereData> RTree;
+
+    LocationServiceCache* mLocCache;
+
     RTree* mRTreeRoot;
     ObjectSet mObjects;
     QueryMap mQueries;

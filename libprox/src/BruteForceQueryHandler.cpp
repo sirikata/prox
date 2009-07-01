@@ -38,23 +38,34 @@ namespace Prox {
 
 BruteForceQueryHandler::BruteForceQueryHandler()
  : QueryHandler(),
-   ObjectChangeListener(),
-   QueryChangeListener()
+   LocationUpdateListener(),
+   QueryChangeListener(),
+   mLocCache(NULL)
 {
 }
 
 BruteForceQueryHandler::~BruteForceQueryHandler() {
+    for(ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++) {
+        mLocCache->stopTracking(*it);
+    }
     mObjects.clear();
     for(QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++) {
         QueryState* state = it->second;
         delete state;
     }
     mQueries.clear();
+
+    mLocCache->removeUpdateListener(this);
 }
 
-void BruteForceQueryHandler::registerObject(Object* obj) {
-    mObjects.insert(obj);
-    obj->addChangeListener(this);
+void BruteForceQueryHandler::initialize(LocationServiceCache* loc_cache) {
+    mLocCache = loc_cache;
+    mLocCache->addUpdateListener(this);
+}
+
+void BruteForceQueryHandler::registerObject(const ObjectID& obj_id) {
+    mObjects.insert(obj_id);
+    mLocCache->startTracking(obj_id);
 }
 
 void BruteForceQueryHandler::registerQuery(Query* query) {
@@ -70,22 +81,24 @@ void BruteForceQueryHandler::tick(const Time& t) {
         QueryCache newcache;
 
         for(ObjectSet::iterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
-            Object* obj = *obj_it;
+            ObjectID obj = *obj_it;
+            MotionVector3f obj_loc = mLocCache->location(obj);
+            Vector3f obj_pos = obj_loc.position(t);
+            BoundingSphere3f obj_bounds = mLocCache->bounds(obj);
 
             // Must satisfy radius constraint
-            if (query->radius() != Query::InfiniteRadius && (obj->position(t)-query->position(t)).lengthSquared() > query->radius()*query->radius())
+            if (query->radius() != Query::InfiniteRadius && (obj_pos-query->position(t)).lengthSquared() > query->radius()*query->radius())
                 continue;
 
             // Must satisfy solid angle constraint
-            BoundingSphere3f bs = obj->bounds();
-            Vector3f obj_pos = obj->position(t) + bs.center();
-            Vector3f to_obj = obj_pos - query->position(t);
-            SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, bs.radius());
+            Vector3f obj_world_center = obj_pos + obj_bounds.center();
+            Vector3f to_obj = obj_world_center - query->position(t);
+            SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_bounds.radius());
 
             if (solid_angle < query->angle())
                 continue;
 
-            newcache.add(obj->id());
+            newcache.add(obj);
         }
 
         std::deque<QueryEvent> events;
@@ -95,17 +108,18 @@ void BruteForceQueryHandler::tick(const Time& t) {
     }
 }
 
-void BruteForceQueryHandler::objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
+void BruteForceQueryHandler::locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
     // Nothing to be done, we use values directly from the object
 }
 
-void BruteForceQueryHandler::objectBoundingSphereUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) {
+void BruteForceQueryHandler::locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) {
     // Nothing to be done, we use values directly from the object
 }
 
-void BruteForceQueryHandler::objectDeleted(const Object* obj) {
-    assert( mObjects.find(const_cast<Object*>(obj)) != mObjects.end() );
-    mObjects.erase(const_cast<Object*>(obj));
+void BruteForceQueryHandler::locationDisconnected(const ObjectID& obj_id) {
+    assert( mObjects.find(obj_id) != mObjects.end() );
+    mObjects.erase(obj_id);
+    mLocCache->stopTracking(obj_id);
 }
 
 void BruteForceQueryHandler::queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {

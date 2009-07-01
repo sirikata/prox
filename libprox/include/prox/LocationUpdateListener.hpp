@@ -1,5 +1,5 @@
 /*  libprox
- *  ObjectChangeListener.hpp
+ *  LocationUpdateListener.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -33,23 +33,22 @@
 #ifndef _PROX_OBJECT_CHANGE_LISTENER_HPP_
 #define _PROX_OBJECT_CHANGE_LISTENER_HPP_
 
+#include <prox/ObjectID.hpp>
 #include <prox/MotionVector.hpp>
 #include <prox/BoundingSphere.hpp>
 
 namespace Prox {
 
-class Object;
-
-class ObjectChangeListener {
+class LocationUpdateListener {
 public:
-    ObjectChangeListener() {}
-    virtual ~ObjectChangeListener() {}
+    LocationUpdateListener() {}
+    virtual ~LocationUpdateListener() {}
 
-    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) = 0;
-    virtual void objectBoundingSphereUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) = 0;
-    virtual void objectDeleted(const Object* obj) = 0;
+    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos) = 0;
+    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) = 0;
+    virtual void locationDisconnected(const ObjectID& obj_id) = 0;
 
-}; // class ObjectChangeListener
+}; // class LocationUpdateListener
 
 } // namespace Prox
 

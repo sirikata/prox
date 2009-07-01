@@ -34,7 +34,8 @@
 #define _PROXSIM_SIMULATOR_LISTENER_HPP_
 
 #include <prox/Query.hpp>
-#include <prox/Object.hpp>
+#include "Object.hpp"
+
 namespace ProxSim {
 
 class SimulatorListener {

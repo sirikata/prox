@@ -34,25 +34,26 @@
 #define _PROX_BRUTE_FORCE_QUERY_HANDLER_HPP_
 
 #include <prox/QueryHandler.hpp>
-#include <prox/ObjectChangeListener.hpp>
+#include <prox/LocationUpdateListener.hpp>
 #include <prox/QueryChangeListener.hpp>
 #include <prox/QueryCache.hpp>
 
 namespace Prox {
 
-class BruteForceQueryHandler : public QueryHandler, public ObjectChangeListener, public QueryChangeListener {
+class BruteForceQueryHandler : public QueryHandler, public LocationUpdateListener, public QueryChangeListener {
 public:
     BruteForceQueryHandler();
     virtual ~BruteForceQueryHandler();
 
-    virtual void registerObject(Object* obj);
+    virtual void initialize(LocationServiceCache* loc_cache);
+    virtual void registerObject(const ObjectID& obj_id);
     virtual void registerQuery(Query* query);
     virtual void tick(const Time& t);
 
-    // ObjectChangeListener Implementation
-    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void objectBoundingSphereUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
-    virtual void objectDeleted(const Object* obj);
+    // LocationUpdateListener Implementation
+    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
+    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
+    virtual void locationDisconnected(const ObjectID& obj_id);
 
     // QueryChangeListener Implementation
     virtual void queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
@@ -63,9 +64,10 @@ private:
         QueryCache cache;
     };
 
-    typedef std::set<Object*> ObjectSet;
+    typedef std::set<ObjectID> ObjectSet;
     typedef std::map<Query*, QueryState*> QueryMap;
 
+    LocationServiceCache* mLocCache;
     ObjectSet mObjects;
     QueryMap mQueries;
 }; // class BruteForceQueryHandler

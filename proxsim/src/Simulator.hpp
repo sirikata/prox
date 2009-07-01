@@ -33,12 +33,13 @@
 #ifndef _PROXSIM_SIMULATOR_HPP_
 #define _PROXSIM_SIMULATOR_HPP_
 
-#include <prox/Object.hpp>
 #include <prox/Query.hpp>
 #include <prox/QueryHandler.hpp>
 #include <prox/Time.hpp>
 #include <prox/BoundingBox.hpp>
+#include "Object.hpp"
 #include "SimulatorListener.hpp"
+#include "ObjectLocationServiceCache.hpp"
 
 namespace ProxSim {
 
@@ -78,6 +79,7 @@ private:
     Prox::BoundingBox3f mRegion;
     Prox::int64 mObjectIDSource;
     Prox::QueryHandler* mHandler;
+    Prox::LocationServiceCache* mLocCache;
     ObjectList mObjects;
     QueryList mQueries;
     typedef std::list<SimulatorListener*> ListenerList;

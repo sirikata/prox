@@ -43,7 +43,8 @@ static float randFloat() {
 
 Simulator::Simulator(QueryHandler* handler)
  : mObjectIDSource(0),
-   mHandler(handler)
+   mHandler(handler),
+   mLocCache(NULL)
 {
 }
 
@@ -59,9 +60,16 @@ Simulator::~Simulator() {
         removeQuery(query);
         delete query;
     }
+
+    delete mLocCache;
 }
 
 void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int nobjects, int nqueries) {
+    ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
+    mLocCache = loc_cache;
+
+    mHandler->initialize(mLocCache);
+
     mRegion = region;
     Vector3f region_min = region.min();
     Vector3f region_extents = region.extents();
@@ -81,6 +89,7 @@ void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int
             ),
             BoundingBox3f( Vector3f(-1, -1, -1), Vector3f(1, 1, 1))
         );
+        loc_cache->addObject(obj);
         addObject(obj);
     }
 
@@ -118,7 +127,7 @@ void Simulator::tick(const Time& t) {
 
 void Simulator::addObject(Object* obj) {
     mObjects.push_back(obj);
-    mHandler->registerObject(obj);
+    mHandler->registerObject(obj->id());
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorAddedObject(obj);
 }

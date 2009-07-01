@@ -46,7 +46,7 @@ private:
 
     union {
         RTreeNode** nodes;
-        Object** objects;
+        ObjectID* objects;
         void** magic;
     } elements;
     RTreeNode* mParent;
@@ -61,26 +61,26 @@ public:
             return parent->node(idx);
         }
 
-        NodeData data(RTreeNode* child, const Time& ) {
+        NodeData data(const LocationServiceCache* loc, RTreeNode* child, const Time& ) {
             return child->data();
         }
 
-        void insert(RTreeNode* parent, RTreeNode* newchild, const Time& ) {
+        void insert(RTreeNode* parent, const LocationServiceCache* loc, RTreeNode* newchild, const Time& ) {
             parent->insert(newchild);
         }
     };
 
     struct ObjectChildOperations {
-        Object* child(RTreeNode* parent, int idx) {
+        const ObjectID& child(RTreeNode* parent, int idx) {
             return parent->object(idx);
         }
 
-        NodeData data(Object* child, const Time& t) {
-            return NodeData(child, t);
+        NodeData data(const LocationServiceCache* loc, const ObjectID& child, const Time& t) {
+            return NodeData(loc, child, t);
         }
 
-        void insert(RTreeNode* parent, Object* newchild, const Time& t) {
-            parent->insert(newchild,t);
+        void insert(RTreeNode* parent, const LocationServiceCache* loc, const ObjectID& newchild, const Time& t) {
+            parent->insert(loc, newchild,t);
         }
     };
 
@@ -126,7 +126,7 @@ public:
         mParent = _p;
     }
 
-    Object* object(int i) const {
+    const ObjectID& object(int i) const {
         assert( leaf() );
         assert( i < count );
         return elements.objects[i];
@@ -143,17 +143,17 @@ public:
         return mData;
     }
 
-    NodeData childData(int i, const Time& t) {
+    NodeData childData(int i, const LocationServiceCache* loc, const Time& t) {
         if (leaf())
-            return NodeData(object(i), t);
+            return NodeData(loc, object(i), t);
         else
             return node(i)->data();
     }
 
-    void recomputeData(const Time& t) {
+    void recomputeData(const LocationServiceCache* loc, const Time& t) {
         mData = NodeData();
         for(int i = 0; i < size(); i++)
-            mData.mergeIn( childData(i, t) );
+            mData.mergeIn( childData(i, loc, t) );
     }
 
     void clear() {
@@ -163,12 +163,12 @@ public:
         mData = NodeData();
     }
 
-    void insert(Object* obj, const Time& t) {
+    void insert(const LocationServiceCache* loc, const ObjectID& obj, const Time& t) {
         assert (count < max_elements);
         assert (leaf() == true);
         elements.objects[count] = obj;
         count++;
-        mData.mergeIn( NodeData(obj, t) );
+        mData.mergeIn( NodeData(loc, obj, t) );
     }
 
     void insert(RTreeNode* node) {
@@ -181,7 +181,7 @@ public:
     }
 
     // NOTE: does not recalculate the bounding sphere
-    void erase(const Object* obj) {
+    void erase(const ObjectID& obj) {
         assert(count > 0);
         assert(leaf() == true);
         // find obj
@@ -208,18 +208,18 @@ public:
         count--;
     }
 
-    bool contains(const Object* obj) const {
+    bool contains(const ObjectID& obj) const {
         for(uint8 obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx] == obj) return true;
         return false;
     }
 
-    RTreeNode* selectBestChildNode(const Object* obj, const Time& t) {
-        return NodeData::selectBestChildNode(this, obj, t);
+    RTreeNode* selectBestChildNode(const LocationServiceCache* loc, const ObjectID& obj, const Time& t) {
+        return NodeData::selectBestChildNode(this, loc, obj, t);
     }
 
-    RTreeNode* findLeafWithObject(const Object* obj, const Time& t) {
-        return NodeData::findLeafWithObject(this, obj, t);
+    RTreeNode* findLeafWithObject(const LocationServiceCache* loc, const ObjectID& obj, const Time& t) {
+        return NodeData::findLeafWithObject(this, loc, obj, t);
     }
 };
 
@@ -237,8 +237,8 @@ public:
     {
     }
 
-    BoundingSphereDataBase(const Object* obj, const Time& t)
-     : bounding_sphere( obj->worldBounds(t) )
+    BoundingSphereDataBase(const LocationServiceCache* loc, const ObjectID& obj, const Time& t)
+     : bounding_sphere( loc->worldBounds(obj, t) )
     {
     }
 
@@ -273,11 +273,11 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNode<NodeData>* selectBestChildNode(const RTreeNode<NodeData>* node, const Object* obj, const Time& t) {
+    static RTreeNode<NodeData>* selectBestChildNode(const RTreeNode<NodeData>* node, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
         float min_increase = 0.f;
         RTreeNode<NodeData>* min_increase_node = NULL;
 
-        BoundingSphere3f obj_bounds = obj->worldBounds(t);
+        BoundingSphere3f obj_bounds = loc->worldBounds(obj_id, t);
 
         for(int i = 0; i < node->size(); i++) {
             RTreeNode<NodeData>* child_node = node->node(i);
@@ -293,9 +293,9 @@ public:
     }
 
     // Given a root node and object and a time, find the leaf node which contains that object
-    static RTreeNode<NodeData>* findLeafWithObject(RTreeNode<NodeData>* node, const Object* obj, const Time& t) {
-        BoundingSphere3f bs = obj->worldBounds(t);
-        return findLeafWithObject(node, obj, bs);
+    static RTreeNode<NodeData>* findLeafWithObject(RTreeNode<NodeData>* node, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
+        BoundingSphere3f bs = loc->worldBounds(obj_id, t);
+        return findLeafWithObject(node, loc, obj_id, bs);
     }
 
     // Given a list of child data, choose two seeds for the splitting process in quadratic time
@@ -350,17 +350,17 @@ public:
     }
 
 private:
-    static RTreeNode<NodeData>* findLeafWithObject(RTreeNode<NodeData>* node, const Object* obj, const BoundingSphere3f& bs) {
+    static RTreeNode<NodeData>* findLeafWithObject(RTreeNode<NodeData>* node, const LocationServiceCache* loc, const ObjectID& obj_id, const BoundingSphere3f& bs) {
         // For leaf nodes, simply check against all child objects
         if (node->leaf())
-            return (node->contains(obj) ? node : NULL);
+            return (node->contains(obj_id) ? node : NULL);
 
         // For internal nodes, check against child bounds, and then recursively check child
         for(uint8 child_idx = 0; child_idx < node->size(); child_idx++) {
             RTreeNode<NodeData>* child = node->node(child_idx);
             BoundingSphere3f child_bs = child->data().bounding_sphere;
             if ( !child_bs.contains(bs, RTREE_BOUNDS_EPSILON) ) continue;
-            RTreeNode<NodeData>* result = findLeafWithObject(child, obj, bs);
+            RTreeNode<NodeData>* result = findLeafWithObject(child, loc, obj_id, bs);
             if (result != NULL) return result;
         }
 
@@ -379,8 +379,8 @@ public:
     {
     }
 
-    BoundingSphereData(const Object* obj, const Time& t)
-     : BoundingSphereDataBase<BoundingSphereData>( obj, t )
+    BoundingSphereData(const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t)
+     : BoundingSphereDataBase<BoundingSphereData>( loc, obj_id, t )
     {
     }
 };
@@ -399,9 +399,9 @@ public:
     {
     }
 
-    MaxSphereData(const Object* obj, const Time& t)
-     : BoundingSphereDataBase<MaxSphereData>( obj, t ),
-       mMaxRadius( obj->worldBounds(t).radius() )
+    MaxSphereData(const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t)
+     : BoundingSphereDataBase<MaxSphereData>( loc, obj_id, t ),
+       mMaxRadius( loc->worldBounds(obj_id, t).radius() )
     {
     }
 
@@ -464,12 +464,12 @@ private:
 };
 
 template<typename NodeData>
-RTreeNode<NodeData>* RTree_choose_leaf(RTreeNode<NodeData>* root, Object* obj, const Time& t) {
-    BoundingSphere3f obj_bounds = obj->worldBounds(t);
+RTreeNode<NodeData>* RTree_choose_leaf(RTreeNode<NodeData>* root, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
+    BoundingSphere3f obj_bounds = loc->worldBounds(obj_id, t);
     RTreeNode<NodeData>* node = root;
 
     while(!node->leaf()) {
-        RTreeNode<NodeData>* min_increase_node = node->selectBestChildNode(obj, t);
+        RTreeNode<NodeData>* min_increase_node = node->selectBestChildNode(loc, obj_id, t);
         node = min_increase_node;
     }
 
@@ -509,22 +509,22 @@ void RTree_pick_next_child(std::vector<NodeData>& split_data, SplitGroups& split
 
 // Splits a node, inserting the given node, and returns the second new node
 template<typename NodeData, typename ChildType, typename ChildOperations>
-RTreeNode<NodeData>* RTree_split_node(RTreeNode<NodeData>* node, ChildType* to_insert, const Time& t) {
+RTreeNode<NodeData>* RTree_split_node(RTreeNode<NodeData>* node, ChildType to_insert, const LocationServiceCache* loc, const Time& t) {
     ChildOperations child_ops;
 
     // collect the info for the children
-    std::vector<ChildType*> split_children;
+    std::vector<ChildType> split_children;
     std::vector<NodeData> split_data;
     SplitGroups split_groups;
 
     // add all the children to the split vectors
     for(int i = 0; i < node->size(); i++) {
         split_children.push_back( child_ops.child(node, i) );
-        split_data.push_back( node->childData(i,t) );
+        split_data.push_back( node->childData(i,loc,t) );
         split_groups.push_back(UnassignedGroup);
     }
     split_children.push_back( to_insert );
-    split_data.push_back( child_ops.data(to_insert, t) );
+    split_data.push_back( child_ops.data(loc, to_insert, t) );
     split_groups.push_back(UnassignedGroup);
 
     // find the initial seeds
@@ -541,7 +541,7 @@ RTreeNode<NodeData>* RTree_split_node(RTreeNode<NodeData>* node, ChildType* to_i
     nn->leaf(node->leaf());
     for(uint32 i = 0; i < split_children.size(); i++) {
         RTreeNode<NodeData>* newparent = (split_groups[i] == 0) ? node : nn;
-        child_ops.insert( newparent, split_children[i], t );
+        child_ops.insert( newparent, loc, split_children[i], t );
     }
 
     return nn;
@@ -549,7 +549,7 @@ RTreeNode<NodeData>* RTree_split_node(RTreeNode<NodeData>* node, ChildType* to_i
 
 // Fixes up the tree after insertion. Returns the new root node
 template<typename NodeData>
-RTreeNode<NodeData>* RTree_adjust_tree(RTreeNode<NodeData>* L, RTreeNode<NodeData>* LL, const Time& t) {
+RTreeNode<NodeData>* RTree_adjust_tree(RTreeNode<NodeData>* L, RTreeNode<NodeData>* LL, const LocationServiceCache* loc, const Time& t) {
     assert(L->leaf());
     RTreeNode<NodeData>* node = L;
     RTreeNode<NodeData>* nn = LL;
@@ -558,14 +558,14 @@ RTreeNode<NodeData>* RTree_adjust_tree(RTreeNode<NodeData>* L, RTreeNode<NodeDat
         RTreeNode<NodeData>* parent = node->parent();
 
         // FIXME this is inefficient
-        node->recomputeData(t);
+        node->recomputeData(loc, t);
 
         if (parent == NULL) break;
 
         RTreeNode<NodeData>* pp = NULL;
         if (nn != NULL) {
             if (parent->full())
-                pp = RTree_split_node<NodeData, RTreeNode<NodeData>, typename RTreeNode<NodeData>::NodeChildOperations>(parent, nn, t);
+                pp = RTree_split_node<NodeData, RTreeNode<NodeData>*, typename RTreeNode<NodeData>::NodeChildOperations>(parent, nn, loc, t);
             else
                 parent->insert(nn);
         }
@@ -591,37 +591,37 @@ RTreeNode<NodeData>* RTree_adjust_tree(RTreeNode<NodeData>* L, RTreeNode<NodeDat
 
 // Inserts a new object into the tree, updating any nodes as necessary. Returns the new root node.
 template<typename NodeData>
-RTreeNode<NodeData>* RTree_insert_object(RTreeNode<NodeData>* root, Object* obj, const Time& t) {
-    RTreeNode<NodeData>* leaf_node = RTree_choose_leaf(root, obj, t);
+RTreeNode<NodeData>* RTree_insert_object(RTreeNode<NodeData>* root, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
+    RTreeNode<NodeData>* leaf_node = RTree_choose_leaf(root, loc, obj_id, t);
 
     RTreeNode<NodeData>* split_node = NULL;
     if (leaf_node->full())
-        split_node = RTree_split_node<NodeData, Object, typename RTreeNode<NodeData>::ObjectChildOperations>(leaf_node, obj, t);
+        split_node = RTree_split_node<NodeData, ObjectID, typename RTreeNode<NodeData>::ObjectChildOperations>(leaf_node, obj_id, loc, t);
     else
-        leaf_node->insert(obj, t);
+        leaf_node->insert(loc, obj_id, t);
 
-    RTreeNode<NodeData>* new_root = RTree_adjust_tree(leaf_node, split_node, t);
+    RTreeNode<NodeData>* new_root = RTree_adjust_tree(leaf_node, split_node, loc, t);
 
     return new_root;
 }
 
 template<typename NodeData>
-void RTree_verify_constraints(RTreeNode<NodeData>* root, const Time& t) {
+void RTree_verify_constraints(RTreeNode<NodeData>* root, const LocationServiceCache* loc, const Time& t) {
 #ifdef PROXDEBUG
     for(int i = 0; i < root->size(); i++)
-        root->data().verifyChild( root->childData(i, t) );
+        root->data().verifyChild( root->childData(i, loc, t) );
     if (!root->leaf()) {
         for(int i = 0; i < root->size(); i++)
-            RTree_verify_constraints(root->node(i), t);
+            RTree_verify_constraints(root->node(i), loc, t);
     }
 #endif // def PROXDEBUG
 }
 
 /* Finds obj in the tree with the given root, assuming its at the position for time t. */
 template<typename NodeData>
-RTreeNode<NodeData>* RTree_find_leaf(RTreeNode<NodeData>* root, const Object* obj, const Time& t) {
+RTreeNode<NodeData>* RTree_find_leaf(RTreeNode<NodeData>* root, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
     if (root == NULL) return NULL;
-    return root->findLeafWithObject(obj, t);
+    return root->findLeafWithObject(loc, obj_id, t);
 }
 
 /* Takes a leaf node from which an object has been removed and, if it contains too few nodes,
@@ -630,7 +630,7 @@ RTreeNode<NodeData>* RTree_find_leaf(RTreeNode<NodeData>* root, const Object* ob
  *  can itself cause a new root to appear.
  */
 template<typename NodeData>
-RTreeNode<NodeData>* RTree_condense_tree(RTreeNode<NodeData>* leaf, const Time& t) {
+RTreeNode<NodeData>* RTree_condense_tree(RTreeNode<NodeData>* leaf, const LocationServiceCache* loc, const Time& t) {
     RTreeNode<NodeData>* n = leaf;
     std::queue<RTreeNode<NodeData>*> removedNodes;
 
@@ -641,7 +641,7 @@ RTreeNode<NodeData>* RTree_condense_tree(RTreeNode<NodeData>* leaf, const Time& 
             removedNodes.push(n);
         }
         else {
-            n->recomputeData(t);
+            n->recomputeData(loc, t);
         }
         n = parent;
     }
@@ -657,7 +657,7 @@ RTreeNode<NodeData>* RTree_condense_tree(RTreeNode<NodeData>* leaf, const Time& 
         removedNodes.pop();
         if (removed->leaf()) {
             for(uint8 idx = 0; idx < removed->size(); idx++)
-                root = RTree_insert_object(root, removed->object(idx), t);
+                root = RTree_insert_object(root, loc, removed->object(idx), t);
         }
         else {
             for(uint8 idx = 0; idx < removed->size(); idx++)
@@ -670,14 +670,14 @@ RTreeNode<NodeData>* RTree_condense_tree(RTreeNode<NodeData>* leaf, const Time& 
 
 /* Deletes the object from the given tree.  Returns the new root. */
 template<typename NodeData>
-RTreeNode<NodeData>* RTree_delete_object(RTreeNode<NodeData>* root, const Object* obj, const Time& t) {
-    RTreeNode<NodeData>* leaf_with_obj = RTree_find_leaf(root, obj, t);
+RTreeNode<NodeData>* RTree_delete_object(RTreeNode<NodeData>* root, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
+    RTreeNode<NodeData>* leaf_with_obj = RTree_find_leaf(root, loc, obj_id, t);
     if (leaf_with_obj == NULL) {
         return root;
     }
 
-    leaf_with_obj->erase(obj);
-    RTreeNode<NodeData>* new_root = RTree_condense_tree(leaf_with_obj, t);
+    leaf_with_obj->erase(obj_id);
+    RTreeNode<NodeData>* new_root = RTree_condense_tree(leaf_with_obj, loc, t);
 
     // We might need to shorten the tree if the root is left with only one child.
     if (!root->leaf() && root->size() == 1) {
@@ -694,26 +694,37 @@ RTreeNode<NodeData>* RTree_delete_object(RTreeNode<NodeData>* root, const Object
 
 RTreeQueryHandler::RTreeQueryHandler(uint8 elements_per_node)
  : QueryHandler(),
-   ObjectChangeListener(),
+   LocationUpdateListener(),
    QueryChangeListener(),
+   mLocCache(NULL),
    mLastTime(0)
 {
     mRTreeRoot = new RTree(elements_per_node);
 }
 
 RTreeQueryHandler::~RTreeQueryHandler() {
+    for(ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++) {
+        mLocCache->stopTracking(*it);
+    }
     mObjects.clear();
     for(QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++) {
         QueryState* state = it->second;
         delete state;
     }
     mQueries.clear();
+
+    mLocCache->removeUpdateListener(this);
 }
 
-void RTreeQueryHandler::registerObject(Object* obj) {
+void RTreeQueryHandler::initialize(LocationServiceCache* loc_cache) {
+    mLocCache = loc_cache;
+    mLocCache->addUpdateListener(this);
+}
+
+void RTreeQueryHandler::registerObject(const ObjectID& obj) {
     insert(obj, mLastTime);
     mObjects.insert(obj);
-    obj->addChangeListener(this);
+    mLocCache->startTracking(obj);
 }
 
 void RTreeQueryHandler::registerQuery(Query* query) {
@@ -731,7 +742,7 @@ void RTreeQueryHandler::tick(const Time& t) {
         insert(*obj_it, t);
     }
 
-    RTree_verify_constraints(mRTreeRoot, t);
+    RTree_verify_constraints(mRTreeRoot, mLocCache, t);
     int count = 0;
     int ncount = 0;
     for(QueryMap::iterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
@@ -752,14 +763,14 @@ void RTreeQueryHandler::tick(const Time& t) {
             if (node->leaf()) {
                 for(int i = 0; i < node->size(); i++) {
                     count++;
-                    if (node->childData(i,t).satisfiesConstraints(qpos, qradius, qangle))
-                        newcache.add(node->object(i)->id());
+                    if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qradius, qangle))
+                        newcache.add(node->object(i));
                 }
             }
             else {
                 for(int i = 0; i < node->size(); i++) {
                     count++;
-                    if (node->childData(i,t).satisfiesConstraints(qpos, qradius, qangle))
+                    if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qradius, qangle))
                         node_stack.push(node->node(i));
                     else
                         ncount++;
@@ -776,22 +787,23 @@ void RTreeQueryHandler::tick(const Time& t) {
     mLastTime = t;
 }
 
-void RTreeQueryHandler::objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
+void RTreeQueryHandler::locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
     // FIXME should use more efficient update approach
-    deleteObj(obj, mLastTime);
-    insert(obj, mLastTime);
+    deleteObj(obj_id, mLastTime);
+    insert(obj_id, mLastTime);
 }
 
-void RTreeQueryHandler::objectBoundingSphereUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) {
+void RTreeQueryHandler::locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) {
     // FIXME should use more efficient update approach
-    deleteObj(obj, mLastTime);
-    insert(obj, mLastTime);
+    deleteObj(obj_id, mLastTime);
+    insert(obj_id, mLastTime);
 }
 
-void RTreeQueryHandler::objectDeleted(const Object* obj) {
-    assert( mObjects.find(const_cast<Object*>(obj)) != mObjects.end() );
-    mObjects.erase(const_cast<Object*>(obj));
-    deleteObj(obj, mLastTime);
+void RTreeQueryHandler::locationDisconnected(const ObjectID& obj_id) {
+    assert( mObjects.find(obj_id) != mObjects.end() );
+    mObjects.erase(obj_id);
+    deleteObj(obj_id, mLastTime);
+    mLocCache->stopTracking(obj_id);
 }
 
 void RTreeQueryHandler::queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
@@ -806,12 +818,12 @@ void RTreeQueryHandler::queryDeleted(const Query* query) {
     mQueries.erase(it);
 }
 
-void RTreeQueryHandler::insert(Object* obj, const Time& t) {
-    mRTreeRoot = RTree_insert_object(mRTreeRoot, obj, t);
+void RTreeQueryHandler::insert(const ObjectID& obj_id, const Time& t) {
+    mRTreeRoot = RTree_insert_object(mRTreeRoot, mLocCache, obj_id, t);
 }
 
-void RTreeQueryHandler::deleteObj(const Object* obj, const Time& t) {
-    mRTreeRoot = RTree_delete_object(mRTreeRoot, obj, t);
+void RTreeQueryHandler::deleteObj(const ObjectID& obj_id, const Time& t) {
+    mRTreeRoot = RTree_delete_object(mRTreeRoot, mLocCache, obj_id, t);
 }
 
 

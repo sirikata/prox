@@ -1,5 +1,5 @@
-/*  libprox
- *  QueryHandler.hpp
+/*  proxsim
+ *  ObjectLocationServiceCache.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,27 +30,48 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_QUERY_HANDLER_HPP_
-#define _PROX_QUERY_HANDLER_HPP_
+#ifndef _PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_
+#define _PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_
 
-#include <prox/ObjectID.hpp>
-#include <prox/Query.hpp>
-#include <prox/Time.hpp>
 #include <prox/LocationServiceCache.hpp>
+#include "Object.hpp"
 
 namespace Prox {
 
-class QueryHandler {
+/* Implementation of LocationServiceCache which deals directly with locally
+ * simulated objects.
+ */
+class ObjectLocationServiceCache : public LocationServiceCache, public ObjectUpdateListener {
 public:
-    QueryHandler() {}
-    virtual ~QueryHandler() {}
+    ObjectLocationServiceCache();
+    virtual ~ObjectLocationServiceCache();
 
-    virtual void initialize(LocationServiceCache* loc_cache) = 0;
-    virtual void registerObject(const ObjectID& obj_id) = 0;
-    virtual void registerQuery(Query* query) = 0;
-    virtual void tick(const Time& t) = 0;
-}; // class QueryHandler
+    void addObject(Object* obj);
+    void removeObject(const Object* obj);
+
+    virtual void startTracking(const ObjectID& id);
+    virtual void stopTracking(const ObjectID& id);
+
+    virtual const MotionVector3f& location(const ObjectID& id) const;
+    virtual const BoundingSphere3f& bounds(const ObjectID& id) const;
+
+    virtual void addUpdateListener(LocationUpdateListener* listener);
+    virtual void removeUpdateListener(LocationUpdateListener* listener);
+
+    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
+    virtual void objectBoundsUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
+    virtual void objectDeleted(const Object* obj);
+
+private:
+    Object* lookup(const ObjectID& id) const;
+
+    typedef std::map<ObjectID, Object*> ObjectMap;
+    typedef std::set<LocationUpdateListener*> ListenerSet;
+
+    ObjectMap mObjects;
+    ListenerSet mListeners;
+};
 
 } // namespace Prox
 
-#endif //_PROX_QUERY_HANDLER_HPP_
+#endif //_PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_

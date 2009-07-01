@@ -1,4 +1,4 @@
-/*  libprox
+/*  proxsim
  *  Object.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
@@ -39,7 +39,7 @@
 
 namespace Prox {
 
-class ObjectChangeListener;
+class ObjectUpdateListener;
 
 class Object {
 public:
@@ -57,20 +57,29 @@ public:
     void position(const MotionVector3f& new_pos);
     void bounds(const BoundingSphere3f& new_bounds);
 
-    void addChangeListener(ObjectChangeListener* listener);
-    void removeChangeListener(ObjectChangeListener* listener);
+    void addUpdateListener(ObjectUpdateListener* listener);
+    void removeUpdateListener(ObjectUpdateListener* listener);
 protected:
 
     ObjectID mID;
     PositionVectorType mPosition;
     BoundingSphere3f mBounds;
 
-    typedef std::list<ObjectChangeListener*> ChangeListenerList;
-    ChangeListenerList mChangeListeners;
-
+    typedef std::list<ObjectUpdateListener*> UpdateListenerList;
+    UpdateListenerList mUpdateListeners;
 private:
     Object();
 }; // class Object
+
+class ObjectUpdateListener {
+public:
+    ObjectUpdateListener() {}
+    virtual ~ObjectUpdateListener() {}
+
+    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) = 0;
+    virtual void objectBoundsUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) = 0;
+    virtual void objectDeleted(const Object* obj) = 0;
+}; // class ObjectUpdateListener
 
 } // namespace Prox
 

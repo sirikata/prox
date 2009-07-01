@@ -1,5 +1,5 @@
 /*  libprox
- *  QueryHandler.hpp
+ *  LocationServiceCache.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,27 +30,40 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_QUERY_HANDLER_HPP_
-#define _PROX_QUERY_HANDLER_HPP_
+#ifndef _PROX_LOCATION_SERVICE_CACHE_HPP_
+#define _PROX_LOCATION_SERVICE_CACHE_HPP_
 
+#include <prox/Platform.hpp>
 #include <prox/ObjectID.hpp>
-#include <prox/Query.hpp>
-#include <prox/Time.hpp>
-#include <prox/LocationServiceCache.hpp>
+#include <prox/MotionVector.hpp>
+#include <prox/BoundingSphere.hpp>
+#include <prox/LocationUpdateListener.hpp>
 
 namespace Prox {
 
-class QueryHandler {
+/* Abstract base class for a cache which sits in front of a LocationService.
+ * The cache should guarantee that requests for location information can be
+ * answered immediately for objects for which caching is requested.  This
+ * guarantees that clients of the LocationService will always be able to get
+ * the necessary information out of it, even if it is somewhat out of date.
+ */
+class LocationServiceCache {
 public:
-    QueryHandler() {}
-    virtual ~QueryHandler() {}
+    virtual ~LocationServiceCache() {}
 
-    virtual void initialize(LocationServiceCache* loc_cache) = 0;
-    virtual void registerObject(const ObjectID& obj_id) = 0;
-    virtual void registerQuery(Query* query) = 0;
-    virtual void tick(const Time& t) = 0;
-}; // class QueryHandler
+    virtual void startTracking(const ObjectID& id) = 0;
+    virtual void stopTracking(const ObjectID& id) = 0;
+
+    virtual const MotionVector3f& location(const ObjectID& id) const = 0;
+    virtual const BoundingSphere3f& bounds(const ObjectID& id) const = 0;
+    virtual BoundingSphere3f worldBounds(const ObjectID& id, const Time& t) const {
+        return BoundingSphere3f( bounds(id).center() + location(id).position(t), bounds(id).radius() );
+    }
+
+    virtual void addUpdateListener(LocationUpdateListener* listener) = 0;
+    virtual void removeUpdateListener(LocationUpdateListener* listener) = 0;
+};
 
 } // namespace Prox
 
-#endif //_PROX_QUERY_HANDLER_HPP_
+#endif //_PROX_LOCATION_SERVICE_CACHE_HPP_
