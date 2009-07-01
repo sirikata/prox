@@ -40,9 +40,6 @@
 namespace Prox {
 
 template<typename CoordType>
-class BoundingBox;
-
-template<typename CoordType>
 class BoundingSphere {
 public:
     typedef typename CoordType::real real;
@@ -57,12 +54,6 @@ public:
      : mCenter(c),
        mRadius(r)
     {
-    }
-
-    BoundingSphere(const BoundingBox<CoordType>& bb)
-    {
-        mCenter = (bb.min() + bb.max()) * .5;
-        mRadius = (bb.max() - bb.min()).length() * .5;
     }
 
     const CoordType& center() const {

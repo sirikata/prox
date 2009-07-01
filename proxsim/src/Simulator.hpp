@@ -36,7 +36,7 @@
 #include <prox/Query.hpp>
 #include <prox/QueryHandler.hpp>
 #include <prox/Time.hpp>
-#include <prox/BoundingBox.hpp>
+#include "BoundingBox.hpp"
 #include "Object.hpp"
 #include "SimulatorListener.hpp"
 #include "ObjectLocationServiceCache.hpp"

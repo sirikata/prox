@@ -34,7 +34,7 @@
 #define _PROXSIM_GLRENDERER_HPP_
 
 #include "Renderer.hpp"
-#include <prox/BoundingBox.hpp>
+#include "BoundingBox.hpp"
 #include <prox/QueryEventListener.hpp>
 #include <prox/ObjectID.hpp>
 #include <prox/Time.hpp>

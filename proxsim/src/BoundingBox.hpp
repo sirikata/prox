@@ -71,6 +71,13 @@ public:
         mMax = sphere.center() + offvector;
     }
 
+    operator BoundingSphere<CoordType>()
+    {
+        CoordType center = (min() + max()) * .5;
+        typename CoordType::real radius = (max() - min()).length() * .5;
+        return BoundingSphere<CoordType>(center, radius);
+    }
+
     const CoordType& min() const {
         return mMin;
     }

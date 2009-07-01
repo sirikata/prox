@@ -37,7 +37,6 @@
 #include <prox/LocationUpdateListener.hpp>
 #include <prox/QueryChangeListener.hpp>
 #include <prox/QueryCache.hpp>
-#include <prox/BoundingBox.hpp>
 
 namespace Prox {
 
