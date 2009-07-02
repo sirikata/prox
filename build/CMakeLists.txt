@@ -165,3 +165,24 @@ IF(${CMAKE_BUILD_TYPE} MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   SET_TARGET_PROPERTIES(proxsim PROPERTIES COMPILE_DEFINITIONS PROXDEBUG)
   ADD_DEFINITIONS(-DPROXDEBUG)
 ENDIF()
+
+
+#installation information
+INSTALL(TARGETS prox proxsim
+        RUNTIME
+          DESTINATION bin
+        LIBRARY
+          DESTINATION lib
+        ARCHIVE
+          DESTINATION lib
+)
+
+INSTALL(DIRECTORY
+          # note: the trailing slashes avoid prepending the directory name
+          # itself to the installed files
+          ${LIBPROX_INCLUDE_DIR}/
+        DESTINATION include/
+        PATTERN "*.cpp" EXCLUDE
+        PATTERN "*.cc" EXCLUDE
+        PATTERN "*.hh" EXCLUDE
+)
