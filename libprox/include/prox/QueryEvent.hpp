@@ -33,12 +33,15 @@
 #ifndef _PROX_QUERY_EVENT_HPP_
 #define _PROX_QUERY_EVENT_HPP_
 
-#include <prox/ObjectID.hpp>
+#include <prox/DefaultSimulationTraits.hpp>
 
 namespace Prox {
 
+template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryEvent {
 public:
+    typedef typename SimulationTraits::ObjectID ObjectID;
+
     enum Type {
         Added,
         Removed

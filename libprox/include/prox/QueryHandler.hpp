@@ -33,15 +33,20 @@
 #ifndef _PROX_QUERY_HANDLER_HPP_
 #define _PROX_QUERY_HANDLER_HPP_
 
-#include <prox/ObjectID.hpp>
 #include <prox/Query.hpp>
-#include <prox/Time.hpp>
 #include <prox/LocationServiceCache.hpp>
+#include <prox/DefaultSimulationTraits.hpp>
 
 namespace Prox {
 
+template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryHandler {
 public:
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::Time Time;
+    typedef Query<SimulationTraits> Query;
+
     QueryHandler() {}
     virtual ~QueryHandler() {}
 

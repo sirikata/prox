@@ -33,7 +33,8 @@
 #ifndef _PROXSIM_RENDERER_HPP_
 #define _PROXSIM_RENDERER_HPP_
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 class Simulator;
 
@@ -52,6 +53,7 @@ protected:
     Simulator* mSimulator;
 }; // class Renderer
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox
 
 #endif //_PROXSIM_RENDERER_HPP_

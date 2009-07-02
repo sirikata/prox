@@ -34,9 +34,6 @@
 #define _PROX_LOCATION_SERVICE_CACHE_HPP_
 
 #include <prox/Platform.hpp>
-#include <prox/ObjectID.hpp>
-#include <prox/MotionVector.hpp>
-#include <prox/BoundingSphere.hpp>
 #include <prox/LocationUpdateListener.hpp>
 
 namespace Prox {
@@ -47,17 +44,24 @@ namespace Prox {
  * guarantees that clients of the LocationService will always be able to get
  * the necessary information out of it, even if it is somewhat out of date.
  */
+template<typename SimulationTraits>
 class LocationServiceCache {
 public:
+    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::Time Time;
+    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
+
     virtual ~LocationServiceCache() {}
 
     virtual void startTracking(const ObjectID& id) = 0;
     virtual void stopTracking(const ObjectID& id) = 0;
 
-    virtual const MotionVector3f& location(const ObjectID& id) const = 0;
-    virtual const BoundingSphere3f& bounds(const ObjectID& id) const = 0;
-    virtual BoundingSphere3f worldBounds(const ObjectID& id, const Time& t) const {
-        return BoundingSphere3f( bounds(id).center() + location(id).position(t), bounds(id).radius() );
+    virtual const MotionVector3& location(const ObjectID& id) const = 0;
+    virtual const BoundingSphere& bounds(const ObjectID& id) const = 0;
+    virtual BoundingSphere worldBounds(const ObjectID& id, const Time& t) const {
+        return BoundingSphere( bounds(id).center() + location(id).position(t), bounds(id).radius() );
     }
 
     virtual void addUpdateListener(LocationUpdateListener* listener) = 0;

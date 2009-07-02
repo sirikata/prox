@@ -33,23 +33,24 @@
 #ifndef _PROXSIM_SIMULATOR_LISTENER_HPP_
 #define _PROXSIM_SIMULATOR_LISTENER_HPP_
 
-#include <prox/Query.hpp>
 #include "Object.hpp"
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 class SimulatorListener {
 public:
     SimulatorListener() {}
     virtual ~SimulatorListener() {}
 
-    virtual void simulatorAddedObject(Prox::Object* obj) = 0;
-    virtual void simulatorRemovedObject(Prox::Object* obj) = 0;
+    virtual void simulatorAddedObject(Object* obj) = 0;
+    virtual void simulatorRemovedObject(Object* obj) = 0;
 
-    virtual void simulatorAddedQuery(Prox::Query* query) = 0;
-    virtual void simulatorRemovedQuery(Prox::Query* query) = 0;
+    virtual void simulatorAddedQuery(Query* query) = 0;
+    virtual void simulatorRemovedQuery(Query* query) = 0;
 }; // class SimulatorListener
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox
 
 #endif //_PROXSIM_SIMULATOR_LISTENER_HPP_

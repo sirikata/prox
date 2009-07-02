@@ -41,7 +41,8 @@
 
 using namespace Prox;
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 static GLRenderer* GLRenderer_sRenderer = NULL;
 
@@ -135,7 +136,7 @@ void GLRenderer::display() {
 
     for(Simulator::ObjectIterator it = mSimulator->objectsBegin(); it != mSimulator->objectsEnd(); it++) {
         Object* obj = *it;
-        BoundingSphere3f bb = obj->worldBounds(mTime);
+        BoundingSphere bb = obj->worldBounds(mTime);
 
         if (mSeenObjects.find(obj->id()) != mSeenObjects.end())
             glColor3f(1.f, 1.f, 1.f);
@@ -152,7 +153,7 @@ void GLRenderer::display() {
     glColor3f(1.f, 0.f, 0.f);
     for(Simulator::QueryIterator it = mSimulator->queriesBegin(); it != mSimulator->queriesEnd(); it++) {
         Query* query = *it;
-        Vector3f center = query->position(mTime);
+        Vector3 center = query->position(mTime);
         glPushMatrix();
         glTranslatef(center.x, center.y, center.z);
         glutSolidSphere(1.f, 10, 10);
@@ -165,7 +166,7 @@ void GLRenderer::display() {
 void GLRenderer::reshape(int w, int h) {
     mWinWidth = w; mWinHeight = h;
 
-    Prox::BoundingBox3f sim_bb = mSimulator->region();
+    BoundingBox3 sim_bb = mSimulator->region();
 
     glClearColor( .3, .3, .3, 1 );
     glClearDepth(1.0);
@@ -200,7 +201,7 @@ void GLRenderer::keyboard(unsigned char key, int x, int y) {
         exit(0);
 }
 
-void GLRenderer::drawbb(const BoundingBox3f& bb) {
+void GLRenderer::drawbb(const BoundingBox3& bb) {
     glBegin(GL_QUADS);
 
     glVertex3f ( bb.min().x,  bb.min().y,  bb.min().z);
@@ -236,8 +237,8 @@ void GLRenderer::drawbb(const BoundingBox3f& bb) {
     glEnd();
 }
 
-void GLRenderer::drawbs(const Prox::BoundingSphere3f& bs) {
-    Vector3f center = bs.center();
+void GLRenderer::drawbs(const BoundingSphere& bs) {
+    Vector3 center = bs.center();
     float radius = bs.radius();
     glPushMatrix();
     glTranslatef(center.x, center.y, center.z);
@@ -245,4 +246,5 @@ void GLRenderer::drawbs(const Prox::BoundingSphere3f& bs) {
     glPopMatrix();
 }
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox

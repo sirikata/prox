@@ -35,6 +35,8 @@
 #include <cmath>
 
 namespace Prox {
+namespace Reference {
+
 const float SolidAngle::Pi = 3.1415926536f;
 const float SolidAngle::MinVal = 0.0f;
 const float SolidAngle::MaxVal = 4.0f*SolidAngle::Pi;
@@ -131,4 +133,5 @@ void SolidAngle::clamp() {
     if (mSolidAngle > MaxVal) mSolidAngle = MaxVal;
 }
 
+} // namespace Reference
 } // namespace Prox

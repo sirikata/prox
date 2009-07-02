@@ -39,15 +39,14 @@
 #include <iostream>
 
 int main(int argc, char** argv) {
-    using namespace Prox;
-    using namespace ProxSim;
+    using namespace Prox::Simulation;
 
-    QueryHandler* handler = new BruteForceQueryHandler();
-    //QueryHandler* handler = new RTreeQueryHandler(32);
+    QueryHandler* handler = new Prox::BruteForceQueryHandler<>();
+    //QueryHandler* handler = new Prox::RTreeQueryHandler<>(32);
     Simulator* simulator = new Simulator(handler);
     Renderer* renderer = new GLRenderer(simulator);
 
-    simulator->initialize(Time(0), BoundingBox3f( Vector3f(-100.f, -100.f, -100.f), Vector3f(100.f, 100.f, 100.f) ), 1000, 5);
+    simulator->initialize(Time(0), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 1000, 5);
 
     renderer->run();
 

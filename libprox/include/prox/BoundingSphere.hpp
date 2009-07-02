@@ -37,6 +37,7 @@
 #include <cmath>
 
 namespace Prox {
+namespace Reference {
 
 template<typename CoordType>
 class BoundingSphere {
@@ -129,6 +130,7 @@ class Vector3;
 typedef BoundingSphere< Vector3<float32> > BoundingSphere3f;
 typedef BoundingSphere< Vector3<float64> > BoundingSphere3d;
 
+} // namespace Reference
 } // namespace Prox
 
 #endif //_BOUNDING_SPHERE_HPP_

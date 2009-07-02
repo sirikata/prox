@@ -38,46 +38,180 @@
 #include <prox/QueryChangeListener.hpp>
 #include <prox/QueryCache.hpp>
 
+#include <prox/DefaultSimulationTraits.hpp>
+
+#include <prox/RTree.hpp>
+
 namespace Prox {
 
-class BoundingSphereData;
-class MaxSphereData;
-
-template<typename NodeData>
-struct RTreeNode;
-
-class RTreeQueryHandler : public QueryHandler, public LocationUpdateListener, public QueryChangeListener {
+template<typename SimulationTraits = DefaultSimulationTraits>
+class RTreeQueryHandler : public QueryHandler<SimulationTraits>, public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
 public:
-    RTreeQueryHandler(uint8 elements_per_node);
-    virtual ~RTreeQueryHandler();
+    typedef QueryHandler<SimulationTraits> QueryHandler;
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListener;
 
-    virtual void initialize(LocationServiceCache* loc_cache);
-    virtual void registerObject(const ObjectID& obj);
-    virtual void registerQuery(Query* query);
-    virtual void tick(const Time& t);
+    typedef Query<SimulationTraits> Query;
+    typedef QueryEvent<SimulationTraits> QueryEvent;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef QueryCache<SimulationTraits> QueryCache;
+
+    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::Time Time;
+    typedef typename SimulationTraits::Vector3 Vector3;
+    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
+    typedef typename SimulationTraits::SolidAngle SolidAngle;
+
+
+    RTreeQueryHandler(uint8 elements_per_node)
+     : QueryHandler(),
+       LocationUpdateListener(),
+       QueryChangeListener(),
+       mLocCache(NULL),
+       mLastTime(0)
+    {
+        mRTreeRoot = new RTree(elements_per_node);
+    }
+
+    virtual ~RTreeQueryHandler() {
+        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
+            mLocCache->stopTracking(*it);
+        }
+        mObjects.clear();
+        for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
+            QueryState* state = it->second;
+            delete state;
+        }
+        mQueries.clear();
+
+        mLocCache->removeUpdateListener(this);
+    }
+
+    void initialize(LocationServiceCache* loc_cache) {
+        mLocCache = loc_cache;
+        mLocCache->addUpdateListener(this);
+    }
+
+    void registerObject(const ObjectID& obj) {
+        insert(obj, mLastTime);
+        mObjects.insert(obj);
+        mLocCache->startTracking(obj);
+    }
+
+    void registerQuery(Query* query) {
+        QueryState* state = new QueryState;
+        mQueries[query] = state;
+        query->addChangeListener(this);
+    }
+
+    void tick(const Time& t) {
+        // FIXME we should have a better way of updating instead of delete + insert
+        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
+            deleteObj(*obj_it, mLastTime);
+        }
+        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
+            insert(*obj_it, t);
+        }
+
+        RTree_verify_constraints(mRTreeRoot, mLocCache, t);
+        int count = 0;
+        int ncount = 0;
+        for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
+            Query* query = query_it->first;
+            QueryState* state = query_it->second;
+            QueryCache newcache;
+
+            Vector3 qpos = query->position(t);
+            float qradius = query->radius();
+            const SolidAngle& qangle = query->angle();
+
+            std::stack<RTree*> node_stack;
+            node_stack.push(mRTreeRoot);
+            while(!node_stack.empty()) {
+                RTree* node = node_stack.top();
+                node_stack.pop();
+
+                if (node->leaf()) {
+                    for(int i = 0; i < node->size(); i++) {
+                        count++;
+                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qradius, qangle))
+                            newcache.add(node->object(i));
+                    }
+                }
+                else {
+                    for(int i = 0; i < node->size(); i++) {
+                        count++;
+                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qradius, qangle))
+                            node_stack.push(node->node(i));
+                        else
+                            ncount++;
+                    }
+                }
+            }
+
+            std::deque<QueryEvent> events;
+            state->cache.exchange(newcache, &events);
+
+            query->pushEvents(events);
+        }
+        printf("count: %d %d\n", count, ncount);
+        mLastTime = t;
+    }
 
     // LocationUpdateListener Implementation
-    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
-    virtual void locationDisconnected(const ObjectID& obj_id);
+    void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+        // FIXME should use more efficient update approach
+        deleteObj(obj_id, mLastTime);
+        insert(obj_id, mLastTime);
+    }
+
+    void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+        // FIXME should use more efficient update approach
+        deleteObj(obj_id, mLastTime);
+        insert(obj_id, mLastTime);
+    }
+
+    void locationDisconnected(const ObjectID& obj_id) {
+        assert( mObjects.find(obj_id) != mObjects.end() );
+        mObjects.erase(obj_id);
+        deleteObj(obj_id, mLastTime);
+        mLocCache->stopTracking(obj_id);
+    }
 
     // QueryChangeListener Implementation
-    virtual void queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void queryDeleted(const Query* query);
+    void queryPositionUpdated(Query* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+        // Nothing to be done, we use values directly from the query
+    }
+
+    void queryDeleted(const Query* query) {
+        QueryMapIterator it = mQueries.find(const_cast<Query*>(query));
+        assert( it != mQueries.end() );
+        QueryState* state = it->second;
+        delete state;
+        mQueries.erase(it);
+    }
 
 private:
-    void insert(const ObjectID& obj_id, const Time& t);
-    void deleteObj(const ObjectID& obj_id, const Time& t);
+    void insert(const ObjectID& obj_id, const Time& t) {
+        mRTreeRoot = RTree_insert_object(mRTreeRoot, mLocCache, obj_id, t);
+    }
+
+    void deleteObj(const ObjectID& obj_id, const Time& t) {
+        mRTreeRoot = RTree_delete_object(mRTreeRoot, mLocCache, obj_id, t);
+    }
 
     struct QueryState {
         QueryCache cache;
     };
 
     typedef std::set<ObjectID> ObjectSet;
+    typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::map<Query*, QueryState*> QueryMap;
+    typedef typename QueryMap::iterator QueryMapIterator;
 
-    //typedef RTreeNode<BoundingSphereData> RTree;
-    typedef RTreeNode<MaxSphereData> RTree;
+    //typedef RTreeNode<SimulationTraits, BoundingSphereData<SimulationTraits> > RTree;
+    typedef RTreeNode<SimulationTraits, MaxSphereData<SimulationTraits> > RTree;
 
     LocationServiceCache* mLocCache;
 

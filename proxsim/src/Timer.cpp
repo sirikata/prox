@@ -34,7 +34,8 @@
 
 using namespace Prox;
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 Timer::Timer() {
 }
@@ -56,5 +57,5 @@ Duration Timer::elapsed() {
     return Duration( since_start.total_microseconds() );
 }
 
-
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox

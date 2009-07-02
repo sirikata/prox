@@ -38,6 +38,7 @@
 #include <prox/Duration.hpp>
 
 namespace Prox {
+namespace Reference {
 
 template<typename CoordType_t>
 class MotionVector {
@@ -87,7 +88,9 @@ private:
 }; // class MotionVector
 
 typedef MotionVector<Vector3f> MotionVector3f;
+typedef MotionVector<Vector3d> MotionVector3d;
 
+} // namespace Reference
 } // namespace Prox
 
 #endif //_MOTION_VECTOR_HPP_

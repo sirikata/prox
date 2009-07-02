@@ -34,6 +34,7 @@
 #define _BOUNDING_BOX_HPP_
 
 #include <prox/Platform.hpp>
+#include "SimulationTypes.hpp"
 #include <cmath>
 
 // FIXME these should really come from float.h or the like
@@ -41,9 +42,7 @@
 #define BBOX_MAX 1e30f
 
 namespace Prox {
-
-template<typename CoordType>
-class BoundingSphere;
+namespace Simulation {
 
 template<typename CoordType>
 class BoundingBox {
@@ -63,7 +62,7 @@ public:
     {
     }
 
-    BoundingBox(const BoundingSphere<CoordType>& sphere)
+    BoundingBox(const BoundingSphere& sphere)
     {
         real offdim = (real) sqrt( sphere.radius()*sphere.radius() / size );
         CoordType offvector(offdim);
@@ -71,11 +70,11 @@ public:
         mMax = sphere.center() + offvector;
     }
 
-    operator BoundingSphere<CoordType>()
+    operator BoundingSphere()
     {
         CoordType center = (min() + max()) * .5;
         typename CoordType::real radius = (max() - min()).length() * .5;
-        return BoundingSphere<CoordType>(center, radius);
+        return BoundingSphere(center, radius);
     }
 
     const CoordType& min() const {
@@ -133,12 +132,9 @@ private:
 }; // class BoundingBox
 
 
-template<typename scalar>
-class Vector3;
+typedef BoundingBox<Vector3> BoundingBox3;
 
-typedef BoundingBox< Vector3<float32> > BoundingBox3f;
-typedef BoundingBox< Vector3<float64> > BoundingBox3d;
-
+} // namespace Simulation
 } // namespace Prox
 
 #endif //_BOUNDING_BOX_HPP_

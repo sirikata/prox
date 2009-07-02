@@ -38,6 +38,8 @@
 #include <cmath>
 
 namespace Prox {
+namespace Reference {
+
 template <typename scalar> class Vector3 {
 public:
     static const uint8 size = 3;
@@ -219,5 +221,7 @@ template<typename scalar> inline std::ostream& operator <<(std::ostream& os, con
 typedef Vector3<float32> Vector3f;
 typedef Vector3<float64> Vector3d;
 
-}
+} // namespace Reference
+} // namespace Prox
+
 #endif

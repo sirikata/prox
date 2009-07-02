@@ -36,6 +36,7 @@
 #include <prox/Vector3.hpp>
 
 namespace Prox {
+namespace Reference {
 
 class SolidAngle {
 public:
@@ -75,6 +76,7 @@ protected:
     float mSolidAngle;
 }; // class SolidAngle
 
+} // namespace Reference
 } // namespace Prox
 
 #endif //_PROX_SOLID_ANGLE_HPP_

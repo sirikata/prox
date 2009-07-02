@@ -33,37 +33,34 @@
 #ifndef _PROX_OBJECT_HPP_
 #define _PROX_OBJECT_HPP_
 
-#include <prox/ObjectID.hpp>
-#include <prox/MotionVector.hpp>
-#include <prox/BoundingSphere.hpp>
+#include "SimulationTypes.hpp"
 
 namespace Prox {
+namespace Simulation {
 
 class ObjectUpdateListener;
 
 class Object {
 public:
-    typedef MotionVector3f PositionVectorType;
-
-    Object(const ObjectID& id, const PositionVectorType& c, const BoundingSphere3f& bs);
+    Object(const ObjectID& id, const MotionVector3& c, const BoundingSphere& bs);
     Object(const Object& cpy);
     ~Object();
 
     const ObjectID& id() const;
-    const MotionVector3f& position() const;
-    Vector3f position(const Time& t) const;
-    const BoundingSphere3f& bounds() const;
-    BoundingSphere3f worldBounds(const Time& t) const;
-    void position(const MotionVector3f& new_pos);
-    void bounds(const BoundingSphere3f& new_bounds);
+    const MotionVector3& position() const;
+    Vector3 position(const Time& t) const;
+    const BoundingSphere& bounds() const;
+    BoundingSphere worldBounds(const Time& t) const;
+    void position(const MotionVector3& new_pos);
+    void bounds(const BoundingSphere& new_bounds);
 
     void addUpdateListener(ObjectUpdateListener* listener);
     void removeUpdateListener(ObjectUpdateListener* listener);
 protected:
 
     ObjectID mID;
-    PositionVectorType mPosition;
-    BoundingSphere3f mBounds;
+    MotionVector3 mPosition;
+    BoundingSphere mBounds;
 
     typedef std::list<ObjectUpdateListener*> UpdateListenerList;
     UpdateListenerList mUpdateListeners;
@@ -76,11 +73,12 @@ public:
     ObjectUpdateListener() {}
     virtual ~ObjectUpdateListener() {}
 
-    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) = 0;
-    virtual void objectBoundsUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) = 0;
+    virtual void objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
     virtual void objectDeleted(const Object* obj) = 0;
 }; // class ObjectUpdateListener
 
+} // namespace Simulation
 } // namespace Prox
 
 #endif //_PROX_OBJECT_HPP_

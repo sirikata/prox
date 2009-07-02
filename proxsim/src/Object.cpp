@@ -34,8 +34,9 @@
 #include <algorithm>
 
 namespace Prox {
+namespace Simulation {
 
-Object::Object(const ObjectID& id, const MotionVector3f& c, const BoundingSphere3f& bs)
+Object::Object(const ObjectID& id, const MotionVector3& c, const BoundingSphere& bs)
  : mID(id),
    mPosition(c),
    mBounds(bs)
@@ -58,31 +59,31 @@ const ObjectID& Object::id() const {
     return mID;
 }
 
-const MotionVector3f& Object::position() const {
+const MotionVector3& Object::position() const {
     return mPosition;
 }
 
-Vector3f Object::position(const Time& t) const {
+Vector3 Object::position(const Time& t) const {
     return mPosition.position(t);
 }
 
-const BoundingSphere3f& Object::bounds() const {
+const BoundingSphere& Object::bounds() const {
     return mBounds;
 }
 
-BoundingSphere3f Object::worldBounds(const Time& t) const {
-    return BoundingSphere3f( mBounds.center() + mPosition.position(t), mBounds.radius() );
+BoundingSphere Object::worldBounds(const Time& t) const {
+    return BoundingSphere( mBounds.center() + mPosition.position(t), mBounds.radius() );
 }
 
-void Object::position(const MotionVector3f& new_pos) {
-    MotionVector3f old_pos = mPosition;
+void Object::position(const MotionVector3& new_pos) {
+    MotionVector3 old_pos = mPosition;
     mPosition = new_pos;
     for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
         (*it)->objectPositionUpdated(this, old_pos, new_pos);
 }
 
-void Object::bounds(const BoundingSphere3f& new_bounds) {
-    BoundingSphere3f old_bounds = mBounds;
+void Object::bounds(const BoundingSphere& new_bounds) {
+    BoundingSphere old_bounds = mBounds;
     mBounds = new_bounds;
     for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
         (*it)->objectBoundsUpdated(this, old_bounds, new_bounds);
@@ -105,4 +106,5 @@ void Object::removeUpdateListener(ObjectUpdateListener* listener) {
     mUpdateListeners.erase(it);
 }
 
+} // namespace Simulation
 } // namespace Prox

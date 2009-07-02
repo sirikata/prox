@@ -1,5 +1,5 @@
-/*  libprox
- *  Duration.cpp
+/*  proxsim
+ *  Object.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,78 +30,45 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <prox/Duration.hpp>
-#include <prox/Time.hpp>
+#ifndef _PROX_SIMULATION_TYPES_HPP_
+#define _PROX_SIMULATION_TYPES_HPP_
+
+#include <prox/DefaultSimulationTraits.hpp>
+#include <prox/Query.hpp>
+#include <prox/QueryEvent.hpp>
+#include <prox/QueryEventListener.hpp>
+#include <prox/QueryHandler.hpp>
+#include <prox/LocationServiceCache.hpp>
 
 namespace Prox {
-namespace Reference {
+namespace Simulation {
 
-Duration::Duration(uint64 microsecs)
- : mMicrosecs(microsecs)
-{
-}
+// typedefs for the types we want to use in the Simulation so we don't have
+// to refer to them in a different namespapce / struct.
 
-Duration::Duration(const Duration& cpy)
- : mMicrosecs(cpy.mMicrosecs)
-{
-}
+typedef Prox::DefaultSimulationTraits::real real;
 
-Duration::~Duration() {
-}
+typedef Prox::DefaultSimulationTraits::Vector3 Vector3;
+typedef Prox::DefaultSimulationTraits::MotionVector3 MotionVector3;
 
-Duration Duration::seconds(float dt) {
-    return Duration( static_cast<uint64>(dt * 1000000.f) );
-}
+typedef Prox::DefaultSimulationTraits::BoundingSphere BoundingSphere;
 
-Duration Duration::seconds(uint32 dt) {
-    return Duration( static_cast<uint64>(dt) * 1000000 );
-}
+typedef Prox::DefaultSimulationTraits::SolidAngle SolidAngle;
 
-Duration Duration::milliseconds(float dt) {
-    return Duration( static_cast<uint64>(dt * 1000.f) );
-}
+typedef Prox::DefaultSimulationTraits::ObjectID ObjectID;
 
-Duration Duration::milliseconds(uint32 dt) {
-    return Duration( static_cast<uint64>(dt) * 1000 );
-}
+typedef Prox::DefaultSimulationTraits::Time Time;
+typedef Prox::DefaultSimulationTraits::Duration Duration;
 
-float Duration::seconds() const {
-    return static_cast<float>(mMicrosecs) / 1000000.f;
-}
 
-float Duration::milliseconds() const {
-    return static_cast<float>(mMicrosecs) / 1000.f;
-}
+typedef Prox::Query<DefaultSimulationTraits> Query;
+typedef Prox::QueryEvent<DefaultSimulationTraits> QueryEvent;
+typedef Prox::QueryEventListener<DefaultSimulationTraits> QueryEventListener;
+typedef Prox::QueryHandler<DefaultSimulationTraits> QueryHandler;
 
-Duration Duration::operator+(const Duration& rhs) const {
-    return Duration(mMicrosecs + rhs.mMicrosecs);
-}
+typedef Prox::LocationServiceCache<DefaultSimulationTraits> LocationServiceCache;
 
-Duration& Duration::operator+=(const Duration& rhs) {
-    mMicrosecs += rhs.mMicrosecs;
-    return *this;
-}
-
-Time Duration::operator+(const Time& rhs) const {
-    return rhs + *this;
-}
-
-Duration Duration::operator-(const Duration& rhs) const {
-    return Duration(mMicrosecs - rhs.mMicrosecs);
-}
-
-Duration& Duration::operator-=(const Duration& rhs) {
-    mMicrosecs -= rhs.mMicrosecs;
-    return  *this;
-}
-
-bool Duration::operator<(const Duration& rhs) const {
-    return mMicrosecs < rhs.mMicrosecs;
-}
-
-bool Duration::operator==(const Duration& rhs) const {
-    return mMicrosecs == rhs.mMicrosecs;
-}
-
-} // namespace Reference
+} // namespace Simulation
 } // namespace Prox
+
+#endif //_PROX_SIMULATION_TYPES_HPP_

@@ -33,6 +33,7 @@
 #include "ObjectLocationServiceCache.hpp"
 
 namespace Prox {
+namespace Simulation {
 
 ObjectLocationServiceCache::ObjectLocationServiceCache() {
 }
@@ -65,13 +66,13 @@ void ObjectLocationServiceCache::stopTracking(const ObjectID& id) {
 }
 
 
-const MotionVector3f& ObjectLocationServiceCache::location(const ObjectID& id) const {
+const MotionVector3& ObjectLocationServiceCache::location(const ObjectID& id) const {
     Object* obj = lookup(id);
     assert(obj != NULL);
     return obj->position();
 }
 
-const BoundingSphere3f& ObjectLocationServiceCache::bounds(const ObjectID& id) const {
+const BoundingSphere& ObjectLocationServiceCache::bounds(const ObjectID& id) const {
     Object* obj = lookup(id);
     assert(obj != NULL);
     return obj->bounds();
@@ -95,12 +96,12 @@ Object* ObjectLocationServiceCache::lookup(const ObjectID& id) const {
     return it->second;
 }
 
-void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos) {
+void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationPositionUpdated(obj->id(), old_pos, new_pos);
 }
 
-void ObjectLocationServiceCache::objectBoundsUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) {
+void ObjectLocationServiceCache::objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationBoundsUpdated(obj->id(), old_bounds, new_bounds);
 }
@@ -112,4 +113,5 @@ void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
     removeObject(obj);
 }
 
+} // namespace Simulation
 } // namespace Prox

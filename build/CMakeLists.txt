@@ -132,11 +132,7 @@ INCLUDE_DIRECTORIES(BEFORE ${LIBPROX_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${GLUT_I
 
 #source files
 SET(LIBPROX_SOURCES
-  ${LIBPROX_SOURCE_DIR}/BruteForceQueryHandler.cpp
   ${LIBPROX_SOURCE_DIR}/Duration.cpp
-  ${LIBPROX_SOURCE_DIR}/Query.cpp
-  ${LIBPROX_SOURCE_DIR}/QueryCache.cpp
-  ${LIBPROX_SOURCE_DIR}/RTreeQueryHandler.cpp
   ${LIBPROX_SOURCE_DIR}/SolidAngle.cpp
   ${LIBPROX_SOURCE_DIR}/Time.cpp
 )

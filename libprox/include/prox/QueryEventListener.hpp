@@ -33,14 +33,16 @@
 #ifndef _PROX_QUERY_EVENT_LISTENER_HPP_
 #define _PROX_QUERY_EVENT_LISTENER_HPP_
 
-#include <prox/Vector3.hpp>
-
 namespace Prox {
 
+template<typename SimulationTraits>
 class Query;
 
+template<typename SimulationTraits>
 class QueryEventListener {
 public:
+    typedef Query<SimulationTraits> Query;
+
     QueryEventListener() {}
     virtual ~QueryEventListener() {}
 

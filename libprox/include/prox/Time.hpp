@@ -36,6 +36,7 @@
 #include <prox/Platform.hpp>
 
 namespace Prox {
+namespace Reference {
 
 class Duration;
 
@@ -64,6 +65,7 @@ private:
     uint64 mSinceEpoch; // microseconds since epoch
 }; // class Time
 
+} // namespace Reference
 } // namespace Prox
 
 #endif //_PROX_TIME_HPP_

@@ -33,10 +33,10 @@
 #ifndef _PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_
 #define _PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_
 
-#include <prox/LocationServiceCache.hpp>
 #include "Object.hpp"
 
 namespace Prox {
+namespace Simulation {
 
 /* Implementation of LocationServiceCache which deals directly with locally
  * simulated objects.
@@ -52,14 +52,14 @@ public:
     virtual void startTracking(const ObjectID& id);
     virtual void stopTracking(const ObjectID& id);
 
-    virtual const MotionVector3f& location(const ObjectID& id) const;
-    virtual const BoundingSphere3f& bounds(const ObjectID& id) const;
+    virtual const MotionVector3& location(const ObjectID& id) const;
+    virtual const BoundingSphere& bounds(const ObjectID& id) const;
 
     virtual void addUpdateListener(LocationUpdateListener* listener);
     virtual void removeUpdateListener(LocationUpdateListener* listener);
 
-    virtual void objectPositionUpdated(Object* obj, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void objectBoundsUpdated(Object* obj, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
+    virtual void objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos);
+    virtual void objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds);
     virtual void objectDeleted(const Object* obj);
 
 private:
@@ -72,6 +72,7 @@ private:
     ListenerSet mListeners;
 };
 
+} // namespace Simulation
 } // namespace Prox
 
 #endif //_PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_

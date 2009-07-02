@@ -38,26 +38,127 @@
 #include <prox/QueryChangeListener.hpp>
 #include <prox/QueryCache.hpp>
 
+#include <prox/DefaultSimulationTraits.hpp>
+
 namespace Prox {
 
-class BruteForceQueryHandler : public QueryHandler, public LocationUpdateListener, public QueryChangeListener {
+template<typename SimulationTraits = DefaultSimulationTraits>
+class BruteForceQueryHandler : public QueryHandler<SimulationTraits>, public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
 public:
-    BruteForceQueryHandler();
-    virtual ~BruteForceQueryHandler();
+    typedef QueryHandler<SimulationTraits> QueryHandler;
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListener;
 
-    virtual void initialize(LocationServiceCache* loc_cache);
-    virtual void registerObject(const ObjectID& obj_id);
-    virtual void registerQuery(Query* query);
-    virtual void tick(const Time& t);
+    typedef Query<SimulationTraits> Query;
+    typedef QueryEvent<SimulationTraits> QueryEvent;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef QueryCache<SimulationTraits> QueryCache;
 
-    // LocationUpdateListener Implementation
-    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds);
-    virtual void locationDisconnected(const ObjectID& obj_id);
+    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::Time Time;
+    typedef typename SimulationTraits::Vector3 Vector3;
+    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
+    typedef typename SimulationTraits::SolidAngle SolidAngle;
 
-    // QueryChangeListener Implementation
-    virtual void queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos);
-    virtual void queryDeleted(const Query* query);
+
+    BruteForceQueryHandler()
+     : QueryHandler(),
+       LocationUpdateListener(),
+       QueryChangeListener(),
+       mLocCache(NULL)
+    {
+    }
+
+    ~BruteForceQueryHandler() {
+        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
+            mLocCache->stopTracking(*it);
+        }
+        mObjects.clear();
+        for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
+            QueryState* state = it->second;
+            delete state;
+        }
+        mQueries.clear();
+
+        mLocCache->removeUpdateListener(this);
+    }
+
+    void initialize(LocationServiceCache* loc_cache) {
+        mLocCache = loc_cache;
+        mLocCache->addUpdateListener(this);
+    }
+
+    void registerObject(const ObjectID& obj_id) {
+        mObjects.insert(obj_id);
+        mLocCache->startTracking(obj_id);
+    }
+
+    void registerQuery(Query* query) {
+        QueryState* state = new QueryState;
+        mQueries[query] = state;
+        query->addChangeListener(this);
+    }
+
+    void tick(const Time& t) {
+        for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
+            Query* query = query_it->first;
+            QueryState* state = query_it->second;
+            QueryCache newcache;
+
+            for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
+                ObjectID obj = *obj_it;
+                MotionVector3 obj_loc = mLocCache->location(obj);
+                Vector3 obj_pos = obj_loc.position(t);
+                BoundingSphere obj_bounds = mLocCache->bounds(obj);
+
+                // Must satisfy radius constraint
+                if (query->radius() != Query::InfiniteRadius && (obj_pos-query->position(t)).lengthSquared() > query->radius()*query->radius())
+                    continue;
+
+                // Must satisfy solid angle constraint
+                Vector3 obj_world_center = obj_pos + obj_bounds.center();
+                Vector3 to_obj = obj_world_center - query->position(t);
+                SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_bounds.radius());
+
+                if (solid_angle < query->angle())
+                    continue;
+
+                newcache.add(obj);
+            }
+
+            std::deque<QueryEvent> events;
+            state->cache.exchange(newcache, &events);
+
+            query->pushEvents(events);
+        }
+    }
+
+    void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+        // Nothing to be done, we use values directly from the object
+    }
+
+    void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+        // Nothing to be done, we use values directly from the object
+    }
+
+    void locationDisconnected(const ObjectID& obj_id) {
+        assert( mObjects.find(obj_id) != mObjects.end() );
+        mObjects.erase(obj_id);
+        mLocCache->stopTracking(obj_id);
+    }
+
+    void queryPositionUpdated(Query* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+        // Nothing to be done, we use values directly from the query
+    }
+
+    void queryDeleted(const Query* query) {
+        QueryMapIterator it = mQueries.find(const_cast<Query*>(query));
+        assert( it != mQueries.end() );
+        QueryState* state = it->second;
+        delete state;
+        mQueries.erase(it);
+    }
 
 private:
     struct QueryState {
@@ -65,7 +166,9 @@ private:
     };
 
     typedef std::set<ObjectID> ObjectSet;
+    typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::map<Query*, QueryState*> QueryMap;
+    typedef typename QueryMap::iterator QueryMapIterator;
 
     LocationServiceCache* mLocCache;
     ObjectSet mObjects;

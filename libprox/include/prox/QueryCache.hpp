@@ -33,23 +33,66 @@
 #ifndef _PROX_QUERY_CACHE_HPP_
 #define _PROX_QUERY_CACHE_HPP_
 
-#include <prox/ObjectID.hpp>
 #include <prox/QueryEvent.hpp>
+#include <algorithm>
 
 namespace Prox {
 
+template<typename SimulationTraits>
 class QueryCache {
 public:
-    QueryCache();
-    ~QueryCache();
+    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef QueryEvent<SimulationTraits> QueryEvent;
 
-    void add(const ObjectID& id);
-    bool contains(const ObjectID& id);
-    void remove(const ObjectID& id);
+    QueryCache() {
+    }
 
-    void exchange(QueryCache& newcache, std::deque<QueryEvent>* changes);
+    ~QueryCache() {
+    }
+
+    void add(const ObjectID& id) {
+        assert( mObjects.find(id) == mObjects.end() );
+        mObjects.insert(id);
+    }
+
+    bool contains(const ObjectID& id) {
+        return (mObjects.find(id) != mObjects.end());
+    }
+
+    void remove(const ObjectID& id) {
+        assert( mObjects.find(id) != mObjects.end() );
+        mObjects.erase(id);
+    }
+
+    void exchange(QueryCache& newcache, std::deque<QueryEvent>* changes) {
+        if (changes != NULL) {
+            IDSet added_objs;
+            std::set_difference(
+                newcache.mObjects.begin(), newcache.mObjects.end(),
+                mObjects.begin(), mObjects.end(),
+                std::inserter(added_objs, added_objs.begin())
+            );
+
+            IDSet removed_objs;
+            std::set_difference(
+                mObjects.begin(), mObjects.end(),
+                newcache.mObjects.begin(), newcache.mObjects.end(),
+                std::inserter(removed_objs, removed_objs.begin())
+            );
+
+            for(IDSetIterator it = added_objs.begin(); it != added_objs.end(); it++)
+                changes->push_back(QueryEvent(QueryEvent::Added, *it));
+
+            for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++)
+                changes->push_back(QueryEvent(QueryEvent::Removed, *it));
+        }
+
+        mObjects = newcache.mObjects;
+    }
+
 private:
     typedef std::set<ObjectID> IDSet;
+    typedef typename IDSet::iterator IDSetIterator;
     IDSet mObjects;
 }; // class QueryCache
 

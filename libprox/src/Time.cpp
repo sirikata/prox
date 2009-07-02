@@ -34,6 +34,7 @@
 #include <prox/Duration.hpp>
 
 namespace Prox {
+namespace Reference {
 
 Time::Time(uint64 since_epoch)
  : mSinceEpoch(since_epoch)
@@ -82,4 +83,5 @@ bool Time::operator==(const Time& rhs) const {
     return mSinceEpoch < rhs.mSinceEpoch;
 }
 
+} // namespace Reference
 } // namespace Prox

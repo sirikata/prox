@@ -33,19 +33,20 @@
 #ifndef _PROX_OBJECT_CHANGE_LISTENER_HPP_
 #define _PROX_OBJECT_CHANGE_LISTENER_HPP_
 
-#include <prox/ObjectID.hpp>
-#include <prox/MotionVector.hpp>
-#include <prox/BoundingSphere.hpp>
-
 namespace Prox {
 
+template<typename SimulationTraits>
 class LocationUpdateListener {
 public:
+    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
+
     LocationUpdateListener() {}
     virtual ~LocationUpdateListener() {}
 
-    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3f& old_pos, const MotionVector3f& new_pos) = 0;
-    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere3f& old_bounds, const BoundingSphere3f& new_bounds) = 0;
+    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
     virtual void locationDisconnected(const ObjectID& obj_id) = 0;
 
 }; // class LocationUpdateListener

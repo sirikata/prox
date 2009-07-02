@@ -36,6 +36,7 @@
 #include <prox/Platform.hpp>
 
 namespace Prox {
+namespace Reference {
 
 class ObjectID {
     enum {
@@ -51,7 +52,7 @@ public:
         return retval;
     }
     ObjectID(const void *data, int size)
-    { 
+    {
         if (size==UUID_SIZE) {
             memcpy(mID,data,UUID_SIZE);
         }else {
@@ -59,7 +60,7 @@ public:
             assert(false);
         }
     }
-    
+
     void *begin(){
         return &mID[0];
     }
@@ -73,19 +74,21 @@ public:
     const void *end()const {
         return (&mID[0]+UUID_SIZE);
     }
-    
+
     bool operator<(const ObjectID& rhs) const {
         return memcmp(mID,rhs.mID,UUID_SIZE)<0;
     }
     bool operator==(const ObjectID& rhs) const {
         return memcmp(mID,rhs.mID,UUID_SIZE)==0;
     }
-    
+
 private:
     ObjectID();
-    
+
     unsigned char mID[UUID_SIZE];
 }; // class ObjectID
 
+} // namespace Reference
 } // namespace Prox
+
 #endif //_PROX_OBJECT_ID_HPP_

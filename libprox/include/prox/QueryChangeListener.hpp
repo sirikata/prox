@@ -33,18 +33,21 @@
 #ifndef _PROX_QUERY_CHANGE_LISTENER_HPP_
 #define _PROX_QUERY_CHANGE_LISTENER_HPP_
 
-#include <prox/MotionVector.hpp>
-
 namespace Prox {
 
+template<typename SimulationTraits>
 class Query;
 
+template<typename SimulationTraits>
 class QueryChangeListener {
 public:
+    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef Query<SimulationTraits> Query;
+
     QueryChangeListener() {}
     virtual ~QueryChangeListener() {}
 
-    virtual void queryPositionUpdated(Query* query, const MotionVector3f& old_pos, const MotionVector3f& new_pos) = 0;
+    virtual void queryPositionUpdated(Query* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void queryDeleted(const Query* query) = 0;
 
 }; // class QueryChangeListener

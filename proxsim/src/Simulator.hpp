@@ -33,32 +33,31 @@
 #ifndef _PROXSIM_SIMULATOR_HPP_
 #define _PROXSIM_SIMULATOR_HPP_
 
-#include <prox/Query.hpp>
-#include <prox/QueryHandler.hpp>
-#include <prox/Time.hpp>
+#include "SimulationTypes.hpp"
 #include "BoundingBox.hpp"
 #include "Object.hpp"
 #include "SimulatorListener.hpp"
 #include "ObjectLocationServiceCache.hpp"
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 class Simulator {
 private:
-    typedef std::list<Prox::Object*> ObjectList;
-    typedef std::list<Prox::Query*> QueryList;
+    typedef std::list<Object*> ObjectList;
+    typedef std::list<Query*> QueryList;
 public:
-    Simulator(Prox::QueryHandler* handler);
+    Simulator(QueryHandler* handler);
     ~Simulator();
 
-    void initialize(const Prox::Time& t, const Prox::BoundingBox3f& region, int nobjects, int nqueries);
+    void initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries);
 
-    const Prox::BoundingBox3f& region() const;
+    const BoundingBox3& region() const;
 
     void addListener(SimulatorListener* listener);
     void removeListener(SimulatorListener* listener);
 
-    void tick(const Prox::Time& t);
+    void tick(const Time& t);
 
     typedef ObjectList::iterator ObjectIterator;
     typedef QueryList::iterator QueryIterator;
@@ -70,22 +69,23 @@ public:
     QueryIterator queriesEnd();
 
 private:
-    void addObject(Prox::Object* obj);
-    void removeObject(Prox::Object* obj);
+    void addObject(Object* obj);
+    void removeObject(Object* obj);
 
-    void addQuery(Prox::Query* query);
-    void removeQuery(Prox::Query* query);
+    void addQuery(Query* query);
+    void removeQuery(Query* query);
 
-    Prox::BoundingBox3f mRegion;
-    Prox::int64 mObjectIDSource;
-    Prox::QueryHandler* mHandler;
-    Prox::LocationServiceCache* mLocCache;
+    BoundingBox3 mRegion;
+    int64 mObjectIDSource;
+    QueryHandler* mHandler;
+    LocationServiceCache* mLocCache;
     ObjectList mObjects;
     QueryList mQueries;
     typedef std::list<SimulatorListener*> ListenerList;
     ListenerList mListeners;
 }; // class Simulator
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox
 
 #endif //_PROXSIM_SIMULATOR_HPP_

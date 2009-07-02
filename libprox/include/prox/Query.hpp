@@ -34,53 +34,150 @@
 #define _PROX_QUERY_HPP_
 
 #include <prox/Platform.hpp>
-#include <prox/SolidAngle.hpp>
-#include <prox/MotionVector.hpp>
+#include <prox/DefaultSimulationTraits.hpp>
 #include <prox/QueryEvent.hpp>
+#include <prox/QueryEventListener.hpp>
+#include <prox/QueryChangeListener.hpp>
 #include <boost/thread.hpp>
+#include <float.h>
 
 namespace Prox {
 
-class QueryChangeListener;
-class QueryEventListener;
-
+template<typename SimulationTraits = DefaultSimulationTraits>
 class Query {
 public:
-    typedef MotionVector3f PositionVectorType;
+    typedef typename SimulationTraits::real real;
+    typedef typename SimulationTraits::Vector3 Vector3;
+    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef typename SimulationTraits::SolidAngle SolidAngle;
+    typedef typename SimulationTraits::Time Time;
 
-    const static float InfiniteRadius;
+    typedef QueryEvent<SimulationTraits> QueryEvent;
+    typedef QueryEventListener<SimulationTraits> QueryEventListener;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListener;
 
-    Query(const MotionVector3f& pos, const SolidAngle& minAngle);
-    Query(const MotionVector3f& pos, const SolidAngle& minAngle, float radius);
-    Query(const Query& cpy);
-    ~Query();
+    const static real InfiniteRadius = FLT_MAX;
 
-    const MotionVector3f& position() const;
-    Vector3f position(const Time& t) const;
-    const SolidAngle& angle() const;
-    const float radius() const;
+    Query(const MotionVector3& pos, const SolidAngle& minAngle)
+     : mPosition(pos),
+       mMinSolidAngle(minAngle),
+       mMaxRadius(InfiniteRadius),
+       mChangeListeners(),
+       mEventListener(NULL),
+       mNotified(false)
+    {
+    }
 
-    void position(const MotionVector3f& new_center);
+    Query(const MotionVector3& pos, const SolidAngle& minAngle, float radius)
+     : mPosition(pos),
+       mMinSolidAngle(minAngle),
+       mMaxRadius(radius),
+       mNotified(false)
+    {
+    }
 
-    void addChangeListener(QueryChangeListener* listener);
-    void removeChangeListener(QueryChangeListener* listener);
+    Query(const Query& cpy)
+     : mPosition(cpy.mPosition),
+       mMinSolidAngle(cpy.mMinSolidAngle),
+       mMaxRadius(cpy.mMaxRadius),
+       mNotified(false)
+    {
+    }
 
-    void setEventListener(QueryEventListener* listener);
-    void removeEventListener();
+    ~Query() {
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryDeleted(this);
+    }
 
-    void pushEvent(const QueryEvent& evt);
-    void pushEvents(std::deque<QueryEvent>& evts);
-    void popEvents(std::deque<QueryEvent>& evts);
+    const MotionVector3& position() const {
+        return mPosition;
+    }
+    Vector3 position(const Time& t) const {
+        return mPosition.position(t);
+    }
+    const SolidAngle& angle() const {
+        return mMinSolidAngle;
+    }
+    const float radius() const {
+        return mMaxRadius;
+    }
+
+    void position(const MotionVector3& new_pos) {
+        MotionVector3 old_pos = mPosition;
+        mPosition = new_pos;
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryPositionUpdated(this, old_pos, new_pos);
+    }
+
+
+    void addChangeListener(QueryChangeListener* listener) {
+        mChangeListeners.push_back(listener);
+    }
+
+    void removeChangeListener(QueryChangeListener* listener) {
+        ChangeListenerListIterator it = std::find(mChangeListeners.begin(), mChangeListeners.end(), listener);
+        if (it != mChangeListeners.end())
+            mChangeListeners.erase(it);
+    }
+
+    void setEventListener(QueryEventListener* listener) {
+        mEventListener = listener;
+    }
+
+    void removeEventListener() {
+        mEventListener = NULL;
+    }
+
+
+    void pushEvent(const QueryEvent& evt) {
+        {
+            boost::mutex::scoped_lock lock(mEventQueueMutex);
+
+            mEventQueue.push_back(evt);
+
+            if (mNotified) return;
+            mNotified = true;
+        }
+
+        if (mEventListener != NULL)
+            mEventListener->queryHasEvents(this);
+    }
+
+    void pushEvents(std::deque<QueryEvent>& evts) {
+        {
+            boost::mutex::scoped_lock lock(mEventQueueMutex);
+
+            while( !evts.empty() ) {
+                mEventQueue.push_back( evts.front() );
+                evts.pop_front();
+            }
+
+            if (mNotified) return;
+
+            mNotified = true;
+        }
+
+        if (mEventListener != NULL)
+            mEventListener->queryHasEvents(this);
+    }
+
+    void popEvents(std::deque<QueryEvent>& evts) {
+        boost::mutex::scoped_lock lock(mEventQueueMutex);
+
+        assert( evts.empty() );
+        mEventQueue.swap(evts);
+        mNotified = false;
+    }
 
 protected:
     Query();
-    void notifyEventListeners();
 
-    PositionVectorType mPosition;
+    MotionVector3 mPosition;
     SolidAngle mMinSolidAngle;
-    float mMaxRadius;
+    real mMaxRadius;
 
     typedef std::list<QueryChangeListener*> ChangeListenerList;
+    typedef typename ChangeListenerList::iterator ChangeListenerListIterator;
     ChangeListenerList mChangeListeners;
     QueryEventListener* mEventListener;
 

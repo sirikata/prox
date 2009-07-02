@@ -33,9 +33,8 @@
 #include "Simulator.hpp"
 #include <algorithm>
 
-using namespace Prox;
-
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 static float randFloat() {
     return float(rand()) / RAND_MAX;
@@ -64,30 +63,30 @@ Simulator::~Simulator() {
     delete mLocCache;
 }
 
-void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int nobjects, int nqueries) {
+void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries) {
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
     mLocCache = loc_cache;
 
     mHandler->initialize(mLocCache);
 
     mRegion = region;
-    Vector3f region_min = region.min();
-    Vector3f region_extents = region.extents();
+    Vector3 region_min = region.min();
+    Vector3 region_extents = region.extents();
 
     for(int i = 0; i < nobjects; i++) {
         mObjectIDSource++;
         unsigned char oid_data[ObjectID::static_size]={0};
         memcpy(oid_data,&mObjectIDSource,ObjectID::static_size<sizeof(mObjectIDSource)?ObjectID::static_size:sizeof(mObjectIDSource));
-        ObjectID oid(oid_data,ObjectID::static_size);;
+        ObjectID oid(oid_data,ObjectID::static_size);
 
         Object* obj = new Object(
             ObjectID(oid_data,ObjectID::static_size),
-            MotionVector3f(
+            MotionVector3(
                 t,
-                region_min + Vector3f(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
-                Vector3f(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
+                region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
+                Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
             ),
-            BoundingBox3f( Vector3f(-1, -1, -1), Vector3f(1, 1, 1))
+            BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1))
         );
         loc_cache->addObject(obj);
         addObject(obj);
@@ -95,10 +94,10 @@ void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int
 
     for(int i = 0; i < nqueries; i++) {
         Query* query = new Query(
-            MotionVector3f(
+            MotionVector3(
                 t,
-                region_min + Vector3f(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
-                Vector3f(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.0f/*randFloat() * 2.f - 1.f*/)
+                region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
+                Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.0f/*randFloat() * 2.f - 1.f*/)
             ),
             SolidAngle( SolidAngle::Max / 1000 )
         );
@@ -106,7 +105,7 @@ void Simulator::initialize(const Time& t, const Prox::BoundingBox3f& region, int
     }
 }
 
-const BoundingBox3f& Simulator::region() const {
+const BoundingBox3& Simulator::region() const {
     return mRegion;
 }
 
@@ -171,4 +170,5 @@ Simulator::QueryIterator Simulator::queriesEnd() {
     return mQueries.end();
 }
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox

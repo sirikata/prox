@@ -33,11 +33,11 @@
 #ifndef _PROXSIM_TIMER_HPP_
 #define _PROXSIM_TIMER_HPP_
 
-#include <prox/Time.hpp>
-#include <prox/Duration.hpp>
+#include "SimulationTypes.hpp"
 #include <boost/date_time.hpp>
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
 class Timer {
 public:
@@ -45,13 +45,14 @@ public:
     ~Timer();
 
     void start();
-    Prox::Time now();
-    Prox::Duration elapsed();
+    Time now();
+    Duration elapsed();
 
 private:
     boost::posix_time::ptime mStart;
 }; // class Timer
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox
 
 #endif //_PROXSIM_TIMER_HPP_

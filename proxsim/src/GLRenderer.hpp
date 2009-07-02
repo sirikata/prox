@@ -33,17 +33,16 @@
 #ifndef _PROXSIM_GLRENDERER_HPP_
 #define _PROXSIM_GLRENDERER_HPP_
 
+#include "SimulationTypes.hpp"
 #include "Renderer.hpp"
 #include "BoundingBox.hpp"
-#include <prox/QueryEventListener.hpp>
-#include <prox/ObjectID.hpp>
-#include <prox/Time.hpp>
 #include "SimulatorListener.hpp"
 #include "Timer.hpp"
 
-namespace ProxSim {
+namespace Prox {
+namespace Simulation {
 
-class GLRenderer : public Renderer, public Prox::QueryEventListener, public SimulatorListener {
+class GLRenderer : public Renderer, public QueryEventListener, public SimulatorListener {
 public:
     GLRenderer(Simulator* sim);
     virtual ~GLRenderer();
@@ -52,13 +51,13 @@ public:
     virtual void run();
 
     // QueryEventListener Interface
-    virtual void queryHasEvents(Prox::Query* query);
+    virtual void queryHasEvents(Query* query);
 
     // SimulatorListener Interface
-    virtual void simulatorAddedObject(Prox::Object* obj);
-    virtual void simulatorRemovedObject(Prox::Object* obj);
-    virtual void simulatorAddedQuery(Prox::Query* query);
-    virtual void simulatorRemovedQuery(Prox::Query* query);
+    virtual void simulatorAddedObject(Object* obj);
+    virtual void simulatorRemovedObject(Object* obj);
+    virtual void simulatorAddedQuery(Query* query);
+    virtual void simulatorRemovedQuery(Query* query);
 
     // GLRenderer Interface
     void display();
@@ -69,15 +68,16 @@ public:
 protected:
     GLRenderer();
 
-    void drawbb(const Prox::BoundingBox3f& bb);
-    void drawbs(const Prox::BoundingSphere3f& bs);
+    void drawbb(const BoundingBox3& bb);
+    void drawbs(const BoundingSphere& bs);
 
-    Prox::Time mTime;
-    std::set<Prox::ObjectID> mSeenObjects;
+    Time mTime;
+    std::set<ObjectID> mSeenObjects;
     Timer mTimer;
     int mWinWidth, mWinHeight;
 }; // class Renderer
 
-} // namespace ProxSim
+} // namespace Simulation
+} // namespace Prox
 
 #endif //_PROXSIM_GLRENDERER_HPP_
