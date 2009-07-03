@@ -46,19 +46,19 @@ namespace Simulation {
 // typedefs for the types we want to use in the Simulation so we don't have
 // to refer to them in a different namespapce / struct.
 
-typedef Prox::DefaultSimulationTraits::real real;
+typedef Prox::DefaultSimulationTraits::realType real;
 
-typedef Prox::DefaultSimulationTraits::Vector3 Vector3;
-typedef Prox::DefaultSimulationTraits::MotionVector3 MotionVector3;
+typedef Prox::DefaultSimulationTraits::Vector3Type Vector3;
+typedef Prox::DefaultSimulationTraits::MotionVector3Type MotionVector3;
 
-typedef Prox::DefaultSimulationTraits::BoundingSphere BoundingSphere;
+typedef Prox::DefaultSimulationTraits::BoundingSphereType BoundingSphere;
 
-typedef Prox::DefaultSimulationTraits::SolidAngle SolidAngle;
+typedef Prox::DefaultSimulationTraits::SolidAngleType SolidAngle;
 
-typedef Prox::DefaultSimulationTraits::ObjectID ObjectID;
+typedef Prox::DefaultSimulationTraits::ObjectIDType ObjectID;
 
-typedef Prox::DefaultSimulationTraits::Time Time;
-typedef Prox::DefaultSimulationTraits::Duration Duration;
+typedef Prox::DefaultSimulationTraits::TimeType Time;
+typedef Prox::DefaultSimulationTraits::DurationType Duration;
 
 
 typedef Prox::Query<DefaultSimulationTraits> Query;

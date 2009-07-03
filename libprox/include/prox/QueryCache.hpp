@@ -41,7 +41,7 @@ namespace Prox {
 template<typename SimulationTraits>
 class QueryCache {
 public:
-    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef QueryEvent<SimulationTraits> QueryEvent;
 
     QueryCache() {

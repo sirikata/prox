@@ -43,8 +43,8 @@ template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryHandler {
 public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
-    typedef typename SimulationTraits::ObjectID ObjectID;
-    typedef typename SimulationTraits::Time Time;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::TimeType Time;
     typedef Query<SimulationTraits> Query;
 
     QueryHandler() {}

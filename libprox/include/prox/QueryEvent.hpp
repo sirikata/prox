@@ -40,7 +40,7 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryEvent {
 public:
-    typedef typename SimulationTraits::ObjectID ObjectID;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
 
     enum Type {
         Added,

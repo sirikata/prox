@@ -51,19 +51,19 @@ namespace Prox {
 
 class DefaultSimulationTraits {
 public:
-    typedef float real;
+    typedef float realType;
 
-    typedef Reference::Vector3f Vector3;
-    typedef Reference::MotionVector3f MotionVector3;
+    typedef Reference::Vector3f Vector3Type;
+    typedef Reference::MotionVector3f MotionVector3Type;
 
-    typedef Reference::BoundingSphere3f BoundingSphere;
+    typedef Reference::BoundingSphere3f BoundingSphereType;
 
-    typedef Reference::SolidAngle SolidAngle;
+    typedef Reference::SolidAngle SolidAngleType;
 
-    typedef Reference::ObjectID ObjectID;
+    typedef Reference::ObjectID ObjectIDType;
 
-    typedef Reference::Time Time;
-    typedef Reference::Duration Duration;
+    typedef Reference::Time TimeType;
+    typedef Reference::Duration DurationType;
 }; // class DefaultSimulationTraits
 
 } // namespace Prox

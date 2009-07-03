@@ -47,10 +47,10 @@ namespace Prox {
 template<typename SimulationTraits>
 class LocationServiceCache {
 public:
-    typedef typename SimulationTraits::ObjectID ObjectID;
-    typedef typename SimulationTraits::Time Time;
-    typedef typename SimulationTraits::MotionVector3 MotionVector3;
-    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
 
     virtual ~LocationServiceCache() {}

@@ -46,11 +46,11 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class Query {
 public:
-    typedef typename SimulationTraits::real real;
-    typedef typename SimulationTraits::Vector3 Vector3;
-    typedef typename SimulationTraits::MotionVector3 MotionVector3;
-    typedef typename SimulationTraits::SolidAngle SolidAngle;
-    typedef typename SimulationTraits::Time Time;
+    typedef typename SimulationTraits::realType real;
+    typedef typename SimulationTraits::Vector3Type Vector3;
+    typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::SolidAngleType SolidAngle;
+    typedef typename SimulationTraits::TimeType Time;
 
     typedef QueryEvent<SimulationTraits> QueryEvent;
     typedef QueryEventListener<SimulationTraits> QueryEventListener;

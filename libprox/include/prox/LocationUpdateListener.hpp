@@ -38,9 +38,9 @@ namespace Prox {
 template<typename SimulationTraits>
 class LocationUpdateListener {
 public:
-    typedef typename SimulationTraits::ObjectID ObjectID;
-    typedef typename SimulationTraits::MotionVector3 MotionVector3;
-    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
     LocationUpdateListener() {}
     virtual ~LocationUpdateListener() {}

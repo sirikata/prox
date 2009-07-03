@@ -56,12 +56,12 @@ public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
     typedef QueryCache<SimulationTraits> QueryCache;
 
-    typedef typename SimulationTraits::ObjectID ObjectID;
-    typedef typename SimulationTraits::Time Time;
-    typedef typename SimulationTraits::Vector3 Vector3;
-    typedef typename SimulationTraits::MotionVector3 MotionVector3;
-    typedef typename SimulationTraits::BoundingSphere BoundingSphere;
-    typedef typename SimulationTraits::SolidAngle SolidAngle;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::Vector3Type Vector3;
+    typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
 
     RTreeQueryHandler(uint8 elements_per_node)

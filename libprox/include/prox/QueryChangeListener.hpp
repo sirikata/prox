@@ -41,7 +41,7 @@ class Query;
 template<typename SimulationTraits>
 class QueryChangeListener {
 public:
-    typedef typename SimulationTraits::MotionVector3 MotionVector3;
+    typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef Query<SimulationTraits> Query;
 
     QueryChangeListener() {}
