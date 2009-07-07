@@ -93,12 +93,10 @@ ENDMACRO(VERIFY_VERSION)
 
 #dependency: boost > 1.35
 IF(NOT BOOST_ROOT)
-  IF(WIN32)
-    SET(BOOST_ROOT ${PLATFORM_LIBS})
-  ENDIF()
-  IF(APPLE)
-    SET(BOOST_ROOT ${PLATFORM_LIBS})
-  ENDIF()
+  # FIXME This is gross, but should allow prox to find cbr's boost
+  # without a problem
+  SET(BOOST_ROOT ${TOP_LEVEL}/../sirikata/dependencies)
+  GET_FILENAME_COMPONENT(BOOST_ROOT ${BOOST_ROOT} ABSOLUTE)
 ENDIF()
 SET(Boost_FIND_REQUIRED TRUE)
 IF(WIN32)
