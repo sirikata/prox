@@ -51,7 +51,7 @@ public:
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
-    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
 
     virtual ~LocationServiceCache() {}
 
@@ -64,8 +64,8 @@ public:
         return BoundingSphere( bounds(id).center() + location(id).position(t), bounds(id).radius() );
     }
 
-    virtual void addUpdateListener(LocationUpdateListener* listener) = 0;
-    virtual void removeUpdateListener(LocationUpdateListener* listener) = 0;
+    virtual void addUpdateListener(LocationUpdateListenerType* listener) = 0;
+    virtual void removeUpdateListener(LocationUpdateListenerType* listener) = 0;
 };
 
 } // namespace Prox

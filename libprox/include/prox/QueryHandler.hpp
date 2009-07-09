@@ -42,17 +42,17 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryHandler {
 public:
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
-    typedef Query<SimulationTraits> Query;
+    typedef Query<SimulationTraits> QueryType;
 
     QueryHandler() {}
     virtual ~QueryHandler() {}
 
-    virtual void initialize(LocationServiceCache* loc_cache) = 0;
+    virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
     virtual void registerObject(const ObjectID& obj_id) = 0;
-    virtual void registerQuery(Query* query) = 0;
+    virtual void registerQuery(QueryType* query) = 0;
     virtual void tick(const Time& t) = 0;
 }; // class QueryHandler
 

@@ -45,7 +45,7 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
 
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
 
 private:
     static const uint8 LeafFlag = 0x02; // elements are object pointers instead of node pointers
@@ -67,11 +67,11 @@ public:
             return parent->node(idx);
         }
 
-        NodeData data(const LocationServiceCache* loc, RTreeNode* child, const Time& ) {
+        NodeData data(const LocationServiceCacheType* loc, RTreeNode* child, const Time& ) {
             return child->data();
         }
 
-        void insert(RTreeNode* parent, const LocationServiceCache* loc, RTreeNode* newchild, const Time& ) {
+        void insert(RTreeNode* parent, const LocationServiceCacheType* loc, RTreeNode* newchild, const Time& ) {
             parent->insert(newchild);
         }
     };
@@ -81,11 +81,11 @@ public:
             return parent->object(idx);
         }
 
-        NodeData data(const LocationServiceCache* loc, const ObjectID& child, const Time& t) {
+        NodeData data(const LocationServiceCacheType* loc, const ObjectID& child, const Time& t) {
             return NodeData(loc, child, t);
         }
 
-        void insert(RTreeNode* parent, const LocationServiceCache* loc, const ObjectID& newchild, const Time& t) {
+        void insert(RTreeNode* parent, const LocationServiceCacheType* loc, const ObjectID& newchild, const Time& t) {
             parent->insert(loc, newchild,t);
         }
     };
@@ -150,14 +150,14 @@ public:
         return mData;
     }
 
-    NodeData childData(int i, const LocationServiceCache* loc, const Time& t) {
+    NodeData childData(int i, const LocationServiceCacheType* loc, const Time& t) {
         if (leaf())
             return NodeData(loc, object(i), t);
         else
             return node(i)->data();
     }
 
-    void recomputeData(const LocationServiceCache* loc, const Time& t) {
+    void recomputeData(const LocationServiceCacheType* loc, const Time& t) {
         mData = NodeData();
         for(int i = 0; i < size(); i++)
             mData.mergeIn( childData(i, loc, t) );
@@ -170,7 +170,7 @@ public:
         mData = NodeData();
     }
 
-    void insert(const LocationServiceCache* loc, const ObjectID& obj, const Time& t) {
+    void insert(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t) {
         assert (count < max_elements);
         assert (leaf() == true);
         elements.objects[count] = obj;
@@ -221,11 +221,11 @@ public:
         return false;
     }
 
-    RTreeNode* selectBestChildNode(const LocationServiceCache* loc, const ObjectID& obj, const Time& t) {
+    RTreeNode* selectBestChildNode(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t) {
         return NodeData::selectBestChildNode(this, loc, obj, t);
     }
 
-    RTreeNode* findLeafWithObject(const LocationServiceCache* loc, const ObjectID& obj, const Time& t) {
+    RTreeNode* findLeafWithObject(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t) {
         return NodeData::findLeafWithObject(this, loc, obj, t);
     }
 };
@@ -245,8 +245,8 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
-    typedef Query<SimulationTraits> Query;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef Query<SimulationTraits> QueryType;
 
     typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
 
@@ -255,7 +255,7 @@ public:
     {
     }
 
-    BoundingSphereDataBase(const LocationServiceCache* loc, const ObjectID& obj, const Time& t)
+    BoundingSphereDataBase(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t)
      : bounding_sphere( loc->worldBounds(obj, t) )
     {
     }
@@ -278,7 +278,7 @@ public:
         Vector3 to_obj = obj_pos - qpos;
 
         // Must satisfy radius constraint
-        if (qradius != Query::InfiniteRadius && (to_obj).lengthSquared() < (qradius+bounding_sphere.radius())*(qradius+bounding_sphere.radius()))
+        if (qradius != QueryType::InfiniteRadius && (to_obj).lengthSquared() < (qradius+bounding_sphere.radius())*(qradius+bounding_sphere.radius()))
             return false;
 
         // Must satisfy solid angle constraint
@@ -291,7 +291,7 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
+    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t) {
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -311,7 +311,7 @@ public:
     }
 
     // Given a root node and object and a time, find the leaf node which contains that object
-    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t) {
+    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t) {
         BoundingSphere bs = loc->worldBounds(obj_id, t);
         return findLeafWithObject(node, loc, obj_id, bs);
     }
@@ -368,7 +368,7 @@ public:
     }
 
 private:
-    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCache* loc, const ObjectID& obj_id, const BoundingSphere& bs) {
+    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const ObjectID& obj_id, const BoundingSphere& bs) {
         // For leaf nodes, simply check against all child objects
         if (node->leaf())
             return (node->contains(obj_id) ? node : NULL);
@@ -397,14 +397,14 @@ public:
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
 
     BoundingSphereData()
      : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>()
     {
     }
 
-    BoundingSphereData(const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t)
+    BoundingSphereData(const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>( loc, obj_id, t )
     {
     }
@@ -424,9 +424,9 @@ public:
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
 
-    typedef Query<SimulationTraits> Query;
+    typedef Query<SimulationTraits> QueryType;
 
     MaxSphereData()
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(),
@@ -434,7 +434,7 @@ public:
     {
     }
 
-    MaxSphereData(const LocationServiceCache* loc, const ObjectID& obj_id, const Time& t)
+    MaxSphereData(const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>( loc, obj_id, t ),
        mMaxRadius( loc->worldBounds(obj_id, t).radius() )
     {
@@ -472,7 +472,7 @@ public:
         float standin_radius = mMaxRadius;
 
         // Must satisfy radius constraint
-        if (qradius != Query::InfiniteRadius && (to_standin_center).lengthSquared() < (qradius+standin_radius)*(qradius+standin_radius))
+        if (qradius != QueryType::InfiniteRadius && (to_standin_center).lengthSquared() < (qradius+standin_radius)*(qradius+standin_radius))
             return false;
 
         // Must satisfy solid angle constraint

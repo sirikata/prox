@@ -45,14 +45,14 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class BruteForceQueryHandler : public QueryHandler<SimulationTraits>, public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
 public:
-    typedef QueryHandler<SimulationTraits> QueryHandler;
-    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
-    typedef QueryChangeListener<SimulationTraits> QueryChangeListener;
+    typedef QueryHandler<SimulationTraits> QueryHandlerType;
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
-    typedef Query<SimulationTraits> Query;
-    typedef QueryEvent<SimulationTraits> QueryEvent;
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
-    typedef QueryCache<SimulationTraits> QueryCache;
+    typedef Query<SimulationTraits> QueryType;
+    typedef QueryEvent<SimulationTraits> QueryEventType;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef QueryCache<SimulationTraits> QueryCacheType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
@@ -63,9 +63,9 @@ public:
 
 
     BruteForceQueryHandler()
-     : QueryHandler(),
-       LocationUpdateListener(),
-       QueryChangeListener(),
+     : QueryHandlerType(),
+       LocationUpdateListenerType(),
+       QueryChangeListenerType(),
        mLocCache(NULL)
     {
     }
@@ -84,7 +84,7 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCache* loc_cache) {
+    void initialize(LocationServiceCacheType* loc_cache) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
     }
@@ -94,7 +94,7 @@ public:
         mLocCache->startTracking(obj_id);
     }
 
-    void registerQuery(Query* query) {
+    void registerQuery(QueryType* query) {
         QueryState* state = new QueryState;
         mQueries[query] = state;
         query->addChangeListener(this);
@@ -102,9 +102,9 @@ public:
 
     void tick(const Time& t) {
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
-            Query* query = query_it->first;
+            QueryType* query = query_it->first;
             QueryState* state = query_it->second;
-            QueryCache newcache;
+            QueryCacheType newcache;
 
             for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
                 ObjectID obj = *obj_it;
@@ -113,7 +113,7 @@ public:
                 BoundingSphere obj_bounds = mLocCache->bounds(obj);
 
                 // Must satisfy radius constraint
-                if (query->radius() != Query::InfiniteRadius && (obj_pos-query->position(t)).lengthSquared() > query->radius()*query->radius())
+                if (query->radius() != QueryType::InfiniteRadius && (obj_pos-query->position(t)).lengthSquared() > query->radius()*query->radius())
                     continue;
 
                 // Must satisfy solid angle constraint
@@ -127,7 +127,7 @@ public:
                 newcache.add(obj);
             }
 
-            std::deque<QueryEvent> events;
+            std::deque<QueryEventType> events;
             state->cache.exchange(newcache, &events);
 
             query->pushEvents(events);
@@ -148,12 +148,12 @@ public:
         mLocCache->stopTracking(obj_id);
     }
 
-    void queryPositionUpdated(Query* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+    void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         // Nothing to be done, we use values directly from the query
     }
 
-    void queryDeleted(const Query* query) {
-        QueryMapIterator it = mQueries.find(const_cast<Query*>(query));
+    void queryDeleted(const QueryType* query) {
+        QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );
         QueryState* state = it->second;
         delete state;
@@ -162,15 +162,15 @@ public:
 
 private:
     struct QueryState {
-        QueryCache cache;
+        QueryCacheType cache;
     };
 
     typedef std::set<ObjectID> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
-    typedef std::map<Query*, QueryState*> QueryMap;
+    typedef std::map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 
-    LocationServiceCache* mLocCache;
+    LocationServiceCacheType* mLocCache;
     ObjectSet mObjects;
     QueryMap mQueries;
 }; // class BruteForceQueryHandler

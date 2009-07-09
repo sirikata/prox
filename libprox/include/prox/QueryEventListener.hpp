@@ -41,12 +41,12 @@ class Query;
 template<typename SimulationTraits>
 class QueryEventListener {
 public:
-    typedef Query<SimulationTraits> Query;
+    typedef Query<SimulationTraits> QueryType;
 
     QueryEventListener() {}
     virtual ~QueryEventListener() {}
 
-    virtual void queryHasEvents(Query* query) = 0;
+    virtual void queryHasEvents(QueryType* query) = 0;
 
 }; // class QueryEventListener
 

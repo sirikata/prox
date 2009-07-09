@@ -55,8 +55,8 @@ public:
     virtual const MotionVector3& location(const ObjectID& id) const;
     virtual const BoundingSphere& bounds(const ObjectID& id) const;
 
-    virtual void addUpdateListener(LocationUpdateListener* listener);
-    virtual void removeUpdateListener(LocationUpdateListener* listener);
+    virtual void addUpdateListener(LocationUpdateListenerType* listener);
+    virtual void removeUpdateListener(LocationUpdateListenerType* listener);
 
     virtual void objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos);
     virtual void objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds);
@@ -66,7 +66,7 @@ private:
     Object* lookup(const ObjectID& id) const;
 
     typedef std::map<ObjectID, Object*> ObjectMap;
-    typedef std::set<LocationUpdateListener*> ListenerSet;
+    typedef std::set<LocationUpdateListenerType*> ListenerSet;
 
     ObjectMap mObjects;
     ListenerSet mListeners;

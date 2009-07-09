@@ -47,14 +47,14 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class RTreeQueryHandler : public QueryHandler<SimulationTraits>, public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
 public:
-    typedef QueryHandler<SimulationTraits> QueryHandler;
-    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListener;
-    typedef QueryChangeListener<SimulationTraits> QueryChangeListener;
+    typedef QueryHandler<SimulationTraits> QueryHandlerType;
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
-    typedef Query<SimulationTraits> Query;
-    typedef QueryEvent<SimulationTraits> QueryEvent;
-    typedef LocationServiceCache<SimulationTraits> LocationServiceCache;
-    typedef QueryCache<SimulationTraits> QueryCache;
+    typedef Query<SimulationTraits> QueryType;
+    typedef QueryEvent<SimulationTraits> QueryEventType;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef QueryCache<SimulationTraits> QueryCacheType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
@@ -65,9 +65,9 @@ public:
 
 
     RTreeQueryHandler(uint8 elements_per_node)
-     : QueryHandler(),
-       LocationUpdateListener(),
-       QueryChangeListener(),
+     : QueryHandlerType(),
+       LocationUpdateListenerType(),
+       QueryChangeListenerType(),
        mLocCache(NULL),
        mLastTime(0)
     {
@@ -88,7 +88,7 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCache* loc_cache) {
+    void initialize(LocationServiceCacheType* loc_cache) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
     }
@@ -99,7 +99,7 @@ public:
         mLocCache->startTracking(obj);
     }
 
-    void registerQuery(Query* query) {
+    void registerQuery(QueryType* query) {
         QueryState* state = new QueryState;
         mQueries[query] = state;
         query->addChangeListener(this);
@@ -118,9 +118,9 @@ public:
         int count = 0;
         int ncount = 0;
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
-            Query* query = query_it->first;
+            QueryType* query = query_it->first;
             QueryState* state = query_it->second;
-            QueryCache newcache;
+            QueryCacheType newcache;
 
             Vector3 qpos = query->position(t);
             float qradius = query->radius();
@@ -150,7 +150,7 @@ public:
                 }
             }
 
-            std::deque<QueryEvent> events;
+            std::deque<QueryEventType> events;
             state->cache.exchange(newcache, &events);
 
             query->pushEvents(events);
@@ -180,12 +180,12 @@ public:
     }
 
     // QueryChangeListener Implementation
-    void queryPositionUpdated(Query* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+    void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         // Nothing to be done, we use values directly from the query
     }
 
-    void queryDeleted(const Query* query) {
-        QueryMapIterator it = mQueries.find(const_cast<Query*>(query));
+    void queryDeleted(const QueryType* query) {
+        QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );
         QueryState* state = it->second;
         delete state;
@@ -202,18 +202,18 @@ private:
     }
 
     struct QueryState {
-        QueryCache cache;
+        QueryCacheType cache;
     };
 
     typedef std::set<ObjectID> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
-    typedef std::map<Query*, QueryState*> QueryMap;
+    typedef std::map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 
     //typedef RTreeNode<SimulationTraits, BoundingSphereData<SimulationTraits> > RTree;
     typedef RTreeNode<SimulationTraits, MaxSphereData<SimulationTraits> > RTree;
 
-    LocationServiceCache* mLocCache;
+    LocationServiceCacheType* mLocCache;
 
     RTree* mRTreeRoot;
     ObjectSet mObjects;

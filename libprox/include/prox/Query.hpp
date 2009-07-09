@@ -52,9 +52,9 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
 
-    typedef QueryEvent<SimulationTraits> QueryEvent;
-    typedef QueryEventListener<SimulationTraits> QueryEventListener;
-    typedef QueryChangeListener<SimulationTraits> QueryChangeListener;
+    typedef QueryEvent<SimulationTraits> QueryEventType;
+    typedef QueryEventListener<SimulationTraits> QueryEventListenerType;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     const static real InfiniteRadius = FLT_MAX;
 
@@ -110,17 +110,17 @@ public:
     }
 
 
-    void addChangeListener(QueryChangeListener* listener) {
+    void addChangeListener(QueryChangeListenerType* listener) {
         mChangeListeners.push_back(listener);
     }
 
-    void removeChangeListener(QueryChangeListener* listener) {
+    void removeChangeListener(QueryChangeListenerType* listener) {
         ChangeListenerListIterator it = std::find(mChangeListeners.begin(), mChangeListeners.end(), listener);
         if (it != mChangeListeners.end())
             mChangeListeners.erase(it);
     }
 
-    void setEventListener(QueryEventListener* listener) {
+    void setEventListener(QueryEventListenerType* listener) {
         mEventListener = listener;
     }
 
@@ -129,7 +129,7 @@ public:
     }
 
 
-    void pushEvent(const QueryEvent& evt) {
+    void pushEvent(const QueryEventType& evt) {
         {
             boost::mutex::scoped_lock lock(mEventQueueMutex);
 
@@ -143,7 +143,7 @@ public:
             mEventListener->queryHasEvents(this);
     }
 
-    void pushEvents(std::deque<QueryEvent>& evts) {
+    void pushEvents(std::deque<QueryEventType>& evts) {
         {
             boost::mutex::scoped_lock lock(mEventQueueMutex);
 
@@ -161,7 +161,7 @@ public:
             mEventListener->queryHasEvents(this);
     }
 
-    void popEvents(std::deque<QueryEvent>& evts) {
+    void popEvents(std::deque<QueryEventType>& evts) {
         boost::mutex::scoped_lock lock(mEventQueueMutex);
 
         assert( evts.empty() );
@@ -176,12 +176,12 @@ protected:
     SolidAngle mMinSolidAngle;
     real mMaxRadius;
 
-    typedef std::list<QueryChangeListener*> ChangeListenerList;
+    typedef std::list<QueryChangeListenerType*> ChangeListenerList;
     typedef typename ChangeListenerList::iterator ChangeListenerListIterator;
     ChangeListenerList mChangeListeners;
-    QueryEventListener* mEventListener;
+    QueryEventListenerType* mEventListener;
 
-    typedef std::deque<QueryEvent> EventQueue;
+    typedef std::deque<QueryEventType> EventQueue;
     EventQueue mEventQueue;
     bool mNotified; // whether we've notified event listeners of new events
     boost::mutex mEventQueueMutex;

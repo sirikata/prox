@@ -42,13 +42,13 @@ template<typename SimulationTraits>
 class QueryChangeListener {
 public:
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
-    typedef Query<SimulationTraits> Query;
+    typedef Query<SimulationTraits> QueryType;
 
     QueryChangeListener() {}
     virtual ~QueryChangeListener() {}
 
-    virtual void queryPositionUpdated(Query* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
-    virtual void queryDeleted(const Query* query) = 0;
+    virtual void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void queryDeleted(const QueryType* query) = 0;
 
 }; // class QueryChangeListener
 

@@ -79,12 +79,12 @@ const BoundingSphere& ObjectLocationServiceCache::bounds(const ObjectID& id) con
 }
 
 
-void ObjectLocationServiceCache::addUpdateListener(LocationUpdateListener* listener) {
+void ObjectLocationServiceCache::addUpdateListener(LocationUpdateListenerType* listener) {
     assert( mListeners.find(listener) == mListeners.end() );
     mListeners.insert(listener);
 }
 
-void ObjectLocationServiceCache::removeUpdateListener(LocationUpdateListener* listener) {
+void ObjectLocationServiceCache::removeUpdateListener(LocationUpdateListenerType* listener) {
     ListenerSet::iterator it = mListeners.find(listener);
     assert( it != mListeners.end() );
     mListeners.erase(it);

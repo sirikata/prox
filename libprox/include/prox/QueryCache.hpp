@@ -42,7 +42,7 @@ template<typename SimulationTraits>
 class QueryCache {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
-    typedef QueryEvent<SimulationTraits> QueryEvent;
+    typedef QueryEvent<SimulationTraits> QueryEventType;
 
     QueryCache() {
     }
@@ -64,7 +64,7 @@ public:
         mObjects.erase(id);
     }
 
-    void exchange(QueryCache& newcache, std::deque<QueryEvent>* changes) {
+    void exchange(QueryCache& newcache, std::deque<QueryEventType>* changes) {
         if (changes != NULL) {
             IDSet added_objs;
             std::set_difference(
@@ -81,10 +81,10 @@ public:
             );
 
             for(IDSetIterator it = added_objs.begin(); it != added_objs.end(); it++)
-                changes->push_back(QueryEvent(QueryEvent::Added, *it));
+                changes->push_back(QueryEventType(QueryEventType::Added, *it));
 
             for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++)
-                changes->push_back(QueryEvent(QueryEvent::Removed, *it));
+                changes->push_back(QueryEventType(QueryEventType::Removed, *it));
         }
 
         mObjects = newcache.mObjects;
