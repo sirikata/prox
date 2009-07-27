@@ -43,7 +43,7 @@
 namespace Prox {
 
 template<typename SimulationTraits = DefaultSimulationTraits>
-class BruteForceQueryHandler : public QueryHandler<SimulationTraits>, public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
+class BruteForceQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
@@ -64,8 +64,6 @@ public:
 
     BruteForceQueryHandler()
      : QueryHandlerType(),
-       LocationUpdateListenerType(),
-       QueryChangeListenerType(),
        mLocCache(NULL)
     {
     }

@@ -40,20 +40,37 @@
 namespace Prox {
 
 template<typename SimulationTraits = DefaultSimulationTraits>
-class QueryHandler {
+class QueryHandler : public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
 public:
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
+
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef Query<SimulationTraits> QueryType;
 
-    QueryHandler() {}
+    QueryHandler()
+     : LocationUpdateListenerType(),
+       QueryChangeListenerType()
+    {}
     virtual ~QueryHandler() {}
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
     virtual void registerObject(const ObjectID& obj_id) = 0;
     virtual void registerQuery(QueryType* query) = 0;
     virtual void tick(const Time& t) = 0;
+
+    // LocationUpdateListener
+    virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
+    virtual void locationDisconnected(const ObjectID& obj_id) = 0;
+
+    // QueryChangeListener
+    virtual void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void queryDeleted(const QueryType* query) = 0;
 }; // class QueryHandler
 
 } // namespace Prox

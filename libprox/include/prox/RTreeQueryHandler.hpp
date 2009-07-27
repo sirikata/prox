@@ -45,7 +45,7 @@
 namespace Prox {
 
 template<typename SimulationTraits = DefaultSimulationTraits>
-class RTreeQueryHandler : public QueryHandler<SimulationTraits>, public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
+class RTreeQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
@@ -66,8 +66,6 @@ public:
 
     RTreeQueryHandler(uint8 elements_per_node)
      : QueryHandlerType(),
-       LocationUpdateListenerType(),
-       QueryChangeListenerType(),
        mLocCache(NULL),
        mLastTime(0)
     {
