@@ -40,6 +40,7 @@ Object::Object(const ObjectID& id, const MotionVector3& c, const BoundingSphere&
  : mID(id),
    mPosition(c),
    mBounds(bs)
+
 {
 }
 

@@ -96,6 +96,11 @@ Object* ObjectLocationServiceCache::lookup(const ObjectID& id) const {
     return it->second;
 }
 
+void ObjectLocationServiceCache::objectCreated(const Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
+    for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+        (*it)->locationConnected(obj->id(), pos, bounds);
+}
+
 void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationPositionUpdated(obj->id(), old_pos, new_pos);
@@ -111,6 +116,23 @@ void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
         (*it)->locationDisconnected(obj->id());
 
     removeObject(obj);
+}
+
+void ObjectLocationServiceCache::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
+    for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+        (*it)->locationConnected(obj->id(), pos, bounds);
+}
+
+void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {
+    // Only using this interface for tracking object additions
+}
+
+void ObjectLocationServiceCache::simulatorAddedQuery(Query* query) {
+    // Only using this interface for tracking object additions
+}
+
+void ObjectLocationServiceCache::simulatorRemovedQuery(Query* query) {
+    // Only using this interface for tracking object additions
 }
 
 } // namespace Simulation

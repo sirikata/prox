@@ -91,12 +91,6 @@ public:
         mLocCache->addUpdateListener(this);
     }
 
-    void registerObject(const ObjectID& obj) {
-        insert(obj, mLastTime);
-        mObjects.insert(obj);
-        mLocCache->startTracking(obj);
-    }
-
     void registerQuery(QueryType* query) {
         QueryState* state = new QueryState;
         mQueries[query] = state;
@@ -155,6 +149,12 @@ public:
         }
         printf("count: %d %d\n", count, ncount);
         mLastTime = t;
+    }
+
+    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
+        insert(obj_id, mLastTime);
+        mObjects.insert(obj_id);
+        mLocCache->startTracking(obj_id);
     }
 
     // LocationUpdateListener Implementation

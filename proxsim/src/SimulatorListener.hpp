@@ -43,7 +43,7 @@ public:
     SimulatorListener() {}
     virtual ~SimulatorListener() {}
 
-    virtual void simulatorAddedObject(Object* obj) = 0;
+    virtual void simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
     virtual void simulatorRemovedObject(Object* obj) = 0;
 
     virtual void simulatorAddedQuery(Query* query) = 0;

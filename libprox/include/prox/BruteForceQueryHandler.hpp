@@ -87,11 +87,6 @@ public:
         mLocCache->addUpdateListener(this);
     }
 
-    void registerObject(const ObjectID& obj_id) {
-        mObjects.insert(obj_id);
-        mLocCache->startTracking(obj_id);
-    }
-
     void registerQuery(QueryType* query) {
         QueryState* state = new QueryState;
         mQueries[query] = state;
@@ -130,6 +125,11 @@ public:
 
             query->pushEvents(events);
         }
+    }
+
+    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
+        mObjects.insert(obj_id);
+        mLocCache->startTracking(obj_id);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {

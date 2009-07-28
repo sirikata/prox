@@ -54,7 +54,7 @@ public:
     virtual void queryHasEvents(Query* query);
 
     // SimulatorListener Interface
-    virtual void simulatorAddedObject(Object* obj);
+    virtual void simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds);
     virtual void simulatorRemovedObject(Object* obj);
     virtual void simulatorAddedQuery(Query* query);
     virtual void simulatorRemovedQuery(Query* query);

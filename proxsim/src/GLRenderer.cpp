@@ -114,7 +114,7 @@ void GLRenderer::queryHasEvents(Query* query) {
     }
 }
 
-void GLRenderer::simulatorAddedObject(Object* obj) {
+void GLRenderer::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
     // nothing, we draw directly from the iterators in the simulator
 }
 

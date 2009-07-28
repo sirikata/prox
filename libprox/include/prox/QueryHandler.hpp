@@ -59,11 +59,11 @@ public:
     virtual ~QueryHandler() {}
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
-    virtual void registerObject(const ObjectID& obj_id) = 0;
     virtual void registerQuery(QueryType* query) = 0;
     virtual void tick(const Time& t) = 0;
 
     // LocationUpdateListener
+    virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
     virtual void locationDisconnected(const ObjectID& obj_id) = 0;

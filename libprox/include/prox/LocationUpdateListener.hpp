@@ -45,6 +45,7 @@ public:
     LocationUpdateListener() {}
     virtual ~LocationUpdateListener() {}
 
+    virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
     virtual void locationDisconnected(const ObjectID& obj_id) = 0;

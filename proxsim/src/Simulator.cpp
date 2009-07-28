@@ -65,6 +65,7 @@ Simulator::~Simulator() {
 
 void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries) {
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
+    addListener(loc_cache);
     mLocCache = loc_cache;
 
     mHandler->initialize(mLocCache);
@@ -126,9 +127,8 @@ void Simulator::tick(const Time& t) {
 
 void Simulator::addObject(Object* obj) {
     mObjects.push_back(obj);
-    mHandler->registerObject(obj->id());
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->simulatorAddedObject(obj);
+        (*it)->simulatorAddedObject(obj, obj->position(), obj->bounds());
 }
 
 void Simulator::removeObject(Object* obj) {

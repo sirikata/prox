@@ -73,6 +73,7 @@ public:
     ObjectUpdateListener() {}
     virtual ~ObjectUpdateListener() {}
 
+    virtual void objectCreated(const Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
     virtual void objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
     virtual void objectDeleted(const Object* obj) = 0;
