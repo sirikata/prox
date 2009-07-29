@@ -50,6 +50,7 @@ public:
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef Query<SimulationTraits> QueryType;
 
     QueryHandler()
@@ -59,7 +60,18 @@ public:
     virtual ~QueryHandler() {}
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
-    virtual void registerQuery(QueryType* query) = 0;
+
+    QueryType* registerQuery(const MotionVector3& pos, const SolidAngle& minAngle) {
+        QueryType* q = new QueryType(pos, minAngle);
+        registerQuery(q);
+        return q;
+    }
+    QueryType* registerQuery(const MotionVector3& pos, const SolidAngle& minAngle, float radius) {
+        QueryType* q = new QueryType(pos, minAngle, radius);
+        registerQuery(q);
+        return q;
+    }
+
     virtual void tick(const Time& t) = 0;
 
     virtual uint32 numObjects() const = 0;
@@ -74,6 +86,9 @@ public:
     // QueryChangeListener
     virtual void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
+
+protected:
+    virtual void registerQuery(QueryType* query) = 0;
 }; // class QueryHandler
 
 } // namespace Prox

@@ -91,12 +91,6 @@ public:
         mLocCache->addUpdateListener(this);
     }
 
-    void registerQuery(QueryType* query) {
-        QueryState* state = new QueryState;
-        mQueries[query] = state;
-        query->addChangeListener(this);
-    }
-
     void tick(const Time& t) {
         // FIXME we should have a better way of updating instead of delete + insert
         for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
@@ -195,6 +189,13 @@ public:
         QueryState* state = it->second;
         delete state;
         mQueries.erase(it);
+    }
+
+protected:
+    void registerQuery(QueryType* query) {
+        QueryState* state = new QueryState;
+        mQueries[query] = state;
+        query->addChangeListener(this);
     }
 
 private:

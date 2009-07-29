@@ -87,12 +87,6 @@ public:
         mLocCache->addUpdateListener(this);
     }
 
-    void registerQuery(QueryType* query) {
-        QueryState* state = new QueryState;
-        mQueries[query] = state;
-        query->addChangeListener(this);
-    }
-
     void tick(const Time& t) {
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
             QueryType* query = query_it->first;
@@ -163,6 +157,13 @@ public:
         QueryState* state = it->second;
         delete state;
         mQueries.erase(it);
+    }
+
+protected:
+    void registerQuery(QueryType* query) {
+        QueryState* state = new QueryState;
+        mQueries[query] = state;
+        query->addChangeListener(this);
     }
 
 private:

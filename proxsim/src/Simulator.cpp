@@ -94,7 +94,7 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
     }
 
     for(int i = 0; i < nqueries; i++) {
-        Query* query = new Query(
+        Query* query = mHandler->registerQuery(
             MotionVector3(
                 t,
                 region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
@@ -141,7 +141,6 @@ void Simulator::removeObject(Object* obj) {
 
 void Simulator::addQuery(Query* query) {
     mQueries.push_back(query);
-    mHandler->registerQuery(query);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorAddedQuery(query);
 }

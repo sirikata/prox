@@ -43,6 +43,9 @@
 
 namespace Prox {
 
+template<typename SimulationTraits>
+class QueryHandler;
+
 template<typename SimulationTraits = DefaultSimulationTraits>
 class Query {
 public:
@@ -57,32 +60,6 @@ public:
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     const static real InfiniteRadius = FLT_MAX;
-
-    Query(const MotionVector3& pos, const SolidAngle& minAngle)
-     : mPosition(pos),
-       mMinSolidAngle(minAngle),
-       mMaxRadius(InfiniteRadius),
-       mChangeListeners(),
-       mEventListener(NULL),
-       mNotified(false)
-    {
-    }
-
-    Query(const MotionVector3& pos, const SolidAngle& minAngle, float radius)
-     : mPosition(pos),
-       mMinSolidAngle(minAngle),
-       mMaxRadius(radius),
-       mNotified(false)
-    {
-    }
-
-    Query(const Query& cpy)
-     : mPosition(cpy.mPosition),
-       mMinSolidAngle(cpy.mMinSolidAngle),
-       mMaxRadius(cpy.mMaxRadius),
-       mNotified(false)
-    {
-    }
 
     ~Query() {
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
@@ -170,7 +147,28 @@ public:
     }
 
 protected:
+    friend class QueryHandler<SimulationTraits>;
+
     Query();
+
+    Query(const MotionVector3& pos, const SolidAngle& minAngle)
+     : mPosition(pos),
+       mMinSolidAngle(minAngle),
+       mMaxRadius(InfiniteRadius),
+       mChangeListeners(),
+       mEventListener(NULL),
+       mNotified(false)
+    {
+    }
+
+    Query(const MotionVector3& pos, const SolidAngle& minAngle, float radius)
+     : mPosition(pos),
+       mMinSolidAngle(minAngle),
+       mMaxRadius(radius),
+       mNotified(false)
+    {
+    }
+
 
     MotionVector3 mPosition;
     SolidAngle mMinSolidAngle;
