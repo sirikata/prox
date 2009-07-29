@@ -62,6 +62,9 @@ public:
     virtual void registerQuery(QueryType* query) = 0;
     virtual void tick(const Time& t) = 0;
 
+    virtual uint32 numObjects() const = 0;
+    virtual uint32 numQueries() const = 0;
+
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;

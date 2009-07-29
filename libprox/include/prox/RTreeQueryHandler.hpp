@@ -151,6 +151,13 @@ public:
         mLastTime = t;
     }
 
+    virtual uint32 numObjects() const {
+        return (uint32)mObjects.size();
+    }
+    virtual uint32 numQueries() const {
+        return (uint32)mQueries.size();
+    }
+
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
         insert(obj_id, mLastTime);
         mObjects.insert(obj_id);
