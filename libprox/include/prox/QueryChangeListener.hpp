@@ -42,12 +42,16 @@ template<typename SimulationTraits>
 class QueryChangeListener {
 public:
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::SolidAngleType SolidAngle;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef Query<SimulationTraits> QueryType;
 
     QueryChangeListener() {}
     virtual ~QueryChangeListener() {}
 
-    virtual void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
+    virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
 
 }; // class QueryChangeListener

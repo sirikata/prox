@@ -44,7 +44,7 @@ namespace Simulation {
 
 class Simulator {
 private:
-    typedef std::list<Object*> ObjectList;
+    typedef std::vector<Object*> ObjectList;
     typedef std::list<Query*> QueryList;
 public:
     Simulator(QueryHandler* handler);

@@ -179,8 +179,16 @@ public:
     }
 
     // QueryChangeListener Implementation
-    void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+    void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         // Nothing to be done, we use values directly from the query
+    }
+
+    void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+        // XXX FIXME
+    }
+
+    void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) {
+        // XXX FIXME
     }
 
     void queryDeleted(const QueryType* query) {

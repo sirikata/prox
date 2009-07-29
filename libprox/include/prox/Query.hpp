@@ -52,6 +52,7 @@ public:
     typedef typename SimulationTraits::realType real;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
 
@@ -72,6 +73,9 @@ public:
     Vector3 position(const Time& t) const {
         return mPosition.position(t);
     }
+    const BoundingSphere& bounds() const {
+        return mBounds;
+    }
     const SolidAngle& angle() const {
         return mMinSolidAngle;
     }
@@ -83,9 +87,22 @@ public:
         MotionVector3 old_pos = mPosition;
         mPosition = new_pos;
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryPositionUpdated(this, old_pos, new_pos);
+            (*it)->queryPositionChanged(this, old_pos, new_pos);
     }
 
+    void bounds(const BoundingSphere& new_bounds) {
+        BoundingSphere old_bounds = mBounds;
+        mBounds = new_bounds;
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryBoundsChanged(this, old_bounds, new_bounds);
+    }
+
+    void angle(const SolidAngle& new_angle) {
+        SolidAngle old_angle = mMinSolidAngle;
+        mMinSolidAngle = new_angle;
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryAngleChanged(this, old_angle, new_angle);
+    }
 
     void addChangeListener(QueryChangeListenerType* listener) {
         mChangeListeners.push_back(listener);
@@ -151,8 +168,9 @@ protected:
 
     Query();
 
-    Query(const MotionVector3& pos, const SolidAngle& minAngle)
+    Query(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle)
      : mPosition(pos),
+       mBounds(bounds),
        mMinSolidAngle(minAngle),
        mMaxRadius(InfiniteRadius),
        mChangeListeners(),
@@ -161,8 +179,9 @@ protected:
     {
     }
 
-    Query(const MotionVector3& pos, const SolidAngle& minAngle, float radius)
+    Query(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle, float radius)
      : mPosition(pos),
+       mBounds(bounds),
        mMinSolidAngle(minAngle),
        mMaxRadius(radius),
        mNotified(false)
@@ -171,6 +190,7 @@ protected:
 
 
     MotionVector3 mPosition;
+    BoundingSphere mBounds;
     SolidAngle mMinSolidAngle;
     real mMaxRadius;
 

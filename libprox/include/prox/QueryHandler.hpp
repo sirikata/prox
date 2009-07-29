@@ -61,13 +61,13 @@ public:
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
 
-    QueryType* registerQuery(const MotionVector3& pos, const SolidAngle& minAngle) {
-        QueryType* q = new QueryType(pos, minAngle);
+    QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle) {
+        QueryType* q = new QueryType(pos, bounds, minAngle);
         registerQuery(q);
         return q;
     }
-    QueryType* registerQuery(const MotionVector3& pos, const SolidAngle& minAngle, float radius) {
-        QueryType* q = new QueryType(pos, minAngle, radius);
+    QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle, float radius) {
+        QueryType* q = new QueryType(pos, bounds, minAngle, radius);
         registerQuery(q);
         return q;
     }
@@ -84,7 +84,9 @@ public:
     virtual void locationDisconnected(const ObjectID& obj_id) = 0;
 
     // QueryChangeListener
-    virtual void queryPositionUpdated(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
+    virtual void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
+    virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
 
 protected:

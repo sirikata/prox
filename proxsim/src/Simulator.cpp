@@ -40,6 +40,12 @@ static float randFloat() {
     return float(rand()) / RAND_MAX;
 }
 
+static uint32 randUInt32(uint32 minval, uint32 maxval) {
+    uint32 r = (uint32)( randFloat() * (maxval-minval+1) + minval);
+    if (r > maxval) r = maxval;
+    return r;
+}
+
 Simulator::Simulator(QueryHandler* handler)
  : mObjectIDSource(0),
    mHandler(handler),
@@ -94,12 +100,13 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
     }
 
     for(int i = 0; i < nqueries; i++) {
+        // Pick a random object to use as a basis for this query
+        uint32 obj_idx = randUInt32(0, nobjects-1);
+        Object* obj = mObjects[obj_idx];
+
         Query* query = mHandler->registerQuery(
-            MotionVector3(
-                t,
-                region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
-                Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.0f/*randFloat() * 2.f - 1.f*/)
-            ),
+            obj->position(),
+            obj->bounds(),
             SolidAngle( SolidAngle::Max / 1000 )
         );
         addQuery(query);
