@@ -273,21 +273,29 @@ public:
     }
 
     // Check if this data satisfies the query constraints given
-    bool satisfiesConstraints(const Vector3& qpos, const float qradius, const SolidAngle& qangle) {
+    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qbounds, const float qradius, const SolidAngle& qangle) {
         Vector3 obj_pos = bounding_sphere.center();
-        Vector3 to_obj = obj_pos - qpos;
+        float obj_radius = bounding_sphere.radius();
 
         // Must satisfy radius constraint
-        if (qradius != QueryType::InfiniteRadius && (to_obj).lengthSquared() < (qradius+bounding_sphere.radius())*(qradius+bounding_sphere.radius()))
+        if (qradius != QueryType::InfiniteRadius && (obj_pos-qpos).lengthSquared() > qradius*qradius)
             return false;
 
         // Must satisfy solid angle constraint
-        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, bounding_sphere.radius());
+        // If it falls inside the query bounds, then it definitely satisfies the solid angle constraint
+        // FIXME we do this check manually for now, but BoundingSphere should provide it
+        if (qbounds.radius() + obj_radius >= (qpos-obj_pos).length()) {
+            return true;
+        }
+        // Otherwise we need to check the closest possible query position to the object
+        Vector3 to_obj = obj_pos - qpos;
+        to_obj = to_obj - to_obj.normal() * qbounds.radius();
+        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_radius);
 
-        if (solid_angle < qangle)
-            return false;
+        if (solid_angle >= qangle)
+            return true;
 
-        return true;
+        return false;
     }
 
     // Given an object and a time, select the best child node to put the object in
@@ -422,6 +430,7 @@ public:
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::Vector3Type Vector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
@@ -453,35 +462,37 @@ public:
     }
 
     // Check if this data satisfies the query constraints given
-    bool satisfiesConstraints(const Vector3& qpos, const float qradius, const SolidAngle& qangle) {
+    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qbounds, const float qradius, const SolidAngle& qangle) {
         // We create a virtual stand in object which is the worst case object that could be in this subtree.
         // It's centered at the closest point on the hierarchical bounding sphere to the query, and has the
         // largest radius of any objects in the subtree.
 
+        Vector3 obj_pos = ThisBase::bounding_sphere.center();
+        float obj_radius = ThisBase::bounding_sphere.radius();
+
         // First, a special case is if the query is actually inside the hierarchical bounding sphere, in which
         // case the above description isn't accurate: in this case the worst position for the stand in object
         // is the exact location of the query.  So just let it pass.
-        if (ThisBase::bounding_sphere.contains(qpos))
+        // FIXME we do this check manually for now, but BoundingSphere should provide it
+        if (qbounds.radius() + obj_radius >= (qpos-obj_pos).length())
             return true;
 
-        Vector3 to_query = qpos - ThisBase::bounding_sphere.center();
-        Vector3 on_bounding_sphere = ThisBase::bounding_sphere.center() + (to_query.normal() * ThisBase::bounding_sphere.radius());
-        float test_radius = mMaxRadius;
-
-        Vector3 to_standin_center = on_bounding_sphere - qpos;
         float standin_radius = mMaxRadius;
 
+        Vector3 to_obj = obj_pos - qpos;
+        to_obj = to_obj - to_obj.normal() * (obj_radius + qbounds.radius());
+
         // Must satisfy radius constraint
-        if (qradius != QueryType::InfiniteRadius && (to_standin_center).lengthSquared() < (qradius+standin_radius)*(qradius+standin_radius))
+        if (qradius != QueryType::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
             return false;
 
         // Must satisfy solid angle constraint
-        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_standin_center, standin_radius);
+        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, standin_radius);
 
-        if (solid_angle < qangle)
-            return false;
+        if (solid_angle >= qangle)
+            return true;
 
-        return true;
+        return false;
     }
 
     void verifyChild(const NodeData& child) const {

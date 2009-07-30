@@ -109,6 +109,7 @@ public:
             QueryCacheType newcache;
 
             Vector3 qpos = query->position(t);
+            BoundingSphere qbounds = query->bounds();
             float qradius = query->radius();
             const SolidAngle& qangle = query->angle();
 
@@ -121,14 +122,14 @@ public:
                 if (node->leaf()) {
                     for(int i = 0; i < node->size(); i++) {
                         count++;
-                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qradius, qangle))
+                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qbounds, qradius, qangle))
                             newcache.add(node->object(i));
                     }
                 }
                 else {
                     for(int i = 0; i < node->size(); i++) {
                         count++;
-                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qradius, qangle))
+                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qbounds, qradius, qangle))
                             node_stack.push(node->node(i));
                         else
                             ncount++;

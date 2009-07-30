@@ -93,6 +93,9 @@ public:
             QueryState* state = query_it->second;
             QueryCacheType newcache;
 
+            Vector3 query_center = query->position(t);
+            BoundingSphere query_bounds = query->bounds();
+
             for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
                 ObjectID obj = *obj_it;
                 MotionVector3 obj_loc = mLocCache->location(obj);
@@ -104,14 +107,20 @@ public:
                     continue;
 
                 // Must satisfy solid angle constraint
-                Vector3 obj_world_center = obj_pos + obj_bounds.center();
-                Vector3 to_obj = obj_world_center - query->position(t);
+                BoundingSphere obj_world_bounds = BoundingSphere(obj_pos + obj_bounds.center(), obj_bounds.radius());
+                // If it falls inside the query bounds, then it definitely satisfies the solid angle constraint
+                // FIXME we do this check manually for now, but BoundingSphere should provide it
+                if (query_bounds.radius() + obj_world_bounds.radius() >= (query_bounds.center()-obj_world_bounds.center()).length()) {
+                    newcache.add(obj);
+                    continue;
+                }
+                // Otherwise we need to check the closest possible query position to the object
+                Vector3 to_obj = obj_world_bounds.center() - query->position(t);
+                to_obj = to_obj - to_obj.normal() * query_bounds.radius();
                 SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_bounds.radius());
 
-                if (solid_angle < query->angle())
-                    continue;
-
-                newcache.add(obj);
+                if (solid_angle >= query->angle())
+                    newcache.add(obj);
             }
 
             std::deque<QueryEventType> events;
