@@ -277,19 +277,23 @@ public:
         Vector3 obj_pos = bounding_sphere.center();
         float obj_radius = bounding_sphere.radius();
 
+        // Combine info to reduce amount we need to deal with
+        Vector3 query_pos = qpos + qbounds.center();
+        float query_rad = qbounds.radius();
+
         // Must satisfy radius constraint
-        if (qradius != QueryType::InfiniteRadius && (obj_pos-qpos).lengthSquared() > qradius*qradius)
+        if (qradius != QueryType::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
             return false;
 
         // Must satisfy solid angle constraint
         // If it falls inside the query bounds, then it definitely satisfies the solid angle constraint
         // FIXME we do this check manually for now, but BoundingSphere should provide it
-        if (qbounds.radius() + obj_radius >= (qpos-obj_pos).length()) {
+        if (query_rad + obj_radius >= (query_pos-obj_pos).length()) {
             return true;
         }
         // Otherwise we need to check the closest possible query position to the object
-        Vector3 to_obj = obj_pos - qpos;
-        to_obj = to_obj - to_obj.normal() * qbounds.radius();
+        Vector3 to_obj = obj_pos - query_pos;
+        to_obj = to_obj - to_obj.normal() * query_rad;
         SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_radius);
 
         if (solid_angle >= qangle)
@@ -470,17 +474,21 @@ public:
         Vector3 obj_pos = ThisBase::bounding_sphere.center();
         float obj_radius = ThisBase::bounding_sphere.radius();
 
+        // Combine info to reduce amount we need to deal with
+        Vector3 query_pos = qpos + qbounds.center();
+        float query_rad = qbounds.radius();
+
         // First, a special case is if the query is actually inside the hierarchical bounding sphere, in which
         // case the above description isn't accurate: in this case the worst position for the stand in object
         // is the exact location of the query.  So just let it pass.
         // FIXME we do this check manually for now, but BoundingSphere should provide it
-        if (qbounds.radius() + obj_radius >= (qpos-obj_pos).length())
+        if (query_rad + obj_radius >= (query_pos-obj_pos).length())
             return true;
 
         float standin_radius = mMaxRadius;
 
-        Vector3 to_obj = obj_pos - qpos;
-        to_obj = to_obj - to_obj.normal() * (obj_radius + qbounds.radius());
+        Vector3 to_obj = obj_pos - query_pos;
+        to_obj = to_obj - to_obj.normal() * (obj_radius + query_rad);
 
         // Must satisfy radius constraint
         if (qradius != QueryType::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
