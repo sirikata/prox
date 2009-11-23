@@ -30,6 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdint.h>
 #include "GLRenderer.hpp"
 #include "Simulator.hpp"
 #ifdef __APPLE__

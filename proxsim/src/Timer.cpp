@@ -31,6 +31,7 @@
  */
 
 #include "Timer.hpp"
+#include <stdint.h>
 
 using namespace Prox;
 

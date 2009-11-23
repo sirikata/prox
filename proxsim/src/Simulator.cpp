@@ -31,6 +31,7 @@
  */
 
 #include "Simulator.hpp"
+#include <stdint.h>
 #include <algorithm>
 
 namespace Prox {

@@ -37,6 +37,7 @@
 #include "ObjectLocationServiceCache.hpp"
 
 #include <iostream>
+#include <stdint.h>
 
 int main(int argc, char** argv) {
     using namespace Prox::Simulation;
