@@ -108,7 +108,7 @@ public:
 
                 // Must satisfy radius constraint
                 // NOTE: query->radius() is different than query_rad !
-                if (query->radius() != QueryType::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > query->radius()*query->radius())
+                if (query->radius() != SimulationTraits::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > query->radius()*query->radius())
                     continue;
 
                 // Must satisfy solid angle constraint

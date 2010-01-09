@@ -1,7 +1,7 @@
 /*  libprox
- *  DefaultSimulationTraits.hpp
+ *  DefaultSimulationTraits.cpp
  *
- *  Copyright (c) 2009, Ewen Cheslack-Postava
+ *  Copyright (c) 2010, Ewen Cheslack-Postava
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,45 +30,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
-#define _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
-
-#include <prox/Vector3.hpp>
-#include <prox/MotionVector.hpp>
-
-#include <prox/BoundingSphere.hpp>
-
-#include <prox/SolidAngle.hpp>
-
-#include <prox/ObjectID.hpp>
-
-#include <prox/Time.hpp>
-#include <prox/Duration.hpp>
-
-// LocationServiceCache?
+#include <prox/DefaultSimulationTraits.hpp>
+#include <float.h>
 
 namespace Prox {
 
-class DefaultSimulationTraits {
-public:
-    typedef float realType;
-
-    typedef Reference::Vector3f Vector3Type;
-    typedef Reference::MotionVector3f MotionVector3Type;
-
-    typedef Reference::BoundingSphere3f BoundingSphereType;
-
-    typedef Reference::SolidAngle SolidAngleType;
-
-    typedef Reference::ObjectID ObjectIDType;
-
-    typedef Reference::Time TimeType;
-    typedef Reference::Duration DurationType;
-
-    const static realType InfiniteRadius;
-
-}; // class DefaultSimulationTraits
+const DefaultSimulationTraits::realType DefaultSimulationTraits::InfiniteRadius = FLT_MAX;
 
 } // namespace Prox
-
-#endif //_PROX_DEFAULT_SIMULATION_TRAITS_HPP_

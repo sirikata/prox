@@ -282,7 +282,7 @@ public:
         float query_rad = qbounds.radius();
 
         // Must satisfy radius constraint
-        if (qradius != QueryType::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
+        if (qradius != SimulationTraits::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
             return false;
 
         // Must satisfy solid angle constraint
@@ -491,7 +491,7 @@ public:
         to_obj = to_obj - to_obj.normal() * (obj_radius + query_rad);
 
         // Must satisfy radius constraint
-        if (qradius != QueryType::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
+        if (qradius != SimulationTraits::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
             return false;
 
         // Must satisfy solid angle constraint

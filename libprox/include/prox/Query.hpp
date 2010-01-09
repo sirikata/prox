@@ -39,7 +39,6 @@
 #include <prox/QueryEventListener.hpp>
 #include <prox/QueryChangeListener.hpp>
 #include <boost/thread.hpp>
-#include <float.h>
 
 namespace Prox {
 
@@ -59,8 +58,6 @@ public:
     typedef QueryEvent<SimulationTraits> QueryEventType;
     typedef QueryEventListener<SimulationTraits> QueryEventListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
-
-    const static real InfiniteRadius = FLT_MAX;
 
     ~Query() {
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
@@ -172,7 +169,7 @@ protected:
      : mPosition(pos),
        mBounds(bounds),
        mMinSolidAngle(minAngle),
-       mMaxRadius(InfiniteRadius),
+       mMaxRadius(SimulationTraits::InfiniteRadius),
        mChangeListeners(),
        mEventListener(NULL),
        mNotified(false)
