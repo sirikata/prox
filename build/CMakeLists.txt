@@ -60,7 +60,7 @@ MARK_AS_ADVANCED(
 
 #project global flags
 
-PROJECT(libprox CXX)
+PROJECT(libprox C CXX)
 
 IF(NOT TOP_LEVEL)
   SET(TOP_LEVEL ${CMAKE_CURRENT_SOURCE_DIR}/..)
