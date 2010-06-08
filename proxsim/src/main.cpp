@@ -31,17 +31,17 @@
  */
 
 #include "Simulator.hpp"
-#include "GLRenderer.hpp"
-#include <prox/BruteForceQueryHandler.hpp>
-#include <prox/RTreeQueryHandler.hpp>
-#include "ObjectLocationServiceCache.hpp"
+//#include "GLRenderer.hpp"
+//#include <prox/BruteForceQueryHandler.hpp>
+//#include <prox/RTreeQueryHandler.hpp>
+//#include "ObjectLocationServiceCache.hpp"
 
 #include <iostream>
 #include <stdint.h>
 
 int main(int argc, char** argv) {
     using namespace Prox::Simulation;
-
+/*
     QueryHandler* handler = new Prox::BruteForceQueryHandler<>();
     //QueryHandler* handler = new Prox::RTreeQueryHandler<>(32);
     Simulator* simulator = new Simulator(handler);
@@ -53,6 +53,6 @@ int main(int argc, char** argv) {
 
     delete renderer;
     delete simulator;
-
+*/
     return 0;
 }
