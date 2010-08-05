@@ -82,6 +82,11 @@ public:
         return memcmp(mID,rhs.mID,UUID_SIZE)==0;
     }
 
+    struct Hasher {
+        size_t operator() (const ObjectID& objid) const {
+            return *((const size_t*)objid.begin());
+        }
+    };
 private:
     ObjectID();
 

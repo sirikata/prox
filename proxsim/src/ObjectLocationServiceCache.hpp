@@ -75,8 +75,8 @@ public:
 private:
     Object* lookup(const ObjectID& id) const;
 
-    typedef std::map<ObjectID, Object*> ObjectMap;
-    typedef std::set<LocationUpdateListenerType*> ListenerSet;
+    typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectMap;
+    typedef std::tr1::unordered_set<LocationUpdateListenerType*> ListenerSet;
 
     ObjectMap mObjects;
     ListenerSet mListeners;
