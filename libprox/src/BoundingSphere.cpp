@@ -1,7 +1,7 @@
-/*  proxsim
- *  main.cpp
+/*  libprox
+ *  BoundingSphere.cpp
  *
- *  Copyright (c) 2009, Ewen Cheslack-Postava
+ *  Copyright (c) 2010, Ewen Cheslack-Postava
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,46 +30,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Simulator.hpp"
-#include "GLRenderer.hpp"
-#include <prox/BruteForceQueryHandler.hpp>
-#include <prox/RTreeQueryHandler.hpp>
-#include "ObjectLocationServiceCache.hpp"
+#include <prox/BoundingSphere.hpp>
+#include <cassert>
+#include <cmath>
 
-#include <iostream>
-#include <string>
-#include <stdint.h>
+namespace Prox {
+namespace Reference {
 
+const double BoundingSphereBase::Pi = 3.1415926536f;
 
-int main(int argc, char** argv) {
-    using namespace Prox::Simulation;
-
-    // Parse arguments
-    std::string HANDLER_ARG("--handler=");
-    std::string handler_type = "brute";
-    for(int argi = 0; argi < argc; argi++) {
-        std::string arg(argv[argi]);
-        if (arg.find(HANDLER_ARG) != std::string::npos)
-            handler_type = arg.substr(HANDLER_ARG.size());
-    }
-
-    // Setup query handler
-    QueryHandler* handler = NULL;
-    if (handler_type == "rtree")
-        handler = new Prox::RTreeQueryHandler<>(10);
-    else
-        handler = new Prox::BruteForceQueryHandler<>();
-
-    // Simulation, renderer, and run
-    Simulator* simulator = new Simulator(handler);
-    Renderer* renderer = new GLRenderer(simulator);
-
-    simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 1000, 5);
-
-    renderer->run();
-
-    delete renderer;
-    delete simulator;
-
-    return 0;
-}
+} // namespace Reference
+} // namespace Prox

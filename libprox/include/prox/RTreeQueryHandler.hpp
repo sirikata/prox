@@ -67,7 +67,7 @@ public:
     RTreeQueryHandler(uint8 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
-       mLastTime(0)
+       mLastTime(Time::null())
     {
         mRTreeRoot = new RTree(elements_per_node);
     }

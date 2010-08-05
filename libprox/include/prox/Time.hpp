@@ -42,7 +42,6 @@ class Duration;
 
 class Time {
 public:
-    Time(uint64 since_epoch);
     Time(const Time& cpy);
     ~Time();
 
@@ -57,10 +56,15 @@ public:
     bool operator<(const Time& rhs) const;
     bool operator>(const Time& rhs) const;
     bool operator==(const Time& rhs) const;
+
+    static Time null() { return Time(0); }
+    static Time microseconds(int64 micro) { return Time((uint64)micro); }
+    static Time microseconds(uint64 micro) { return Time((uint64)micro); }
 private:
     friend class Duration;
 
     Time();
+    Time(uint64 since_epoch);
 
     uint64 mSinceEpoch; // microseconds since epoch
 }; // class Time

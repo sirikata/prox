@@ -66,7 +66,7 @@ void glut_timer(int val) {
 
 GLRenderer::GLRenderer(Simulator* sim)
  : Renderer(sim),
-   mTime(0),
+   mTime(Time::null()),
    mWinWidth(0), mWinHeight(0)
 {
     mSimulator->addListener(this);

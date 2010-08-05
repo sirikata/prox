@@ -39,11 +39,15 @@
 namespace Prox {
 namespace Reference {
 
+class BoundingSphereBase {
+public:
+    static const double Pi;
+};
+
 template<typename CoordType>
-class BoundingSphere {
+class BoundingSphere : public BoundingSphereBase {
 public:
     typedef typename CoordType::real real;
-    static const real Pi = 3.1415926536;
 
     BoundingSphere()
      : mCenter((real)0),
