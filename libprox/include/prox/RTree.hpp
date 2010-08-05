@@ -828,11 +828,11 @@ public:
         mRoot = RTree_insert_object(mRoot, mLocCache, objid, t, mCallbacks);
     }
 
-    void update(const ObjectID& objid, const Time& last_t, const Time& t) {
+    void update(const ObjectID& objid, const Time& t) {
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
         // FIXME
-        mRoot = RTree_delete_object(mRoot, mLocCache, objid, last_t, mCallbacks);
+        mRoot = RTree_delete_object(mRoot, mLocCache, objid, t, mCallbacks);
         mRoot = RTree_insert_object(mRoot, mLocCache, objid, t, mCallbacks);
     }
 

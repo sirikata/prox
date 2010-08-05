@@ -97,7 +97,7 @@ public:
     void tick(const Time& t) {
         // FIXME shouldn't need to iterate through everyone
         for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++)
-            updateObj(*obj_it, mLastTime, t);
+            updateObj(*obj_it, t);
 
         mRTree->verifyConstraints(t);
         int count = 0;
@@ -161,11 +161,11 @@ public:
 
     // LocationUpdateListener Implementation
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
-        updateObj(obj_id, mLastTime, mLastTime); // FIXME new time?
+        updateObj(obj_id, mLastTime); // FIXME new time?
     }
 
     void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
-        updateObj(obj_id, mLastTime, mLastTime); // FIXME new time?
+        updateObj(obj_id, mLastTime); // FIXME new time?
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
@@ -208,8 +208,8 @@ private:
         mRTree->insert(obj_id, t);
     }
 
-    void updateObj(const ObjectID& obj_id, const Time& last_t, const Time& t) {
-        mRTree->update(obj_id, last_t, t);
+    void updateObj(const ObjectID& obj_id, const Time& t) {
+        mRTree->update(obj_id, t);
     }
 
     void deleteObj(const ObjectID& obj_id, const Time& t) {
