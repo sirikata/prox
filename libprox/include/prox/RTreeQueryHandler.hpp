@@ -95,13 +95,9 @@ public:
     }
 
     void tick(const Time& t) {
-        // FIXME fails with delete + insert in one go. Might be due to
-        // adjustments made during insertion causing deletion to not find the object?
         // FIXME shouldn't need to iterate through everyone
         for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++)
-            deleteObj(*obj_it, mLastTime);
-        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++)
-            insertObj(*obj_it, t);
+            updateObj(*obj_it, mLastTime, t);
 
         mRTree->verifyConstraints(t);
         int count = 0;
@@ -157,6 +153,7 @@ public:
     }
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
+        assert(mObjects.find(obj_id) == mObjects.end());
         insertObj(obj_id, mLastTime);
         mObjects.insert(obj_id);
         mLocCache->startTracking(obj_id);

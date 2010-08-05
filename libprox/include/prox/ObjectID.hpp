@@ -87,6 +87,13 @@ public:
             return *((const size_t*)objid.begin());
         }
     };
+
+    std::string toString() const {
+        std::stringstream ss;
+        ss << Hasher()(*this);
+        return ss.str();
+    }
+
 private:
     ObjectID();
 
