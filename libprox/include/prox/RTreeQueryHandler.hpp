@@ -67,9 +67,10 @@ public:
     RTreeQueryHandler(uint8 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
-       mLastTime(Time::null())
+       mRTree(NULL),
+       mLastTime(Time::null()),
+       mElementsPerNode(elements_per_node)
     {
-        mRTreeRoot = new RTree(elements_per_node);
     }
 
     virtual ~RTreeQueryHandler() {
@@ -89,18 +90,20 @@ public:
     void initialize(LocationServiceCacheType* loc_cache) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
+
+        mRTree = new RTree(mElementsPerNode, mLocCache);
     }
 
     void tick(const Time& t) {
-        // FIXME we should have a better way of updating instead of delete + insert
-        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
+        // FIXME fails with delete + insert in one go. Might be due to
+        // adjustments made during insertion causing deletion to not find the object?
+        // FIXME shouldn't need to iterate through everyone
+        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++)
             deleteObj(*obj_it, mLastTime);
-        }
-        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
-            insert(*obj_it, t);
-        }
+        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++)
+            insertObj(*obj_it, t);
 
-        RTree_verify_constraints(mRTreeRoot, mLocCache, t);
+        mRTree->verifyConstraints(t);
         int count = 0;
         int ncount = 0;
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
@@ -113,10 +116,10 @@ public:
             float qradius = query->radius();
             const SolidAngle& qangle = query->angle();
 
-            std::stack<RTree*> node_stack;
-            node_stack.push(mRTreeRoot);
+            std::stack<RTreeNodeType*> node_stack;
+            node_stack.push(mRTree->root());
             while(!node_stack.empty()) {
-                RTree* node = node_stack.top();
+                RTreeNodeType* node = node_stack.top();
                 node_stack.pop();
 
                 if (node->leaf()) {
@@ -154,22 +157,18 @@ public:
     }
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
-        insert(obj_id, mLastTime);
+        insertObj(obj_id, mLastTime);
         mObjects.insert(obj_id);
         mLocCache->startTracking(obj_id);
     }
 
     // LocationUpdateListener Implementation
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
-        // FIXME should use more efficient update approach
-        deleteObj(obj_id, mLastTime);
-        insert(obj_id, mLastTime);
+        updateObj(obj_id, mLastTime, mLastTime); // FIXME new time?
     }
 
     void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
-        // FIXME should use more efficient update approach
-        deleteObj(obj_id, mLastTime);
-        insert(obj_id, mLastTime);
+        updateObj(obj_id, mLastTime, mLastTime); // FIXME new time?
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
@@ -208,12 +207,16 @@ protected:
     }
 
 private:
-    void insert(const ObjectID& obj_id, const Time& t) {
-        mRTreeRoot = RTree_insert_object(mRTreeRoot, mLocCache, obj_id, t);
+    void insertObj(const ObjectID& obj_id, const Time& t) {
+        mRTree->insert(obj_id, t);
+    }
+
+    void updateObj(const ObjectID& obj_id, const Time& last_t, const Time& t) {
+        mRTree->update(obj_id, last_t, t);
     }
 
     void deleteObj(const ObjectID& obj_id, const Time& t) {
-        mRTreeRoot = RTree_delete_object(mRTreeRoot, mLocCache, obj_id, t);
+        mRTree->erase(obj_id, t);
     }
 
     struct QueryState {
@@ -225,15 +228,17 @@ private:
     typedef std::map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 
-    //typedef RTreeNode<SimulationTraits, BoundingSphereData<SimulationTraits> > RTree;
-    typedef RTreeNode<SimulationTraits, MaxSphereData<SimulationTraits> > RTree;
+    //typedef RTree<SimulationTraits, BoundingSphereData<SimulationTraits> > RTree;
+    typedef RTree<SimulationTraits, MaxSphereData<SimulationTraits> > RTree;
+    typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     LocationServiceCacheType* mLocCache;
 
-    RTree* mRTreeRoot;
+    RTree* mRTree;
     ObjectSet mObjects;
     QueryMap mQueries;
     Time mLastTime;
+    uint8 mElementsPerNode;
 }; // class RTreeQueryHandler
 
 } // namespace Prox

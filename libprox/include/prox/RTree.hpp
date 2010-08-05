@@ -743,4 +743,60 @@ RTreeNode<SimulationTraits, NodeData>* RTree_delete_object(RTreeNode<SimulationT
     return new_root;
 }
 
+
+
+
+
+/**************************************************************************
+ * RTree - Wrapper for an RTreeNode root node to provide a nicer interface
+ **************************************************************************/
+template<typename SimulationTraits, typename NodeData>
+class RTree {
+public:
+    typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
+
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
+
+    RTree(uint8 elements_per_node, LocationServiceCacheType* loccache)
+     : mLocCache(loccache),
+       mRoot(new RTreeNodeType(elements_per_node))
+    {
+    }
+
+    ~RTree() {
+    }
+
+
+    RTreeNodeType* root() {
+        return mRoot;
+    }
+    const RTreeNodeType* root() const {
+        return mRoot;
+    }
+
+    void insert(const ObjectID& objid, const Time& t) {
+        mRoot = RTree_insert_object(mRoot, mLocCache, objid, t);
+    }
+
+    void update(const ObjectID& objid, const Time& last_t, const Time& t) {
+        // FIXME
+        mRoot = RTree_delete_object(mRoot, mLocCache, objid, last_t);
+        mRoot = RTree_insert_object(mRoot, mLocCache, objid, t);
+    }
+
+    void erase(const ObjectID& objid, const Time& t) {
+        mRoot = RTree_delete_object(mRoot, mLocCache, objid, t);
+    }
+
+    /** If in debug mode, verify the constraints on the data structure. */
+    void verifyConstraints(const Time& t) {
+        RTree_verify_constraints(mRoot, mLocCache, t);
+    }
+private:
+    LocationServiceCacheType* mLocCache;
+    RTreeNodeType* mRoot;
+}; // class RTree
+
 } // namespace Prox
