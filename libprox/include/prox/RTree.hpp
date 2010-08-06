@@ -756,6 +756,22 @@ RTreeNode<SimulationTraits, NodeData>* RTree_condense_tree(
     return root;
 }
 
+/* Update nodes up the tree to fix node information due to a change. */
+template<typename SimulationTraits, typename NodeData>
+void RTree_update_up_tree(
+    RTreeNode<SimulationTraits, NodeData>* node,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+{
+    RTreeNode<SimulationTraits, NodeData>* nn = node;
+
+    while(nn != NULL) {
+        nn->recomputeData(loc, t);
+        nn = nn->parent();
+    }
+}
+
 /* Updates the object in the given tree. Returns the new root. */
 template<typename SimulationTraits, typename NodeData>
 RTreeNode<SimulationTraits, NodeData>* RTree_update_object(
@@ -769,7 +785,7 @@ RTreeNode<SimulationTraits, NodeData>* RTree_update_object(
     if (leaf_with_obj == NULL)
         return root;
 
-    leaf_with_obj->recomputeData(loc, t);
+    RTree_update_up_tree(leaf_with_obj, loc, t, cb);
 
     return root;
 }
