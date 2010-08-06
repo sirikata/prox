@@ -756,6 +756,24 @@ RTreeNode<SimulationTraits, NodeData>* RTree_condense_tree(
     return root;
 }
 
+/* Updates the object in the given tree. Returns the new root. */
+template<typename SimulationTraits, typename NodeData>
+RTreeNode<SimulationTraits, NodeData>* RTree_update_object(
+    RTreeNode<SimulationTraits, NodeData>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::ObjectIDType& obj_id,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+{
+    RTreeNode<SimulationTraits, NodeData>* leaf_with_obj = cb.getObjectLeaf(obj_id);
+    if (leaf_with_obj == NULL)
+        return root;
+
+    leaf_with_obj->recomputeData(loc, t);
+
+    return root;
+}
+
 /* Deletes the object from the given tree.  Returns the new root. */
 template<typename SimulationTraits, typename NodeData>
 RTreeNode<SimulationTraits, NodeData>* RTree_delete_object(
@@ -831,9 +849,7 @@ public:
     void update(const ObjectID& objid, const Time& t) {
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
-        // FIXME
-        mRoot = RTree_delete_object(mRoot, mLocCache, objid, t, mCallbacks);
-        mRoot = RTree_insert_object(mRoot, mLocCache, objid, t, mCallbacks);
+        mRoot = RTree_update_object(mRoot, mLocCache, objid, t, mCallbacks);
     }
 
     void erase(const ObjectID& objid, const Time& t) {
