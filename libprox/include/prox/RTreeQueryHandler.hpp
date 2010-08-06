@@ -95,9 +95,7 @@ public:
     }
 
     void tick(const Time& t) {
-        // FIXME shouldn't need to iterate through everyone
-        for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++)
-            updateObj(*obj_it, t);
+        mRTree->update(t);
 
         mRTree->verifyConstraints(t);
         int count = 0;

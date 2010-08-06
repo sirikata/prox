@@ -774,6 +774,26 @@ RTreeNode<SimulationTraits, NodeData>* RTree_update_object(
     return root;
 }
 
+/* Updates objects in the tree with new positions. */
+template<typename SimulationTraits, typename NodeData>
+RTreeNode<SimulationTraits, NodeData>* RTree_update_tree(
+    RTreeNode<SimulationTraits, NodeData>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+{
+    if (!root->leaf()) {
+        for(int i = 0; i < root->size(); i++) {
+            // FIXME set update node
+            RTree_update_tree(root->node(i), loc, t, cb);
+        }
+    }
+
+    root->recomputeData(loc, t);
+
+    return root;
+}
+
 /* Deletes the object from the given tree.  Returns the new root. */
 template<typename SimulationTraits, typename NodeData>
 RTreeNode<SimulationTraits, NodeData>* RTree_delete_object(
@@ -850,6 +870,10 @@ public:
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
         mRoot = RTree_update_object(mRoot, mLocCache, objid, t, mCallbacks);
+    }
+
+    void update(const Time& t) {
+        mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
     }
 
     void erase(const ObjectID& objid, const Time& t) {
