@@ -60,6 +60,7 @@ public:
 
     virtual const MotionVector3& location(const ObjectID& id) const = 0;
     virtual const BoundingSphere& bounds(const ObjectID& id) const = 0;
+    virtual float32 radius(const ObjectID& id) const = 0;
     virtual BoundingSphere worldBounds(const ObjectID& id, const Time& t) const {
         return BoundingSphere( bounds(id).center() + location(id).position(t), bounds(id).radius() );
     }

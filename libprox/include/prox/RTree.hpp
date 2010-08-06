@@ -457,7 +457,7 @@ public:
 
     MaxSphereData(const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>( loc, obj_id, t ),
-       mMaxRadius( loc->worldBounds(obj_id, t).radius() )
+       mMaxRadius( loc->radius(obj_id) )
     {
     }
 

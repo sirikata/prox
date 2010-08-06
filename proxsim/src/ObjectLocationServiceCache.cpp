@@ -79,6 +79,11 @@ const BoundingSphere& ObjectLocationServiceCache::bounds(const ObjectID& id) con
     return obj->bounds();
 }
 
+float32 ObjectLocationServiceCache::radius(const ObjectID& id) const {
+    Object* obj = lookup(id);
+    assert(obj != NULL);
+    return obj->bounds().radius();
+}
 
 void ObjectLocationServiceCache::addUpdateListener(LocationUpdateListenerType* listener) {
     assert( mListeners.find(listener) == mListeners.end() );

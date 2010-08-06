@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
     Simulator* simulator = new Simulator(handler);
     Renderer* renderer = new GLRenderer(simulator);
 
-    simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 1000, 5);
+    simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 10000, 50);
 
     renderer->run();
 

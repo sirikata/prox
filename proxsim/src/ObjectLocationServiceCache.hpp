@@ -55,6 +55,7 @@ public:
 
     virtual const MotionVector3& location(const ObjectID& id) const;
     virtual const BoundingSphere& bounds(const ObjectID& id) const;
+    virtual float32 radius(const ObjectID& id) const;
 
     virtual void addUpdateListener(LocationUpdateListenerType* listener);
     virtual void removeUpdateListener(LocationUpdateListenerType* listener);
