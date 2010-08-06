@@ -218,9 +218,9 @@ private:
         QueryCacheType cache;
     };
 
-    typedef std::set<ObjectID> ObjectSet;
+    typedef std::tr1::unordered_set<ObjectID, typename ObjectID::Hasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
-    typedef std::map<QueryType*, QueryState*> QueryMap;
+    typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 
     //typedef RTree<SimulationTraits, BoundingSphereData<SimulationTraits> > RTree;
