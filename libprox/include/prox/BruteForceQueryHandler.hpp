@@ -52,6 +52,7 @@ public:
     typedef Query<SimulationTraits> QueryType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef QueryCache<SimulationTraits> QueryCacheType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
@@ -70,7 +71,7 @@ public:
 
     ~BruteForceQueryHandler() {
         for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
-            mLocCache->stopTracking(*it);
+            mLocCache->stopTracking(it->second);
         }
         mObjects.clear();
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
@@ -98,9 +99,10 @@ public:
             float query_rad = query->bounds().radius();
 
             for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
-                ObjectID obj = *obj_it;
-                MotionVector3 obj_loc = mLocCache->location(obj);
-                BoundingSphere obj_bounds = mLocCache->bounds(obj);
+                ObjectID obj = obj_it->first;
+                LocCacheIterator& obj_loc_it = obj_it->second;
+                MotionVector3 obj_loc = mLocCache->location(obj_loc_it);
+                BoundingSphere obj_bounds = mLocCache->bounds(obj_loc_it);
 
                 // Convert the to a single world-space bounding sphere
                 Vector3 obj_pos = obj_loc.position(t) + obj_bounds.center();
@@ -142,8 +144,7 @@ public:
     }
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
-        mObjects.insert(obj_id);
-        mLocCache->startTracking(obj_id);
+        mObjects[obj_id] = mLocCache->startTracking(obj_id);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -156,8 +157,9 @@ public:
 
     void locationDisconnected(const ObjectID& obj_id) {
         assert( mObjects.find(obj_id) != mObjects.end() );
+        LocCacheIterator obj_loc_it = mObjects[obj_id];
         mObjects.erase(obj_id);
-        mLocCache->stopTracking(obj_id);
+        mLocCache->stopTracking(obj_loc_it);
     }
 
     void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -192,7 +194,7 @@ private:
         QueryCacheType cache;
     };
 
-    typedef std::tr1::unordered_set<ObjectID, typename ObjectID::Hasher> ObjectSet;
+    typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, typename ObjectID::Hasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;

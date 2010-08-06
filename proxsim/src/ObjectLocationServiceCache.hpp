@@ -50,12 +50,14 @@ public:
     void addObject(Object* obj);
     void removeObject(const Object* obj);
 
-    virtual void startTracking(const ObjectID& id);
-    virtual void stopTracking(const ObjectID& id);
+    virtual Iterator startTracking(const ObjectID& id);
+    virtual void stopTracking(const Iterator& id);
 
-    virtual const MotionVector3& location(const ObjectID& id) const;
-    virtual const BoundingSphere& bounds(const ObjectID& id) const;
-    virtual float32 radius(const ObjectID& id) const;
+    virtual const MotionVector3& location(const Iterator& id) const;
+    virtual const BoundingSphere& bounds(const Iterator& id) const;
+    virtual float32 radius(const Iterator& id) const;
+
+    virtual const ObjectID& iteratorID(const Iterator& id) const;
 
     virtual void addUpdateListener(LocationUpdateListenerType* listener);
     virtual void removeUpdateListener(LocationUpdateListenerType* listener);

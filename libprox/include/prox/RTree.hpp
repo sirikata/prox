@@ -46,8 +46,9 @@ public:
     typedef typename SimulationTraits::TimeType Time;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
-    typedef std::tr1::function<void(const ObjectID&, RTreeNode*)> ObjectLeafChangedCallback;
+    typedef std::tr1::function<void(const LocCacheIterator&, RTreeNode*)> ObjectLeafChangedCallback;
     typedef std::tr1::function<RTreeNode*(const ObjectID&)> GetObjectLeafCallback;
 
     struct Callbacks {
@@ -59,7 +60,7 @@ private:
 
     union {
         RTreeNode** nodes;
-        ObjectID* objects;
+        LocCacheIterator* objects;
         uint8* magic;
     } elements;
     RTreeNode* mParent;
@@ -84,15 +85,15 @@ public:
     };
 
     struct ObjectChildOperations {
-        const ObjectID& child(RTreeNode* parent, int idx) {
+        const LocCacheIterator& child(RTreeNode* parent, int idx) {
             return parent->object(idx);
         }
 
-        NodeData data(const LocationServiceCacheType* loc, const ObjectID& child, const Time& t) {
+        NodeData data(const LocationServiceCacheType* loc, const LocCacheIterator& child, const Time& t) {
             return NodeData(loc, child, t);
         }
 
-        void insert(RTreeNode* parent, const LocationServiceCacheType* loc, const ObjectID& newchild, const Time& t, const Callbacks& cb) {
+        void insert(RTreeNode* parent, const LocationServiceCacheType* loc, const LocCacheIterator& newchild, const Time& t, const Callbacks& cb) {
             parent->insert(loc, newchild, t, cb);
         }
     };
@@ -101,7 +102,7 @@ public:
     RTreeNode(uint8 _max_elements)
      : mParent(NULL), mData(), flags(0), count(0), max_elements(_max_elements)
     {
-        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(ObjectID) );
+        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LocCacheIterator) );
         uint32 magic_size = max_element_size * max_elements;
         elements.magic = new uint8[magic_size];
         memset(elements.magic, 0, magic_size);
@@ -140,7 +141,7 @@ public:
         mParent = _p;
     }
 
-    const ObjectID& object(int i) const {
+    const LocCacheIterator& object(int i) const {
         assert( leaf() );
         assert( i < count );
         return elements.objects[i];
@@ -177,7 +178,7 @@ public:
         mData = NodeData();
     }
 
-    void insert(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t, const Callbacks& cb) {
+    void insert(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t, const Callbacks& cb) {
         assert (count < max_elements);
         assert (leaf() == true);
         elements.objects[count] = obj;
@@ -196,7 +197,7 @@ public:
     }
 
     // NOTE: does not recalculate the bounding sphere
-    void erase(const ObjectID& obj) {
+    void erase(const LocCacheIterator& obj) {
         assert(count > 0);
         assert(leaf() == true);
         // find obj
@@ -223,17 +224,17 @@ public:
         count--;
     }
 
-    bool contains(const ObjectID& obj) const {
+    bool contains(const LocCacheIterator& obj) const {
         for(uint8 obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx] == obj) return true;
         return false;
     }
 
-    RTreeNode* selectBestChildNode(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t) {
+    RTreeNode* selectBestChildNode(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t) {
         return NodeData::selectBestChildNode(this, loc, obj, t);
     }
 
-    RTreeNode* findLeafWithObject(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t) {
+    RTreeNode* findLeafWithObject(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t) {
         return NodeData::findLeafWithObject(this, loc, obj, t);
     }
 };
@@ -254,6 +255,7 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef Query<SimulationTraits> QueryType;
 
     typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
@@ -263,7 +265,7 @@ public:
     {
     }
 
-    BoundingSphereDataBase(const LocationServiceCacheType* loc, const ObjectID& obj, const Time& t)
+    BoundingSphereDataBase(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t)
      : bounding_sphere( loc->worldBounds(obj, t) )
     {
     }
@@ -311,7 +313,7 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t) {
+    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -331,7 +333,7 @@ public:
     }
 
     // Given a root node and object and a time, find the leaf node which contains that object
-    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t) {
+    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
         BoundingSphere bs = loc->worldBounds(obj_id, t);
         return findLeafWithObject(node, loc, obj_id, bs);
     }
@@ -388,7 +390,7 @@ public:
     }
 
 private:
-    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const ObjectID& obj_id, const BoundingSphere& bs) {
+    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const BoundingSphere& bs) {
         // For leaf nodes, simply check against all child objects
         if (node->leaf())
             return (node->contains(obj_id) ? node : NULL);
@@ -418,13 +420,14 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
     BoundingSphereData()
      : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>()
     {
     }
 
-    BoundingSphereData(const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t)
+    BoundingSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>( loc, obj_id, t )
     {
     }
@@ -446,6 +449,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
     typedef Query<SimulationTraits> QueryType;
 
@@ -455,7 +459,7 @@ public:
     {
     }
 
-    MaxSphereData(const LocationServiceCacheType* loc, const ObjectID& obj_id, const Time& t)
+    MaxSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>( loc, obj_id, t ),
        mMaxRadius( loc->radius(obj_id) )
     {
@@ -526,7 +530,12 @@ private:
 };
 
 template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_choose_leaf(RTreeNode<SimulationTraits, NodeData>* root, const LocationServiceCache<SimulationTraits>* loc, const typename SimulationTraits::ObjectIDType& obj_id, const typename SimulationTraits::TimeType& t) {
+RTreeNode<SimulationTraits, NodeData>* RTree_choose_leaf(
+    RTreeNode<SimulationTraits, NodeData>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
+    const typename SimulationTraits::TimeType& t)
+{
     typename SimulationTraits::BoundingSphereType obj_bounds = loc->worldBounds(obj_id, t);
     RTreeNode<SimulationTraits, NodeData>* node = root;
 
@@ -668,7 +677,7 @@ template<typename SimulationTraits, typename NodeData>
 RTreeNode<SimulationTraits, NodeData>* RTree_insert_object(
     RTreeNode<SimulationTraits, NodeData>* root,
     const LocationServiceCache<SimulationTraits>* loc,
-    const typename SimulationTraits::ObjectIDType& obj_id,
+    const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
 {
@@ -676,7 +685,7 @@ RTreeNode<SimulationTraits, NodeData>* RTree_insert_object(
 
     RTreeNode<SimulationTraits, NodeData>* split_node = NULL;
     if (leaf_node->full())
-        split_node = RTree_split_node<SimulationTraits, NodeData, typename SimulationTraits::ObjectIDType, typename RTreeNode<SimulationTraits, NodeData>::ObjectChildOperations>(leaf_node, obj_id, loc, t, cb);
+        split_node = RTree_split_node<SimulationTraits, NodeData, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData>::ObjectChildOperations>(leaf_node, obj_id, loc, t, cb);
     else
         leaf_node->insert(loc, obj_id, t, cb);
 
@@ -815,11 +824,11 @@ template<typename SimulationTraits, typename NodeData>
 RTreeNode<SimulationTraits, NodeData>* RTree_delete_object(
     RTreeNode<SimulationTraits, NodeData>* root,
     const LocationServiceCache<SimulationTraits>* loc,
-    const typename SimulationTraits::ObjectIDType& obj_id,
+    const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData>* leaf_with_obj = cb.getObjectLeaf(obj_id);
+    RTreeNode<SimulationTraits, NodeData>* leaf_with_obj = cb.getObjectLeaf(loc->iteratorID(obj_id));
     if (leaf_with_obj == NULL) {
         return root;
     }
@@ -850,6 +859,7 @@ public:
     typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
 
@@ -875,14 +885,16 @@ public:
         return mRoot;
     }
 
-    void insert(const ObjectID& objid, const Time& t) {
+    void insert(const LocCacheIterator& obj, const Time& t) {
+        const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
 
-        mRoot = RTree_insert_object(mRoot, mLocCache, objid, t, mCallbacks);
+        mRoot = RTree_insert_object(mRoot, mLocCache, obj, t, mCallbacks);
     }
 
-    void update(const ObjectID& objid, const Time& t) {
+    void update(const LocCacheIterator& obj, const Time& t) {
+        const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
         mRoot = RTree_update_object(mRoot, mLocCache, objid, t, mCallbacks);
@@ -892,10 +904,11 @@ public:
         mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
     }
 
-    void erase(const ObjectID& objid, const Time& t) {
+    void erase(const LocCacheIterator& obj, const Time& t) {
+        const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
-        mRoot = RTree_delete_object(mRoot, mLocCache, objid, t, mCallbacks);
+        mRoot = RTree_delete_object(mRoot, mLocCache, obj, t, mCallbacks);
         mObjectLeaves.erase(objid);
     }
 
@@ -905,7 +918,8 @@ public:
     }
 
 private:
-    void onObjectLeafChanged(const ObjectID& objid, RTreeNodeType* node) {
+    void onObjectLeafChanged(const LocCacheIterator& obj, RTreeNodeType* node) {
+        const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
         assert(node != NULL);
         mObjectLeaves[objid] = node;

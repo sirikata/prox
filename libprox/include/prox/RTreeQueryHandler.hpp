@@ -54,6 +54,7 @@ public:
     typedef Query<SimulationTraits> QueryType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef QueryCache<SimulationTraits> QueryCacheType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
@@ -75,7 +76,7 @@ public:
 
     virtual ~RTreeQueryHandler() {
         for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
-            mLocCache->stopTracking(*it);
+            mLocCache->stopTracking(it->second);
         }
         mObjects.clear();
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
@@ -120,7 +121,7 @@ public:
                     for(int i = 0; i < node->size(); i++) {
                         count++;
                         if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qbounds, qradius, qangle))
-                            newcache.add(node->object(i));
+                            newcache.add(mLocCache->iteratorID(node->object(i)));
                     }
                 }
                 else {
@@ -152,9 +153,8 @@ public:
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
         assert(mObjects.find(obj_id) == mObjects.end());
+        mObjects[obj_id] = mLocCache->startTracking(obj_id);
         insertObj(obj_id, mLastTime);
-        mObjects.insert(obj_id);
-        mLocCache->startTracking(obj_id);
     }
 
     // LocationUpdateListener Implementation
@@ -168,9 +168,10 @@ public:
 
     void locationDisconnected(const ObjectID& obj_id) {
         assert( mObjects.find(obj_id) != mObjects.end() );
+        LocCacheIterator obj_loc_it = mObjects[obj_id];
         mObjects.erase(obj_id);
         deleteObj(obj_id, mLastTime);
-        mLocCache->stopTracking(obj_id);
+        mLocCache->stopTracking(obj_loc_it);
     }
 
     // QueryChangeListener Implementation
@@ -203,22 +204,22 @@ protected:
 
 private:
     void insertObj(const ObjectID& obj_id, const Time& t) {
-        mRTree->insert(obj_id, t);
+        mRTree->insert(mObjects[obj_id], t);
     }
 
     void updateObj(const ObjectID& obj_id, const Time& t) {
-        mRTree->update(obj_id, t);
+        mRTree->update(mObjects[obj_id], t);
     }
 
     void deleteObj(const ObjectID& obj_id, const Time& t) {
-        mRTree->erase(obj_id, t);
+        mRTree->erase(mObjects[obj_id], t);
     }
 
     struct QueryState {
         QueryCacheType cache;
     };
 
-    typedef std::tr1::unordered_set<ObjectID, typename ObjectID::Hasher> ObjectSet;
+    typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, typename ObjectID::Hasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;

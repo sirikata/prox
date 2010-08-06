@@ -53,17 +53,35 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
 
+    /** An Iterator is an opaque reference to an entry in the cache. Starting
+     *  tracking returns an iterator which is used to efficiently access data
+     *  for that object.
+     */
+    class Iterator {
+    public:
+        Iterator() : data(NULL) {};
+        Iterator(void* _data) : data(_data) {};
+        void* data;
+
+        bool operator==(const Iterator& rhs) const {
+            return (data == rhs.data);
+        }
+    };
+
     virtual ~LocationServiceCache() {}
 
-    virtual void startTracking(const ObjectID& id) = 0;
-    virtual void stopTracking(const ObjectID& id) = 0;
+    virtual Iterator startTracking(const ObjectID& id) = 0;
+    virtual void stopTracking(const Iterator& id) = 0;
 
-    virtual const MotionVector3& location(const ObjectID& id) const = 0;
-    virtual const BoundingSphere& bounds(const ObjectID& id) const = 0;
-    virtual float32 radius(const ObjectID& id) const = 0;
-    virtual BoundingSphere worldBounds(const ObjectID& id, const Time& t) const {
-        return BoundingSphere( bounds(id).center() + location(id).position(t), bounds(id).radius() );
+    virtual const MotionVector3& location(const Iterator& id) const = 0;
+    virtual const BoundingSphere& bounds(const Iterator& id) const = 0;
+    virtual float32 radius(const Iterator& id) const = 0;
+    virtual BoundingSphere worldBounds(const Iterator& id, const Time& t) const {
+        const BoundingSphere& bs = bounds(id);
+        return BoundingSphere( bs.center() + location(id).position(t), bs.radius() );
     }
+
+    virtual const ObjectID& iteratorID(const Iterator& id) const = 0;
 
     virtual void addUpdateListener(LocationUpdateListenerType* listener) = 0;
     virtual void removeUpdateListener(LocationUpdateListenerType* listener) = 0;

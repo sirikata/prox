@@ -54,35 +54,42 @@ void ObjectLocationServiceCache::removeObject(const Object* obj) {
 }
 
 
-void ObjectLocationServiceCache::startTracking(const ObjectID& id) {
+LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const ObjectID& id) {
     Object* obj = lookup(id);
     assert(obj != NULL);
     obj->addUpdateListener(this);
+    return Iterator((void*)obj);
 }
 
-void ObjectLocationServiceCache::stopTracking(const ObjectID& id) {
-    Object* obj = lookup(id);
+void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
+    Object* obj = (Object*)id.data;
     assert(obj != NULL);
     obj->removeUpdateListener(this);
 }
 
 
-const MotionVector3& ObjectLocationServiceCache::location(const ObjectID& id) const {
-    Object* obj = lookup(id);
+const MotionVector3& ObjectLocationServiceCache::location(const Iterator& id) const {
+    Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->position();
 }
 
-const BoundingSphere& ObjectLocationServiceCache::bounds(const ObjectID& id) const {
-    Object* obj = lookup(id);
+const BoundingSphere& ObjectLocationServiceCache::bounds(const Iterator& id) const {
+    Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->bounds();
 }
 
-float32 ObjectLocationServiceCache::radius(const ObjectID& id) const {
-    Object* obj = lookup(id);
+float32 ObjectLocationServiceCache::radius(const Iterator& id) const {
+    Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->bounds().radius();
+}
+
+const ObjectID& ObjectLocationServiceCache::iteratorID(const Iterator& id) const {
+    Object* obj = (Object*)id.data;
+    assert(obj != NULL);
+    return obj->id();
 }
 
 void ObjectLocationServiceCache::addUpdateListener(LocationUpdateListenerType* listener) {
