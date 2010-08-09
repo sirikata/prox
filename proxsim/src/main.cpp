@@ -31,10 +31,10 @@
  */
 
 #include "Simulator.hpp"
-//#include "GLRenderer.hpp"
-//#include <prox/BruteForceQueryHandler.hpp>
-//#include <prox/RTreeQueryHandler.hpp>
-//#include "ObjectLocationServiceCache.hpp"
+#include "GLRenderer.hpp"
+#include <prox/BruteForceQueryHandler.hpp>
+#include <prox/RTreeQueryHandler.hpp>
+#include "ObjectLocationServiceCache.hpp"
 
 #include <iostream>
 #include <string>
