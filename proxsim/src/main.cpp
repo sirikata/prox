@@ -31,10 +31,10 @@
  */
 
 #include "Simulator.hpp"
-#include "GLRenderer.hpp"
-#include <prox/BruteForceQueryHandler.hpp>
-#include <prox/RTreeQueryHandler.hpp>
-#include "ObjectLocationServiceCache.hpp"
+//#include "GLRenderer.hpp"
+//#include <prox/BruteForceQueryHandler.hpp>
+//#include <prox/RTreeQueryHandler.hpp>
+//#include "ObjectLocationServiceCache.hpp"
 
 #include <iostream>
 #include <string>
@@ -60,7 +60,6 @@ int main(int argc, char** argv) {
     else
         handler = new Prox::BruteForceQueryHandler<>();
 
-    // Simulation, renderer, and run
     Simulator* simulator = new Simulator(handler);
     Renderer* renderer = new GLRenderer(simulator);
 

@@ -34,8 +34,8 @@
 #define _PROXSIM_TIMER_HPP_
 
 #include "SimulationTypes.hpp"
-#include <boost/date_time.hpp>
-
+//#include <boost/date_time.hpp>
+#include <stdio.h>
 namespace Prox {
 namespace Simulation {
 

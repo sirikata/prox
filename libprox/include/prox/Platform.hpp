@@ -71,6 +71,11 @@
 # define LIBPROX_EXPORT_C extern "C" LIBPROX_EXPORT
 #endif
 
+#if LIBPROX_PLATFORM != PLATFORM_WINDOWS
+# include <stdint.h>
+# include <stdlib.h>
+#endif
+
 #include <string>
 #include <cassert>
 #include <map>
@@ -119,7 +124,6 @@ typedef unsigned __int32 uint32;
 typedef __int64 int64;
 typedef unsigned __int64 uint64;
 #else
-#include <stdint.h>
 typedef int8_t int8;
 typedef uint8_t uint8;
 typedef int16_t int16;
