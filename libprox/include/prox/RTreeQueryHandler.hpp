@@ -141,7 +141,7 @@ public:
 
             query->pushEvents(events);
         }
-        printf("count: %d %d\n", count, ncount);
+        //printf("count: %d %d\n", count, ncount);
         mLastTime = t;
     }
 
