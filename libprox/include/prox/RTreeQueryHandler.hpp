@@ -58,6 +58,7 @@ public:
     typedef QueryCache<SimulationTraits> QueryCacheType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
@@ -219,7 +220,7 @@ private:
         QueryCacheType cache;
     };
 
-    typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, typename ObjectID::Hasher> ObjectSet;
+    typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, ObjectIDHasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;

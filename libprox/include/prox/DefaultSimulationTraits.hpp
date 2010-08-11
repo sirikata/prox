@@ -61,6 +61,7 @@ public:
     typedef Reference::SolidAngle SolidAngleType;
 
     typedef Reference::ObjectID ObjectIDType;
+    typedef Reference::ObjectID::Hasher ObjectIDHasherType;
 
     typedef Reference::Time TimeType;
     typedef Reference::Duration DurationType;

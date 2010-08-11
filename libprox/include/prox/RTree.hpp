@@ -43,6 +43,7 @@ template<typename SimulationTraits, typename NodeData>
 struct RTreeNode {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef typename SimulationTraits::TimeType Time;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
@@ -862,6 +863,7 @@ public:
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
 
     RTree(uint8 elements_per_node, LocationServiceCacheType* loccache)
      : mLocCache(loccache),
@@ -935,7 +937,7 @@ private:
     RTreeNodeType* mRoot;
     typename RTreeNodeType::Callbacks mCallbacks;
     // Index for object's leaf nodes
-    typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, typename ObjectID::Hasher> ObjectLeafIndex;
+    typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
     ObjectLeafIndex mObjectLeaves;
 }; // class RTree
 
