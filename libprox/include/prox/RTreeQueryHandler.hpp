@@ -225,7 +225,7 @@ private:
     typedef typename QueryMap::iterator QueryMapIterator;
 
     //typedef RTree<SimulationTraits, BoundingSphereData<SimulationTraits> > RTree;
-    typedef RTree<SimulationTraits, MaxSphereData<SimulationTraits> > RTree;
+    typedef Prox::RTree<SimulationTraits, MaxSphereData<SimulationTraits> > RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     LocationServiceCacheType* mLocCache;
