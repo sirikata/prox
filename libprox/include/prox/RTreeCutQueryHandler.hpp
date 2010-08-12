@@ -1,7 +1,7 @@
 /*  libprox
- *  RTreeQueryHandler.hpp
+ *  RTreeCutQueryHandler.hpp
  *
- *  Copyright (c) 2009, Ewen Cheslack-Postava
+ *  Copyright (c) 2010, Ewen Cheslack-Postava
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_RTREE_QUERY_HANDLER_HPP_
-#define _PROX_RTREE_QUERY_HANDLER_HPP_
+#ifndef _PROX_RTREE_CUT_QUERY_HANDLER_HPP_
+#define _PROX_RTREE_CUT_QUERY_HANDLER_HPP_
 
 #include <prox/QueryHandler.hpp>
 #include <prox/LocationUpdateListener.hpp>
@@ -44,8 +44,11 @@
 
 namespace Prox {
 
+/** Implementation of QueryHandler which uses cuts through an RTree to track the
+ *  active set of objects/nodes for a query.
+ */
 template<typename SimulationTraits = DefaultSimulationTraits>
-class RTreeQueryHandler : public QueryHandler<SimulationTraits> {
+class RTreeCutQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
@@ -66,7 +69,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
 
-    RTreeQueryHandler(uint8 elements_per_node)
+    RTreeCutQueryHandler(uint8 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
        mRTree(NULL),
@@ -75,7 +78,7 @@ public:
     {
     }
 
-    virtual ~RTreeQueryHandler() {
+    virtual ~RTreeCutQueryHandler() {
         for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
             mLocCache->stopTracking(it->second);
         }
@@ -236,8 +239,8 @@ private:
     QueryMap mQueries;
     Time mLastTime;
     uint8 mElementsPerNode;
-}; // class RTreeQueryHandler
+}; // class RTreeCutQueryHandler
 
 } // namespace Prox
 
-#endif //_PROX_RTREE_QUERY_HANDLER_HPP_
+#endif //_PROX_RTREE_CUT_QUERY_HANDLER_HPP_

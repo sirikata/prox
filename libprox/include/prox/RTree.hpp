@@ -30,6 +30,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _PROX_RTREE_HPP_
+#define _PROX_RTREE_HPP_
 
 #include <prox/Platform.hpp>
 #include <prox/LocationServiceCache.hpp>
@@ -40,7 +42,7 @@
 
 namespace Prox {
 
-template<typename SimulationTraits, typename NodeData>
+template<typename SimulationTraits, typename NodeData, typename CutNode>
 struct RTreeNode {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
@@ -244,7 +246,7 @@ static const int32 UnassignedGroup = -1;
 typedef std::vector<int32> SplitGroups;
 
 
-template<typename SimulationTraits, typename NodeData>
+template<typename SimulationTraits, typename NodeData, typename CutNode>
 class BoundingSphereDataBase {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
@@ -257,7 +259,7 @@ public:
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef Query<SimulationTraits> QueryType;
 
-    typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     BoundingSphereDataBase()
      : bounding_sphere()
@@ -368,10 +370,10 @@ protected:
 };
 
 
-template<typename SimulationTraits>
-class BoundingSphereData : public BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits> > {
+template<typename SimulationTraits, typename CutNode>
+class BoundingSphereData : public BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode>, CutNode> {
 public:
-    typedef BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits> > ThisBase;
+    typedef BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
@@ -379,12 +381,12 @@ public:
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
     BoundingSphereData()
-     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>()
+     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData, CutNode>()
     {
     }
 
     BoundingSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>( loc, obj_id, t )
+     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData, CutNode>( loc, obj_id, t )
     {
     }
 };
@@ -393,11 +395,11 @@ public:
  * We can cull if the largest bounding sphere, centered at the closest point on the
  * hierarchical bounding sphere, does not satisfy the constraints.
  */
-template<typename SimulationTraits>
-class MaxSphereData : public BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits> > {
+template<typename SimulationTraits, typename CutNode>
+class MaxSphereData : public BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits, CutNode>, CutNode> {
 public:
     typedef MaxSphereData NodeData; // For convenience/consistency
-    typedef BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits> > ThisBase;
+    typedef BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::Vector3Type Vector3;
@@ -409,16 +411,16 @@ public:
 
     typedef Query<SimulationTraits> QueryType;
 
-    typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     MaxSphereData()
-     : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(),
+     : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
        mMaxRadius(0.f)
     {
     }
 
     MaxSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-     : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(),
+     : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
        mMaxRadius( loc->maxSize(obj_id) )
     {
         // Note: we override this here because we need worldCompleteBounds for
@@ -429,14 +431,14 @@ public:
     }
 
     NodeData merge(const NodeData& other) const {
-        NodeData result = BoundingSphereDataBase<SimulationTraits, MaxSphereData>::merge(other);
+        NodeData result = BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::merge(other);
         result.mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
         return result;
     }
 
     // Merge the given info into this info
     void mergeIn(const NodeData& other) {
-        BoundingSphereDataBase<SimulationTraits, MaxSphereData>::mergeIn(other);
+        BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::mergeIn(other);
         mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
     }
 
@@ -477,7 +479,7 @@ public:
     }
 
     void verifyChild(const NodeData& child) const {
-        BoundingSphereDataBase<SimulationTraits, MaxSphereData>::verifyChild(child);
+        BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::verifyChild(child);
 
         if ( child.mMaxRadius > mMaxRadius) {
             printf(
@@ -490,17 +492,17 @@ private:
     float mMaxRadius;
 };
 
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_choose_leaf(
-    RTreeNode<SimulationTraits, NodeData>* root,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_choose_leaf(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t)
 {
-    RTreeNode<SimulationTraits, NodeData>* node = root;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node = root;
 
     while(!node->leaf()) {
-        RTreeNode<SimulationTraits, NodeData>* min_increase_node = node->selectBestChildNode(loc, obj_id, t);
+        RTreeNode<SimulationTraits, NodeData, CutNode>* min_increase_node = node->selectBestChildNode(loc, obj_id, t);
         node = min_increase_node;
     }
 
@@ -539,13 +541,13 @@ void RTree_pick_next_child(std::vector<NodeData>& split_data, SplitGroups& split
 }
 
 // Splits a node, inserting the given node, and returns the second new node
-template<typename SimulationTraits, typename NodeData, typename ChildType, typename ChildOperations>
-RTreeNode<SimulationTraits, NodeData>* RTree_split_node(
-    RTreeNode<SimulationTraits, NodeData>* node,
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
     ChildType to_insert,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
     ChildOperations child_ops;
 
@@ -574,10 +576,10 @@ RTreeNode<SimulationTraits, NodeData>* RTree_split_node(
 
     // copy data into the correct nodes
     node->clear();
-    RTreeNode<SimulationTraits, NodeData>* nn = new RTreeNode<SimulationTraits, NodeData>(node->capacity());
+    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity());
     nn->leaf(node->leaf());
     for(uint32 i = 0; i < split_children.size(); i++) {
-        RTreeNode<SimulationTraits, NodeData>* newparent = (split_groups[i] == 0) ? node : nn;
+        RTreeNode<SimulationTraits, NodeData, CutNode>* newparent = (split_groups[i] == 0) ? node : nn;
         child_ops.insert( newparent, loc, split_children[i], t, cb);
     }
 
@@ -585,30 +587,30 @@ RTreeNode<SimulationTraits, NodeData>* RTree_split_node(
 }
 
 // Fixes up the tree after insertion. Returns the new root node
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_adjust_tree(
-    RTreeNode<SimulationTraits, NodeData>* L,
-    RTreeNode<SimulationTraits, NodeData>* LL,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* L,
+    RTreeNode<SimulationTraits, NodeData, CutNode>* LL,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
  {
     assert(L->leaf());
-    RTreeNode<SimulationTraits, NodeData>* node = L;
-    RTreeNode<SimulationTraits, NodeData>* nn = LL;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node = L;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = LL;
 
     while(true) { // loop until root, enter for root as well so we recompute its bounds
-        RTreeNode<SimulationTraits, NodeData>* parent = node->parent();
+        RTreeNode<SimulationTraits, NodeData, CutNode>* parent = node->parent();
 
         // FIXME this is inefficient
         node->recomputeData(loc, t);
 
         if (parent == NULL) break;
 
-        RTreeNode<SimulationTraits, NodeData>* pp = NULL;
+        RTreeNode<SimulationTraits, NodeData, CutNode>* pp = NULL;
         if (nn != NULL) {
             if (parent->full())
-                pp = RTree_split_node<SimulationTraits, NodeData, RTreeNode<SimulationTraits, NodeData>*, typename RTreeNode<SimulationTraits, NodeData>::NodeChildOperations>(parent, nn, loc, t, cb);
+                pp = RTree_split_node<SimulationTraits, NodeData, CutNode, RTreeNode<SimulationTraits, NodeData, CutNode>*, typename RTreeNode<SimulationTraits, NodeData, CutNode>::NodeChildOperations>(parent, nn, loc, t, cb);
             else
                 parent->insert(nn);
         }
@@ -620,7 +622,7 @@ RTreeNode<SimulationTraits, NodeData>* RTree_adjust_tree(
     // if we have a leftover split node, the root was split and we need to create
     // a new root one level higher
     if (nn != NULL) {
-        RTreeNode<SimulationTraits, NodeData>* new_root = new RTreeNode<SimulationTraits, NodeData>(node->capacity());
+        RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity());
         new_root->leaf(false);
         new_root->insert(node);
         new_root->insert(nn);
@@ -633,29 +635,29 @@ RTreeNode<SimulationTraits, NodeData>* RTree_adjust_tree(
 }
 
 // Inserts a new object into the tree, updating any nodes as necessary. Returns the new root node.
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_insert_object(
-    RTreeNode<SimulationTraits, NodeData>* root,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData>* leaf_node = RTree_choose_leaf(root, loc, obj_id, t);
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_node = RTree_choose_leaf(root, loc, obj_id, t);
 
-    RTreeNode<SimulationTraits, NodeData>* split_node = NULL;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* split_node = NULL;
     if (leaf_node->full())
-        split_node = RTree_split_node<SimulationTraits, NodeData, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData>::ObjectChildOperations>(leaf_node, obj_id, loc, t, cb);
+        split_node = RTree_split_node<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData, CutNode>::ObjectChildOperations>(leaf_node, obj_id, loc, t, cb);
     else
         leaf_node->insert(loc, obj_id, t, cb);
 
-    RTreeNode<SimulationTraits, NodeData>* new_root = RTree_adjust_tree(leaf_node, split_node, loc, t, cb);
+    RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_adjust_tree(leaf_node, split_node, loc, t, cb);
 
     return new_root;
 }
 
-template<typename SimulationTraits, typename NodeData>
-int32 RTree_count(RTreeNode<SimulationTraits, NodeData>* root) {
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+int32 RTree_count(RTreeNode<SimulationTraits, NodeData, CutNode>* root) {
     if (root->leaf()) return root->size();
 
     int32 result = 0;
@@ -664,8 +666,8 @@ int32 RTree_count(RTreeNode<SimulationTraits, NodeData>* root) {
     return result;
 }
 
-template<typename SimulationTraits, typename NodeData>
-void RTree_verify_constraints(RTreeNode<SimulationTraits, NodeData>* root, const LocationServiceCache<SimulationTraits>* loc, const typename SimulationTraits::TimeType& t) {
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_verify_constraints(RTreeNode<SimulationTraits, NodeData, CutNode>* root, const LocationServiceCache<SimulationTraits>* loc, const typename SimulationTraits::TimeType& t) {
 #ifdef PROXDEBUG
     for(int i = 0; i < root->size(); i++)
         root->data().verifyChild( root->childData(i, loc, t) );
@@ -681,18 +683,18 @@ void RTree_verify_constraints(RTreeNode<SimulationTraits, NodeData>* root, const
  *  Returns the new root (which it may create because it might have to reinsert objects, which
  *  can itself cause a new root to appear.
  */
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_condense_tree(
-    RTreeNode<SimulationTraits, NodeData>* leaf,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData>* n = leaf;
-    std::queue<RTreeNode<SimulationTraits, NodeData>*> removedNodes;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* n = leaf;
+    std::queue<RTreeNode<SimulationTraits, NodeData, CutNode>*> removedNodes;
 
     while(n->parent() != NULL) {
-        RTreeNode<SimulationTraits, NodeData>* parent = n->parent();
+        RTreeNode<SimulationTraits, NodeData, CutNode>* parent = n->parent();
         if (n->size() < 1) { // FIXME should be some larger value
             parent->erase(n);
             removedNodes.push(n);
@@ -703,14 +705,14 @@ RTreeNode<SimulationTraits, NodeData>* RTree_condense_tree(
         n = parent;
     }
 
-    RTreeNode<SimulationTraits, NodeData>* root = n;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root = n;
     // There's a chance that the root node ended up with no elements, in which case it should be marked as a leaf node
     if (root->size() == 0)
         root->leaf(true);
 
     // FIXME this could reinsert entire nodes instead of individual objects, but we'd need a better idea of how to actually accomplish that...
     while(!removedNodes.empty()) {
-        RTreeNode<SimulationTraits, NodeData>* removed = removedNodes.front();
+        RTreeNode<SimulationTraits, NodeData, CutNode>* removed = removedNodes.front();
         removedNodes.pop();
         if (removed->leaf()) {
             for(uint8 idx = 0; idx < removed->size(); idx++)
@@ -726,14 +728,14 @@ RTreeNode<SimulationTraits, NodeData>* RTree_condense_tree(
 }
 
 /* Update nodes up the tree to fix node information due to a change. */
-template<typename SimulationTraits, typename NodeData>
+template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_update_up_tree(
-    RTreeNode<SimulationTraits, NodeData>* node,
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData>* nn = node;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = node;
 
     while(nn != NULL) {
         nn->recomputeData(loc, t);
@@ -742,15 +744,15 @@ void RTree_update_up_tree(
 }
 
 /* Updates the object in the given tree. Returns the new root. */
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_update_object(
-    RTreeNode<SimulationTraits, NodeData>* root,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_object(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::ObjectIDType& obj_id,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData>* leaf_with_obj = cb.getObjectLeaf(obj_id);
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_with_obj = cb.getObjectLeaf(obj_id);
     if (leaf_with_obj == NULL)
         return root;
 
@@ -760,12 +762,12 @@ RTreeNode<SimulationTraits, NodeData>* RTree_update_object(
 }
 
 /* Updates objects in the tree with new positions. */
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_update_tree(
-    RTreeNode<SimulationTraits, NodeData>* root,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
     if (!root->leaf()) {
         for(int i = 0; i < root->size(); i++) {
@@ -780,21 +782,21 @@ RTreeNode<SimulationTraits, NodeData>* RTree_update_tree(
 }
 
 /* Deletes the object from the given tree.  Returns the new root. */
-template<typename SimulationTraits, typename NodeData>
-RTreeNode<SimulationTraits, NodeData>* RTree_delete_object(
-    RTreeNode<SimulationTraits, NodeData>* root,
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData>* leaf_with_obj = cb.getObjectLeaf(loc->iteratorID(obj_id));
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_with_obj = cb.getObjectLeaf(loc->iteratorID(obj_id));
     if (leaf_with_obj == NULL) {
         return root;
     }
 
     leaf_with_obj->erase(obj_id);
-    RTreeNode<SimulationTraits, NodeData>* new_root = RTree_condense_tree(leaf_with_obj, loc, t, cb);
+    RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_condense_tree(leaf_with_obj, loc, t, cb);
 
     // We might need to shorten the tree if the root is left with only one child.
     if (!root->leaf() && root->size() == 1) {
@@ -813,10 +815,10 @@ RTreeNode<SimulationTraits, NodeData>* RTree_delete_object(
 /**************************************************************************
  * RTree - Wrapper for an RTreeNode root node to provide a nicer interface
  **************************************************************************/
-template<typename SimulationTraits, typename NodeData>
+template<typename SimulationTraits, typename NodeData, typename CutNode>
 class RTree {
 public:
-    typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
@@ -901,3 +903,5 @@ private:
 }; // class RTree
 
 } // namespace Prox
+
+#endif //_PROX_RTREE_HPP_

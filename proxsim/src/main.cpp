@@ -34,6 +34,7 @@
 #include "GLRenderer.hpp"
 #include <prox/BruteForceQueryHandler.hpp>
 #include <prox/RTreeQueryHandler.hpp>
+#include <prox/RTreeCutQueryHandler.hpp>
 #include "ObjectLocationServiceCache.hpp"
 
 #include <iostream>
@@ -57,6 +58,8 @@ int main(int argc, char** argv) {
     QueryHandler* handler = NULL;
     if (handler_type == "rtree")
         handler = new Prox::RTreeQueryHandler<>(10);
+    else if (handler_type == "rtreecut")
+        handler = new Prox::RTreeCutQueryHandler<>(10);
     else
         handler = new Prox::BruteForceQueryHandler<>();
 
