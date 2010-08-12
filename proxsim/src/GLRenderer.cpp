@@ -107,10 +107,11 @@ void GLRenderer::queryHasEvents(Query* query) {
     for(std::deque<QueryEvent>::iterator it = evts.begin(); it != evts.end(); it++) {
         if (it->type() == QueryEvent::Added) {
             if (mSeenObjects.find(it->id()) == mSeenObjects.end())
-                mSeenObjects.insert(it->id());
+                mSeenObjects[it->id()] = 0;
+            mSeenObjects[it->id()]++;
         }
         else {
-            mSeenObjects.erase(it->id());
+            mSeenObjects[it->id()]--;
         }
     }
 }
@@ -139,7 +140,7 @@ void GLRenderer::display() {
         Object* obj = *it;
         BoundingSphere bb = obj->worldBounds(mTime);
 
-        if (mSeenObjects.find(obj->id()) != mSeenObjects.end())
+        if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0)
             glColor3f(1.f, 1.f, 1.f);
         else
             glColor3f(0.f, 0.f, 0.f);

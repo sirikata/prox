@@ -72,7 +72,7 @@ protected:
     void drawbs(const BoundingSphere& bs);
 
     Time mTime;
-    std::tr1::unordered_set<ObjectID, ObjectID::Hasher> mSeenObjects;
+    std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> mSeenObjects;
     Timer mTimer;
     int mWinWidth, mWinHeight;
 }; // class Renderer
