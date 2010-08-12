@@ -42,6 +42,19 @@
 
 namespace Prox {
 
+template<typename SimulationTraits, typename CutNode>
+struct RTreeLeafNode {
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
+
+    LocCacheIterator object;
+
+    RTreeLeafNode(LocCacheIterator it)
+     : object(it)
+    {}
+
+};
+
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 struct RTreeNode {
 public:
@@ -51,6 +64,8 @@ public:
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
+
+    typedef RTreeLeafNode<SimulationTraits, CutNode> LeafNode;
 
     typedef std::tr1::function<void(const LocCacheIterator&, RTreeNode*)> ObjectLeafChangedCallback;
     typedef std::tr1::function<RTreeNode*(const ObjectID&)> GetObjectLeafCallback;
@@ -64,7 +79,7 @@ private:
 
     union {
         RTreeNode** nodes;
-        LocCacheIterator* objects;
+        LeafNode* objects;
         uint8* magic;
     } elements;
     RTreeNode* mParent;
@@ -79,6 +94,10 @@ public:
             return parent->node(idx);
         }
 
+        RTreeNode* childData(RTreeNode* parent, int idx) {
+            return parent->node(idx);
+        }
+
         NodeData data(const LocationServiceCacheType* loc, RTreeNode* child, const Time& ) {
             return child->data();
         }
@@ -89,8 +108,12 @@ public:
     };
 
     struct ObjectChildOperations {
-        const LocCacheIterator& child(RTreeNode* parent, int idx) {
+        const LeafNode& child(RTreeNode* parent, int idx) {
             return parent->object(idx);
+        }
+
+        const LocCacheIterator& childData(RTreeNode* parent, int idx) {
+            return parent->object(idx).object;
         }
 
         NodeData data(const LocationServiceCacheType* loc, const LocCacheIterator& child, const Time& t) {
@@ -145,7 +168,7 @@ public:
         mParent = _p;
     }
 
-    const LocCacheIterator& object(int i) const {
+    const LeafNode& object(int i) const {
         assert( leaf() );
         assert( i < count );
         return elements.objects[i];
@@ -164,7 +187,7 @@ public:
 
     NodeData childData(int i, const LocationServiceCacheType* loc, const Time& t) {
         if (leaf())
-            return NodeData(loc, object(i), t);
+            return NodeData(loc, object(i).object, t);
         else
             return node(i)->data();
     }
@@ -185,7 +208,7 @@ public:
     void insert(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t, const Callbacks& cb) {
         assert (count < max_elements);
         assert (leaf() == true);
-        elements.objects[count] = obj;
+        elements.objects[count] = LeafNode(obj);
         cb.objectLeafChanged(obj, this);
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
@@ -207,7 +230,7 @@ public:
         // find obj
         uint8 obj_idx;
         for(obj_idx = 0; obj_idx < count; obj_idx++)
-            if (elements.objects[obj_idx] == obj) break;
+            if (elements.objects[obj_idx].object == obj) break;
         // push all the other objects back one
         for(uint8 rem_idx = obj_idx; rem_idx < count-1; rem_idx++)
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
@@ -558,7 +581,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
 
     // add all the children to the split vectors
     for(int i = 0; i < node->size(); i++) {
-        split_children.push_back( child_ops.child(node, i) );
+        split_children.push_back( child_ops.childData(node, i) );
         split_data.push_back( node->childData(i,loc,t) );
         split_groups.push_back(UnassignedGroup);
     }
@@ -716,7 +739,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
         removedNodes.pop();
         if (removed->leaf()) {
             for(uint8 idx = 0; idx < removed->size(); idx++)
-                root = RTree_insert_object(root, loc, removed->object(idx), t, cb);
+                root = RTree_insert_object(root, loc, removed->object(idx).object, t, cb);
         }
         else {
             for(uint8 idx = 0; idx < removed->size(); idx++)

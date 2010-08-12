@@ -122,7 +122,7 @@ public:
                     for(int i = 0; i < node->size(); i++) {
                         count++;
                         if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qbounds, qradius, qangle))
-                            newcache.add(mLocCache->iteratorID(node->object(i)));
+                            newcache.add(mLocCache->iteratorID(node->object(i).object));
                     }
                 }
                 else {
