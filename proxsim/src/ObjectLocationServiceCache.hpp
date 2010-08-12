@@ -54,8 +54,8 @@ public:
     virtual void stopTracking(const Iterator& id);
 
     virtual const MotionVector3& location(const Iterator& id) const;
-    virtual const BoundingSphere& bounds(const Iterator& id) const;
-    virtual float32 radius(const Iterator& id) const;
+    virtual const BoundingSphere& region(const Iterator& id) const;
+    virtual float32 maxSize(const Iterator& id) const;
 
     virtual const ObjectID& iteratorID(const Iterator& id) const;
 
@@ -76,6 +76,8 @@ public:
     virtual void simulatorAddedQuery(Query* query);
     virtual void simulatorRemovedQuery(Query* query);
 private:
+    static BoundingSphere sNullBoundingSphere;
+
     Object* lookup(const ObjectID& id) const;
 
     typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectMap;

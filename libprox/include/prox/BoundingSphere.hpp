@@ -108,7 +108,7 @@ public:
     }
 
     bool degenerate() const {
-        return ( mRadius <= 0 );
+        return ( mRadius < 0 );
     }
 
     real volume() const {

@@ -33,6 +33,7 @@
 
 #include <prox/Platform.hpp>
 #include <prox/LocationServiceCache.hpp>
+#include <prox/Constraints.hpp>
 #include <float.h>
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
@@ -235,9 +236,6 @@ public:
         return NodeData::selectBestChildNode(this, loc, obj, t);
     }
 
-    RTreeNode* findLeafWithObject(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t) {
-        return NodeData::findLeafWithObject(this, loc, obj, t);
-    }
 };
 
 
@@ -267,8 +265,11 @@ public:
     }
 
     BoundingSphereDataBase(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t)
-     : bounding_sphere( loc->worldBounds(obj, t) )
+     : bounding_sphere( loc->worldCompleteBounds(obj, t) )
     {
+        // Note use of worldCompleteBounds above instead of worldRegion because
+        // we need to take into account the size of the objects as well as their
+        // locations.
     }
 
     // Return the result of merging this info with the given info
@@ -288,29 +289,7 @@ public:
         Vector3 obj_pos = bounding_sphere.center();
         float obj_radius = bounding_sphere.radius();
 
-        // Combine info to reduce amount we need to deal with
-        Vector3 query_pos = qpos + qbounds.center();
-        float query_rad = qbounds.radius();
-
-        // Must satisfy radius constraint
-        if (qradius != SimulationTraits::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
-            return false;
-
-        // Must satisfy solid angle constraint
-        // If it falls inside the query bounds, then it definitely satisfies the solid angle constraint
-        // FIXME we do this check manually for now, but BoundingSphere should provide it
-        if (query_rad + obj_radius >= (query_pos-obj_pos).length()) {
-            return true;
-        }
-        // Otherwise we need to check the closest possible query position to the object
-        Vector3 to_obj = obj_pos - query_pos;
-        to_obj = to_obj - to_obj.normal() * query_rad;
-        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_radius);
-
-        if (solid_angle >= qangle)
-            return true;
-
-        return false;
+        return satisfiesConstraintsBounds<SimulationTraits>(obj_pos, obj_radius, qpos, qbounds, qradius, qangle);
     }
 
     // Given an object and a time, select the best child node to put the object in
@@ -318,7 +297,7 @@ public:
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
-        BoundingSphere obj_bounds = loc->worldBounds(obj_id, t);
+        BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
 
         for(int i = 0; i < node->size(); i++) {
             RTreeNodeType* child_node = node->node(i);
@@ -331,12 +310,6 @@ public:
         }
 
         return min_increase_node;
-    }
-
-    // Given a root node and object and a time, find the leaf node which contains that object
-    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
-        BoundingSphere bs = loc->worldBounds(obj_id, t);
-        return findLeafWithObject(node, loc, obj_id, bs);
     }
 
     // Given a list of child data, choose two seeds for the splitting process in quadratic time
@@ -390,24 +363,6 @@ public:
         }
     }
 
-private:
-    static RTreeNodeType* findLeafWithObject(RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const BoundingSphere& bs) {
-        // For leaf nodes, simply check against all child objects
-        if (node->leaf())
-            return (node->contains(obj_id) ? node : NULL);
-
-        // For internal nodes, check against child bounds, and then recursively check child
-        for(uint8 child_idx = 0; child_idx < node->size(); child_idx++) {
-            RTreeNodeType* child = node->node(child_idx);
-            BoundingSphere child_bs = child->data().bounding_sphere;
-            if ( !child_bs.contains(bs, RTREE_BOUNDS_EPSILON) ) continue;
-            RTreeNodeType* result = findLeafWithObject(child, loc, obj_id, bs);
-            if (result != NULL) return result;
-        }
-
-        return NULL;
-    }
-
 protected:
     BoundingSphere bounding_sphere;
 };
@@ -454,6 +409,8 @@ public:
 
     typedef Query<SimulationTraits> QueryType;
 
+    typedef RTreeNode<SimulationTraits, NodeData> RTreeNodeType;
+
     MaxSphereData()
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(),
        mMaxRadius(0.f)
@@ -461,9 +418,14 @@ public:
     }
 
     MaxSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-     : BoundingSphereDataBase<SimulationTraits, MaxSphereData>( loc, obj_id, t ),
-       mMaxRadius( loc->radius(obj_id) )
+     : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(),
+       mMaxRadius( loc->maxSize(obj_id) )
     {
+        // Note: we override this here because we need worldCompleteBounds for
+        // just the bounds data, but with the max size values, we can use the
+        // smaller worldRegion along with the maximum size object.  Note
+        // difference in satisfiesConstraints
+        ThisBase::bounding_sphere = loc->worldRegion(obj_id, t);
     }
 
     NodeData merge(const NodeData& other) const {
@@ -487,33 +449,31 @@ public:
         Vector3 obj_pos = ThisBase::bounding_sphere.center();
         float obj_radius = ThisBase::bounding_sphere.radius();
 
-        // Combine info to reduce amount we need to deal with
-        Vector3 query_pos = qpos + qbounds.center();
-        float query_rad = qbounds.radius();
+        return satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_pos, obj_radius, mMaxRadius, qpos, qbounds, qradius, qangle);
+    }
 
-        // First, a special case is if the query is actually inside the hierarchical bounding sphere, in which
-        // case the above description isn't accurate: in this case the worst position for the stand in object
-        // is the exact location of the query.  So just let it pass.
-        // FIXME we do this check manually for now, but BoundingSphere should provide it
-        if (query_rad + obj_radius >= (query_pos-obj_pos).length())
-            return true;
+    // Given an object and a time, select the best child node to put the object in
+    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+        float min_increase = 0.f;
+        RTreeNodeType* min_increase_node = NULL;
 
-        float standin_radius = mMaxRadius;
+        BoundingSphere obj_bounds = loc->worldRegion(obj_id, t);
+        float obj_max_size = loc->maxSize(obj_id);
 
-        Vector3 to_obj = obj_pos - query_pos;
-        to_obj = to_obj - to_obj.normal() * (obj_radius + query_rad);
+        for(int i = 0; i < node->size(); i++) {
+            RTreeNodeType* child_node = node->node(i);
+            BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+            float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
+            BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
+            BoundingSphere total(merged.center(), merged.radius() + new_max_size);
+            float increase = total.volume() - old_total.volume();
+            if (min_increase_node == NULL || increase < min_increase) {
+                min_increase = increase;
+                min_increase_node = child_node;
+            }
+        }
 
-        // Must satisfy radius constraint
-        if (qradius != SimulationTraits::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
-            return false;
-
-        // Must satisfy solid angle constraint
-        SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, standin_radius);
-
-        if (solid_angle >= qangle)
-            return true;
-
-        return false;
+        return min_increase_node;
     }
 
     void verifyChild(const NodeData& child) const {
@@ -537,7 +497,6 @@ RTreeNode<SimulationTraits, NodeData>* RTree_choose_leaf(
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t)
 {
-    typename SimulationTraits::BoundingSphereType obj_bounds = loc->worldBounds(obj_id, t);
     RTreeNode<SimulationTraits, NodeData>* node = root;
 
     while(!node->leaf()) {

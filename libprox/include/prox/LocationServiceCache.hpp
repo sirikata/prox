@@ -73,12 +73,46 @@ public:
     virtual Iterator startTracking(const ObjectID& id) = 0;
     virtual void stopTracking(const Iterator& id) = 0;
 
+    // The various properties maintained here can get a bit confusing because
+    // they are designed to support a few different scenarios.
+    //
+    // Location is used to specify the center point of the object(s) being
+    // represented.  It is the only way to introduce movement into the system:
+    // it depends on a time parameter.
+    //
+    // Region represents the region covered by the *locations* of the
+    // constituent objects in the group.  Note that this is not the same as the
+    // region covered by the objects in the group: it is smaller for
+    // non-zero-sized objects.  This can be computed without any of the object
+    // sizes. For a single object, this will be degenerate since it only
+    // includes the central location.
+    //
+    // For multiple objects, location and region should be computed together and
+    // the region's center should be the origin. This results in a smaller
+    // covered region than computing them independently.
+    //
+    // MaxSize is the size of the largest object contained in this set of objects.
+    // It can be computed using only the objects bounding regions.  For a single
+    // object this is just the size of the object.
+    //
+    //
+    // The helper method worldRegion simply computes the current combination of
+    // location and region, i.e. the world space bounding sphere of the
+    // locations of all objects in the region.
+    //
+    // The helper method worldCompleteBounds computes a bounding sphere for the
+    // entire contents of the element (worldRegion + maxSize to radius).
+
     virtual const MotionVector3& location(const Iterator& id) const = 0;
-    virtual const BoundingSphere& bounds(const Iterator& id) const = 0;
-    virtual float32 radius(const Iterator& id) const = 0;
-    virtual BoundingSphere worldBounds(const Iterator& id, const Time& t) const {
-        const BoundingSphere& bs = bounds(id);
-        return BoundingSphere( bs.center() + location(id).position(t), bs.radius() );
+    virtual const BoundingSphere& region(const Iterator& id) const = 0;
+    virtual BoundingSphere worldRegion(const Iterator& id, const Time& t) const {
+        const BoundingSphere& reg = region(id);
+        return BoundingSphere( reg.center() + location(id).position(t), reg.radius() );
+    }
+    virtual float32 maxSize(const Iterator& id) const = 0;
+    virtual BoundingSphere worldCompleteBounds(const Iterator& id, const Time& t) const {
+        const BoundingSphere& reg = region(id);
+        return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );
     }
 
     virtual const ObjectID& iteratorID(const Iterator& id) const = 0;

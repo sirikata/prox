@@ -36,6 +36,8 @@
 namespace Prox {
 namespace Simulation {
 
+BoundingSphere ObjectLocationServiceCache::sNullBoundingSphere = BoundingSphere();
+
 ObjectLocationServiceCache::ObjectLocationServiceCache() {
 }
 
@@ -74,13 +76,14 @@ const MotionVector3& ObjectLocationServiceCache::location(const Iterator& id) co
     return obj->position();
 }
 
-const BoundingSphere& ObjectLocationServiceCache::bounds(const Iterator& id) const {
+const BoundingSphere& ObjectLocationServiceCache::region(const Iterator& id) const {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
-    return obj->bounds();
+    assert(obj->bounds().center() == Reference::Vector3f::nil());
+    return sNullBoundingSphere;
 }
 
-float32 ObjectLocationServiceCache::radius(const Iterator& id) const {
+float32 ObjectLocationServiceCache::maxSize(const Iterator& id) const {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->bounds().radius();
