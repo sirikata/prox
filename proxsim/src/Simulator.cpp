@@ -81,6 +81,7 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
     Vector3 region_min = region.min();
     Vector3 region_extents = region.extents();
 
+    // Generate objects
     for(int i = 0; i < nobjects; i++) {
         mObjectIDSource++;
         unsigned char oid_data[ObjectID::static_size]={0};
@@ -96,10 +97,21 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
             ),
             BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1))
         );
+        mObjects.push_back(obj);
+    }
+
+    // Split additions in to two halves, with query additions in between.  This
+    // guarantees that query additions with an existing tree and updated after
+    // additions both work
+
+    // First half of objects
+    for(int i = 0; i < nobjects/2; i++) {
+        Object* obj = mObjects[i];
         loc_cache->addObject(obj);
         addObject(obj);
     }
 
+    // Queries
     for(int i = 0; i < nqueries; i++) {
         // Pick a random object to use as a basis for this query
         uint32 obj_idx = randUInt32(0, nobjects-1);
@@ -111,6 +123,13 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
             SolidAngle( SolidAngle::Max / 1000 )
         );
         addQuery(query);
+    }
+
+    // Second half of objects
+    for(int i = nobjects/2; i < nobjects; i++) {
+        Object* obj = mObjects[i];
+        loc_cache->addObject(obj);
+        addObject(obj);
     }
 }
 
@@ -134,7 +153,6 @@ void Simulator::tick(const Time& t) {
 }
 
 void Simulator::addObject(Object* obj) {
-    mObjects.push_back(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorAddedObject(obj, obj->position(), obj->bounds());
 }
