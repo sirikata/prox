@@ -200,8 +200,11 @@ public:
 
     void clear() {
         count = 0;
-        for(int i = 0; i < max_elements; i++)
-            elements.magic[i] = NULL;
+
+        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
+        for(int i = 0; i < max_element_size * max_elements; i++)
+            elements.magic[i] = 0;
+
         mData = NodeData();
     }
 
