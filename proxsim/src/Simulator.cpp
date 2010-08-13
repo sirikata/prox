@@ -55,9 +55,14 @@ Simulator::Simulator(QueryHandler* handler)
 }
 
 Simulator::~Simulator() {
+    // Remove all objects
     while(!mObjects.empty()) {
         Object* obj = mObjects.front();
         removeObject(obj);
+    }
+    // And delete them all
+    while(!mRemovedObjects.empty()) {
+        Object* obj = mRemovedObjects.front();
         delete obj;
     }
 
@@ -70,7 +75,9 @@ Simulator::~Simulator() {
     delete mLocCache;
 }
 
-void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries) {
+void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries, int churnrate) {
+    mChurn = churnrate;
+
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
     addListener(loc_cache);
     mLocCache = loc_cache;
@@ -97,18 +104,17 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
             ),
             BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1))
         );
-        mObjects.push_back(obj);
-    }
 
-    // Split additions in to two halves, with query additions in between.  This
-    // guarantees that query additions with an existing tree and updated after
-    // additions both work
+        // Split objects into two groups. The first is added immediately,
+        // guaranteeing testing of new queries over existing trees.  The rest
+        // are left for churn, testing updates of queries as objects are added
+        // and removed.
 
-    // First half of objects
-    for(int i = 0; i < nobjects/2; i++) {
-        Object* obj = mObjects[i];
-        loc_cache->addObject(obj);
-        addObject(obj);
+        // Always insert to mRemovedObjects first.  addObject will remove from mRemovedObjects.
+        mRemovedObjects.push_back(obj);
+
+        if (i > mChurn)
+            addObject(obj);
     }
 
     // Queries
@@ -123,13 +129,6 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
             SolidAngle( SolidAngle::Max / 1000 )
         );
         addQuery(query);
-    }
-
-    // Second half of objects
-    for(int i = nobjects/2; i < nobjects; i++) {
-        Object* obj = mObjects[i];
-        loc_cache->addObject(obj);
-        addObject(obj);
     }
 }
 
@@ -149,10 +148,22 @@ void Simulator::removeListener(SimulatorListener* listener) {
 }
 
 void Simulator::tick(const Time& t) {
+    for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
+        Object* obj = *(mObjects.begin());
+        removeObject(obj);
+    }
+    for(int i = 0; !mRemovedObjects.empty() && i < mChurn; i++) {
+        Object* obj = *(mRemovedObjects.begin());
+        addObject(obj);
+    }
+
     mHandler->tick(t);
 }
 
 void Simulator::addObject(Object* obj) {
+    mRemovedObjects.erase( std::find(mRemovedObjects.begin(), mRemovedObjects.end(), obj) );
+    mObjects.push_back(obj);
+    mLocCache->addObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorAddedObject(obj, obj->position(), obj->bounds());
 }
@@ -160,7 +171,8 @@ void Simulator::addObject(Object* obj) {
 void Simulator::removeObject(Object* obj) {
     ObjectList::iterator it = std::find(mObjects.begin(), mObjects.end(), obj);
     mObjects.erase(it);
-
+    mRemovedObjects.push_back(obj);
+    mLocCache->removeObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorRemovedObject(obj);
 }

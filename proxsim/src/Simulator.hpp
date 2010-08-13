@@ -50,7 +50,7 @@ public:
     Simulator(QueryHandler* handler);
     ~Simulator();
 
-    void initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries);
+    void initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries, int churnrate);
 
     const BoundingBox3& region() const;
 
@@ -78,11 +78,14 @@ private:
     BoundingBox3 mRegion;
     int64 mObjectIDSource;
     QueryHandler* mHandler;
-    LocationServiceCache* mLocCache;
+    ObjectLocationServiceCache* mLocCache;
     ObjectList mObjects;
     QueryList mQueries;
     typedef std::list<SimulatorListener*> ListenerList;
     ListenerList mListeners;
+
+    ObjectList mRemovedObjects;
+    int32 mChurn; // Rate at which objects are added and removed
 }; // class Simulator
 
 } // namespace Simulation

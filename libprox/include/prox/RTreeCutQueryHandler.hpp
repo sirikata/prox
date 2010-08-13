@@ -173,9 +173,9 @@ public:
     void locationDisconnected(const ObjectID& obj_id) {
         assert( mObjects.find(obj_id) != mObjects.end() );
         LocCacheIterator obj_loc_it = mObjects[obj_id];
-        mObjects.erase(obj_id);
         deleteObj(obj_id, mLastTime);
         mLocCache->stopTracking(obj_loc_it);
+        mObjects.erase(obj_id);
     }
 
     // QueryChangeListener Implementation

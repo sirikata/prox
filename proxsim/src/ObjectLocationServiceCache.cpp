@@ -60,6 +60,7 @@ LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const O
     Object* obj = lookup(id);
     assert(obj != NULL);
     obj->addUpdateListener(this);
+    assert(obj != NULL);
     return Iterator((void*)obj);
 }
 
@@ -140,7 +141,8 @@ void ObjectLocationServiceCache::simulatorAddedObject(Object* obj, const MotionV
 }
 
 void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {
-    // Only using this interface for tracking object additions
+    for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+        (*it)->locationDisconnected(obj->id());
 }
 
 void ObjectLocationServiceCache::simulatorAddedQuery(Query* query) {
