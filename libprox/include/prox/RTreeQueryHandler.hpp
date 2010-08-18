@@ -60,6 +60,7 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
@@ -152,7 +153,7 @@ public:
         return (uint32)mQueries.size();
     }
 
-    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
+    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
         mObjects[obj_id] = mLocCache->startTracking(obj_id);
         insertObj(obj_id, mLastTime);
@@ -163,7 +164,11 @@ public:
         updateObj(obj_id, mLastTime); // FIXME new time?
     }
 
-    void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+    void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) {
+        updateObj(obj_id, mLastTime); // FIXME new time?
+    }
+
+    void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) {
         updateObj(obj_id, mLastTime); // FIXME new time?
     }
 

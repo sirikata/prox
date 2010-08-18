@@ -115,7 +115,7 @@ Object* ObjectLocationServiceCache::lookup(const ObjectID& id) const {
 
 void ObjectLocationServiceCache::objectCreated(const Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationConnected(obj->id(), pos, bounds);
+        (*it)->locationConnected(obj->id(), pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -124,8 +124,12 @@ void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const Motion
 }
 
 void ObjectLocationServiceCache::objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
-    for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationBoundsUpdated(obj->id(), old_bounds, new_bounds);
+    BoundingSphere old_region(old_bounds.center(), 0);
+    BoundingSphere new_region(new_bounds.center(), 0);
+    for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++) {
+        (*it)->locationRegionUpdated(obj->id(), old_region, new_region);
+        (*it)->locationMaxSizeUpdated(obj->id(), old_bounds.radius(), new_bounds.radius());
+    }
 }
 
 void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
@@ -137,7 +141,7 @@ void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
 
 void ObjectLocationServiceCache::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationConnected(obj->id(), pos, bounds);
+        (*it)->locationConnected(obj->id(), pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {

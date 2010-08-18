@@ -38,6 +38,7 @@ namespace Prox {
 template<typename SimulationTraits>
 class LocationUpdateListener {
 public:
+    typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
@@ -45,9 +46,10 @@ public:
     LocationUpdateListener() {}
     virtual ~LocationUpdateListener() {}
 
-    virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
+    virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
-    virtual void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
+    virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
+    virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) = 0;
     virtual void locationDisconnected(const ObjectID& obj_id) = 0;
 
 }; // class LocationUpdateListener

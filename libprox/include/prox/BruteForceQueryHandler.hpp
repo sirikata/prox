@@ -60,6 +60,7 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
@@ -126,7 +127,7 @@ public:
         return (uint32)mQueries.size();
     }
 
-    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& bounds) {
+    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         mObjects[obj_id] = mLocCache->startTracking(obj_id);
     }
 
@@ -134,7 +135,11 @@ public:
         // Nothing to be done, we use values directly from the object
     }
 
-    void locationBoundsUpdated(const ObjectID& obj_id, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+    void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) {
+        // Nothing to be done, we use values directly from the object
+    }
+
+    void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) {
         // Nothing to be done, we use values directly from the object
     }
 
