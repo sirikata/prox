@@ -66,7 +66,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
 
-    RTreeQueryHandler(uint8 elements_per_node)
+    RTreeQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
        mRTree(NULL),

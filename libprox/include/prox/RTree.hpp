@@ -106,6 +106,8 @@ public:
     typedef std::tr1::function<void(CutNode, RTreeNode*)> LiftCutCallback;
     typedef std::tr1::function<void(CutNode, const LocCacheIterator&)> ObjectRemovedCallback;
 
+    typedef uint16 Index;
+
     struct Callbacks {
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
@@ -124,8 +126,8 @@ private:
     RTreeNode* mParent;
     NodeData mData;
     uint8 flags;
-    uint8 count;
-    uint8 max_elements;
+    Index count;
+    Index max_elements;
 
 public:
     struct NodeChildOperations {
@@ -165,7 +167,7 @@ public:
     };
 
 
-    RTreeNode(uint8 _max_elements)
+    RTreeNode(Index _max_elements)
      : mParent(NULL), mData(), flags(0), count(0), max_elements(_max_elements)
     {
         uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
@@ -194,10 +196,10 @@ public:
     bool full() const {
         return (count == max_elements);
     }
-    uint8 size() const {
+    Index size() const {
         return count;
     }
-    uint8 capacity() const {
+    Index capacity() const {
         return max_elements;
     }
 
@@ -270,11 +272,11 @@ public:
         assert(count > 0);
         assert(leaf() == true);
         // find obj
-        uint8 obj_idx;
+        Index obj_idx;
         for(obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx].object == obj) break;
         // push all the other objects back one
-        for(uint8 rem_idx = obj_idx; rem_idx < count-1; rem_idx++)
+        for(Index rem_idx = obj_idx; rem_idx < count-1; rem_idx++)
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
         count--;
     }
@@ -282,7 +284,7 @@ public:
     // NOTE: does not recalculate the bounding sphere
     void erase(int node_idx) {
         // push all the other objects back one
-        for(uint8 rem_idx = node_idx; rem_idx < count-1; rem_idx++)
+        for(Index rem_idx = node_idx; rem_idx < count-1; rem_idx++)
             elements.nodes[rem_idx] = elements.nodes[rem_idx+1];
         count--;
     }
@@ -292,14 +294,14 @@ public:
         assert(count > 0);
         assert(leaf() == false);
         // find node
-        uint8 node_idx;
+        Index node_idx;
         for(node_idx = 0; node_idx < count; node_idx++)
             if (elements.nodes[node_idx] == node) break;
         erase(node_idx);
     }
 
     bool contains(const LocCacheIterator& obj) const {
-        for(uint8 obj_idx = 0; obj_idx < count; obj_idx++)
+        for(Index obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx] == obj) return true;
         return false;
     }
@@ -792,13 +794,14 @@ void RTree_lift_cut_nodes(
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename RTreeNodeType::Index Index;
 
     // Only notify cuts if we're moving *above* this node, not if this node is
     // both the starting point for recursion and the destination node
     if (from_node != to_node) {
         // Notify any cuts that objects held by this node are gone
         if (from_node->leaf() && cb.objectRemoved) {
-            for(uint8 idx = 0; idx < from_node->size(); idx++) {
+            for(Index idx = 0; idx < from_node->size(); idx++) {
                 for(typename RTreeNodeType::CutNodeListConstIterator cut_it = from_node->cutNodesBegin(); cut_it != from_node->cutNodesEnd(); cut_it++)
                     cb.objectRemoved(*cut_it, from_node->object(idx).object);
             }
@@ -812,7 +815,7 @@ void RTree_lift_cut_nodes(
 
     // And recurse
     if (!from_node->leaf()) {
-        for(uint8 idx = 0; idx < from_node->size(); idx++) {
+        for(Index idx = 0; idx < from_node->size(); idx++) {
             RTree_lift_cut_nodes(from_node->node(idx), to_node, cb);
         }
     }
@@ -826,7 +829,7 @@ void RTree_verify_no_cut_nodes(
 #ifdef PROXDEBUG
     assert(node->cutNodesSize() == 0);
     if (!node->leaf())
-        for(uint8 idx = 0; idx < node->size(); idx++)
+        for(Index idx = 0; idx < node->size(); idx++)
             RTree_verify_no_cut_nodes(node->node(idx));
 #endif
 }
@@ -844,6 +847,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename RTreeNodeType::Index Index;
+
     RTreeNodeType* n = NULL;
     // Track the highest removed node so we can remove all nodes under it
     RTreeNodeType* highest_removed = NULL;
@@ -889,7 +894,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             removedNodes.pop();
 
             if (removed->leaf()) {
-                for(uint8 idx = 0; idx < removed->size(); idx++)
+                for(Index idx = 0; idx < removed->size(); idx++)
                     root = RTree_insert_object(root, loc, removed->object(idx).object, t, cb);
             }
             else {
@@ -1024,7 +1029,9 @@ public:
     typedef typename RTreeNodeType::LiftCutCallback LiftCutCallback;
     typedef typename RTreeNodeType::ObjectRemovedCallback ObjectRemovedCallback;
 
-    RTree(uint8 elements_per_node, LocationServiceCacheType* loccache, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
+    typedef typename RTreeNodeType::Index Index;
+
+    RTree(Index elements_per_node, LocationServiceCacheType* loccache, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
      : mLocCache(loccache),
        mRoot(new RTreeNodeType(elements_per_node))
     {

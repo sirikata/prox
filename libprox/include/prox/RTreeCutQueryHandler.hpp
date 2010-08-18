@@ -67,8 +67,7 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
-
-    RTreeCutQueryHandler(uint8 elements_per_node)
+    RTreeCutQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
        mRTree(NULL),
@@ -231,7 +230,7 @@ private:
     struct CutNode;
     struct Cut;
 
-    //typedef RTree<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode*>, CutNode*> RTree;
+    //typedef Prox::RTree<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode*>, CutNode*> RTree;
     typedef Prox::RTree<SimulationTraits, MaxSphereData<SimulationTraits, CutNode*>, CutNode*> RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
@@ -577,7 +576,7 @@ private:
     ObjectSet mObjects;
     QueryMap mQueries;
     Time mLastTime;
-    uint8 mElementsPerNode;
+    uint16 mElementsPerNode;
 }; // class RTreeCutQueryHandler
 
 } // namespace Prox
