@@ -102,7 +102,6 @@ public:
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleAncestorSplit, _1, _2, _3),
             std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
             std::tr1::bind(&CutNode::handleObjectRemoved, _1, _2)
         );
@@ -265,9 +264,6 @@ private:
 
         void handleSplit(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
             parent->handleSplit(this, orig_node, new_node);
-        }
-        void handleAncestorSplit(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
-            parent->handleAncestorSplit(this, orig_node, new_node);
         }
         void handleLiftCut(RTreeNodeType* to_node) {
             parent->handleLiftCut(this, to_node);
@@ -504,26 +500,6 @@ private:
             CutNodeListIterator orig_list_it = std::find(nodes.begin(), nodes.end(), cnode);
             CutNodeListIterator after_orig_list_it = orig_list_it; orig_list_it++;
 
-            nodes.insert(after_orig_list_it, new CutNode(this, new_node));
-            length++;
-
-            // Mid-operation, no validation
-        }
-
-        // Handle a split of an ancestor node from orig_node to orig_node and new_node. cnode is the
-        // CutNode that was found as a child of orig_node.
-        void handleAncestorSplit(CutNode* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
-            // We need to handle the case that we might get multiple callbacks
-            // about this.  Just check if we already have a node in there.
-            for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++)
-                if ((*it)->rtnode == new_node) return;
-
-            // Otherwise, we need to insert it.
-            // FIXME we could avoid this linear search by storing iterators in CutNode
-            CutNodeListIterator orig_list_it = std::find(nodes.begin(), nodes.end(), cnode);
-            CutNodeListIterator after_orig_list_it = orig_list_it; after_orig_list_it++;
-
-            // Ordering?
             nodes.insert(after_orig_list_it, new CutNode(this, new_node));
             length++;
 

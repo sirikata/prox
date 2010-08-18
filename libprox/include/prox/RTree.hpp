@@ -103,7 +103,6 @@ public:
     typedef std::tr1::function<RTreeNode*(const ObjectID&)> GetObjectLeafCallback;
     // CutNode that split occurred at, the node that was split, the new node.
     typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> NodeSplitCallback;
-    typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> AncestorNodeSplitCallback;
     typedef std::tr1::function<void(CutNode, RTreeNode*)> LiftCutCallback;
     typedef std::tr1::function<void(CutNode, const LocCacheIterator&)> ObjectRemovedCallback;
 
@@ -111,7 +110,6 @@ public:
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
         NodeSplitCallback nodeSplit;
-        NodeSplitCallback ancestorNodeSplit;
         LiftCutCallback liftCut;
         ObjectRemovedCallback objectRemoved;
     };
@@ -613,35 +611,6 @@ void RTree_pick_next_child(std::vector<NodeData>& split_data, SplitGroups& split
     return;
 }
 
-// Notifies all cuts through all children of two just-split nodes that one of
-// their ancestors has split.
-template<typename SimulationTraits, typename NodeData, typename CutNode>
-void RTree_notify_ancestor_split(
-    RTreeNode<SimulationTraits, NodeData, CutNode>* node_start,
-    RTreeNode<SimulationTraits, NodeData, CutNode>* node_orig,
-    RTreeNode<SimulationTraits, NodeData, CutNode>* node_new,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
-{
-    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
-    for(typename RTreeNodeType::CutNodeListConstIterator cut_it = node_start->cutNodesBegin(); cut_it != node_start->cutNodesEnd(); cut_it++)
-        cb.ancestorNodeSplit(*cut_it, node_orig, node_new);
-    if (!node_start->leaf()) {
-        for(int i = 0; i < node_start->size(); i++) {
-            RTree_notify_ancestor_split(node_start->node(i), node_orig, node_new, cb);
-        }
-    }
-}
-// Bogus version for iterators. Should never be called since calls are protected
-// by leaf() check.
-template<typename SimulationTraits, typename NodeData, typename CutNode>
-void RTree_notify_ancestor_split(
-    const typename LocationServiceCache<SimulationTraits>::Iterator& node_start,
-    RTreeNode<SimulationTraits, NodeData, CutNode>* node_orig,
-    RTreeNode<SimulationTraits, NodeData, CutNode>* node_new,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
-{
-}
-
 // Splits a node, inserting the given node, and returns the second new node
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
@@ -698,17 +667,14 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
         RTreeNode<SimulationTraits, NodeData, CutNode>* newparent = (split_groups[i] == 0) ? node : nn;
         child_ops.insert( newparent, loc, split_children[i], t, cb);
     }
-    // Notify the cuts of the split so it can be updated.
+    // Notify the cuts of the split so it can be updated. Either all have been
+    // lifted up to this node if its the root or there are none because they
+    // have been lifted to the parent.  There should be no cuts in the children
+    // nodes.
     if (cb.nodeSplit) {
         for(typename RTreeNodeType::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd(); cut_it++) {
             CutNode cutnode = *cut_it;
             cb.nodeSplit(cutnode, node, nn);
-        }
-        // Also notify all cuts in children nodes so they can add this node to their
-        // cut to maintain a complete cut.
-        if (!nn->leaf()) {
-            for(uint8 i = 0; i < split_children.size(); i++)
-                RTree_notify_ancestor_split(split_children[i], node, nn, cb);
         }
     }
 
@@ -1054,12 +1020,11 @@ public:
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
 
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
-    typedef typename RTreeNodeType::AncestorNodeSplitCallback AncestorNodeSplitCallback;
 
     typedef typename RTreeNodeType::LiftCutCallback LiftCutCallback;
     typedef typename RTreeNodeType::ObjectRemovedCallback ObjectRemovedCallback;
 
-    RTree(uint8 elements_per_node, LocationServiceCacheType* loccache, NodeSplitCallback node_split_cb = 0, AncestorNodeSplitCallback ancestor_node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
+    RTree(uint8 elements_per_node, LocationServiceCacheType* loccache, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
      : mLocCache(loccache),
        mRoot(new RTreeNodeType(elements_per_node))
     {
@@ -1069,7 +1034,6 @@ public:
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);
         mCallbacks.nodeSplit = node_split_cb;
-        mCallbacks.ancestorNodeSplit = ancestor_node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
     }
