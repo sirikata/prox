@@ -46,8 +46,9 @@ bool satisfiesConstraintsBounds(
     float obj_radius,
     const typename SimulationTraits::Vector3Type& qpos,
     const typename SimulationTraits::BoundingSphereType& qbounds,
-    const float qradius,
-    const typename SimulationTraits::SolidAngleType& qangle)
+    const float qmaxsize,
+    const typename SimulationTraits::SolidAngleType& qangle,
+    const float qradius)
 {
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
@@ -55,7 +56,9 @@ bool satisfiesConstraintsBounds(
 
     // Combine info to reduce amount we need to deal with
     Vector3 query_pos = qpos + qbounds.center();
-    float query_rad = qbounds.radius();
+    // Just sum these since we don't take the solid angle of these, so it is
+    // equivalent to extending the radius by the size of the largest object.
+    float query_rad = qbounds.radius() + qmaxsize;
 
     // Must satisfy radius constraint
     if (qradius != SimulationTraits::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
@@ -90,8 +93,9 @@ bool satisfiesConstraintsBoundsAndMaxSize(
     float obj_max_size,
     const typename SimulationTraits::Vector3Type& qpos,
     const typename SimulationTraits::BoundingSphereType& qbounds,
-    const float qradius,
-    const typename SimulationTraits::SolidAngleType& qangle)
+    const float qmaxsize,
+    const typename SimulationTraits::SolidAngleType& qangle,
+    const float qradius)
 {
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
@@ -103,7 +107,9 @@ bool satisfiesConstraintsBoundsAndMaxSize(
 
     // Combine info to reduce amount we need to deal with
     Vector3 query_pos = qpos + qbounds.center();
-    float query_rad = qbounds.radius();
+    // Just sum these since we don't take the solid angle of these, so it is
+    // equivalent to extending the radius by the size of the largest object.
+    float query_rad = qbounds.radius() + qmaxsize;
 
     // First, a special case is if the query is actually inside the hierarchical bounding sphere, in which
     // case the above description isn't accurate: in this case the worst position for the stand in object

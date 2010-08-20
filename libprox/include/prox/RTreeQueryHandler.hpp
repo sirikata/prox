@@ -109,9 +109,10 @@ public:
             QueryCacheType newcache;
 
             Vector3 qpos = query->position(t);
-            BoundingSphere qbounds = query->bounds();
-            float qradius = query->radius();
+            BoundingSphere qregion = query->region();
+            float qmaxsize = query->maxSize();
             const SolidAngle& qangle = query->angle();
+            float qradius = query->radius();
 
             std::stack<RTreeNodeType*> node_stack;
             node_stack.push(mRTree->root());
@@ -122,14 +123,14 @@ public:
                 if (node->leaf()) {
                     for(int i = 0; i < node->size(); i++) {
                         count++;
-                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qbounds, qradius, qangle))
+                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius))
                             newcache.add(mLocCache->iteratorID(node->object(i).object));
                     }
                 }
                 else {
                     for(int i = 0; i < node->size(); i++) {
                         count++;
-                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qbounds, qradius, qangle))
+                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius))
                             node_stack.push(node->node(i));
                         else
                             ncount++;
@@ -185,7 +186,11 @@ public:
         // Nothing to be done, we use values directly from the query
     }
 
-    void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+    void queryRegionChanged(QueryType* query, const BoundingSphere& old_region, const BoundingSphere& new_region) {
+        // XXX FIXME
+    }
+
+    void queryMaxSizeChanged(QueryType* query, Real old_ms, Real new_ms) {
         // XXX FIXME
     }
 

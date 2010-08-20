@@ -62,13 +62,13 @@ public:
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
 
-    QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle) {
-        QueryType* q = new QueryType(pos, bounds, minAngle);
+    QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
+        QueryType* q = new QueryType(pos, region, maxSize, minAngle);
         registerQuery(q);
         return q;
     }
-    QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle, float radius) {
-        QueryType* q = new QueryType(pos, bounds, minAngle, radius);
+    QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle, float radius) {
+        QueryType* q = new QueryType(pos, region, maxSize, minAngle, radius);
         registerQuery(q);
         return q;
     }
@@ -87,7 +87,8 @@ public:
 
     // QueryChangeListener
     virtual void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
-    virtual void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) = 0;
+    virtual void queryRegionChanged(QueryType* query, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
+    virtual void queryMaxSizeChanged(QueryType* query, Real old_ms, Real new_ms) = 0;
     virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
 

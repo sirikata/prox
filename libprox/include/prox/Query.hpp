@@ -70,8 +70,11 @@ public:
     Vector3 position(const Time& t) const {
         return mPosition.position(t);
     }
-    const BoundingSphere& bounds() const {
-        return mBounds;
+    const BoundingSphere& region() const {
+        return mRegion;
+    }
+    const real maxSize() const {
+        return mMaxSize;
     }
     const SolidAngle& angle() const {
         return mMinSolidAngle;
@@ -87,11 +90,18 @@ public:
             (*it)->queryPositionChanged(this, old_pos, new_pos);
     }
 
-    void bounds(const BoundingSphere& new_bounds) {
-        BoundingSphere old_bounds = mBounds;
-        mBounds = new_bounds;
+    void region(const BoundingSphere& new_region) {
+        BoundingSphere old_region = mRegion;
+        mRegion = new_region;
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryBoundsChanged(this, old_bounds, new_bounds);
+            (*it)->queryRegionChanged(this, old_region, new_region);
+    }
+
+    void maxSize(real new_ms) {
+        real old_ms = mMaxSize;
+        mMaxSize = new_ms;
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryMaxSizeChanged(this, old_ms, new_ms);
     }
 
     void angle(const SolidAngle& new_angle) {
@@ -165,9 +175,10 @@ protected:
 
     Query();
 
-    Query(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle)
+    Query(const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle)
      : mPosition(pos),
-       mBounds(bounds),
+       mRegion(region),
+       mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(SimulationTraits::InfiniteRadius),
        mChangeListeners(),
@@ -176,9 +187,10 @@ protected:
     {
     }
 
-    Query(const MotionVector3& pos, const BoundingSphere& bounds, const SolidAngle& minAngle, float radius)
+    Query(const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle, real radius)
      : mPosition(pos),
-       mBounds(bounds),
+       mRegion(region),
+       mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(radius),
        mNotified(false)
@@ -187,7 +199,8 @@ protected:
 
 
     MotionVector3 mPosition;
-    BoundingSphere mBounds;
+    BoundingSphere mRegion;
+    real mMaxSize;
     SolidAngle mMinSolidAngle;
     real mMaxRadius;
 

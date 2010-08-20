@@ -99,8 +99,11 @@ public:
             QueryCacheType newcache;
 
             // Convert to a single world-space bounding sphere
-            Vector3 query_pos = query->position(t) + query->bounds().center();
-            float query_rad = query->bounds().radius();
+            Vector3 query_pos = query->position(t);
+            BoundingSphere query_region = query->region();
+            float query_ms = query->maxSize();
+            SolidAngle query_angle = query->angle();
+            float query_radius = query->radius(); // cut off radius
 
             for(ObjectSetIterator obj_it = mObjects.begin(); obj_it != mObjects.end(); obj_it++) {
                 ObjectID obj = obj_it->first;
@@ -108,7 +111,7 @@ public:
                 BoundingSphere obj_loc = mLocCache->worldRegion(obj_loc_it, t);
                 float32 obj_size = mLocCache->maxSize(obj_loc_it);
 
-                bool satisfies = satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_loc.center(), obj_loc.radius(), obj_size, query->position(t), query->bounds(), query->radius(), query->angle());
+                bool satisfies = satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_loc.center(), obj_loc.radius(), obj_size, query_pos, query_region, query_ms, query_angle, query_radius);
                 if (satisfies)
                     newcache.add(obj);
             }
@@ -154,7 +157,11 @@ public:
         // Nothing to be done, we use values directly from the query
     }
 
-    void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+    void queryRegionChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+        // Nothing to be done, we use values directly from the query
+    }
+
+    void queryMaxSizeChanged(QueryType* query, Real old_maxSize, Real new_maxSize) {
         // Nothing to be done, we use values directly from the query
     }
 

@@ -125,7 +125,8 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
 
         Query* query = mHandler->registerQuery(
             obj->position(),
-            obj->bounds(),
+            BoundingSphere(obj->bounds().center(), 0),
+            obj->bounds().radius(),
             SolidAngle( SolidAngle::Max / 1000 )
         );
         addQuery(query);

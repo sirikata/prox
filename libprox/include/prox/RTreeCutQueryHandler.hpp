@@ -192,7 +192,11 @@ public:
         // Nothing to be done, we use values directly from the query
     }
 
-    void queryBoundsChanged(QueryType* query, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+    void queryRegionChanged(QueryType* query, const BoundingSphere& old_region, const BoundingSphere& new_region) {
+        // XXX FIXME
+    }
+
+    void queryMaxSizeChanged(QueryType* query, Real old_ms, Real new_ms) {
         // XXX FIXME
     }
 
@@ -260,8 +264,8 @@ private:
             rtnode->eraseCutNode(this);
         }
 
-        bool updateSatisfies(const Vector3& qpos, const BoundingSphere& qbounds, float qradius, const SolidAngle& qangle) {
-            satisfies = rtnode->data().satisfiesConstraints(qpos, qbounds, qradius, qangle);
+        bool updateSatisfies(const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
+            satisfies = rtnode->data().satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
             return satisfies;
         }
 
@@ -442,14 +446,15 @@ private:
             // nodes.
 
             Vector3 qpos = query->position(t);
-            BoundingSphere qbounds = query->bounds();
-            float qradius = query->radius();
+            BoundingSphere qregion = query->region();
+            float qmaxsize = query->maxSize();
             const SolidAngle& qangle = query->angle();
+            float qradius = query->radius();
 
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); ) {
                 CutNode* node = *it;
                 bool last_satisfies = node->satisfies;
-                bool satisfies = node->updateSatisfies(qpos, qbounds, qradius, qangle);
+                bool satisfies = node->updateSatisfies(qpos, qregion, qmaxsize, qangle, qradius);
 
                 // No matter what, if we don't satisfy the constraints there's
                 // no reason to continue with this node.
@@ -465,7 +470,7 @@ private:
                     // membership is correct.
                     for(int i = 0; i < node->rtnode->size(); i++) {
                         ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                        bool child_satisfies = node->rtnode->childData(i, loc, t).satisfiesConstraints(qpos, qbounds, qradius, qangle);
+                        bool child_satisfies = node->rtnode->childData(i, loc, t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
                         typename ResultSet::iterator result_it = results.find(child_id);
                         bool in_results = (result_it != results.end());
                         if (child_satisfies && !in_results) {

@@ -359,11 +359,11 @@ public:
     }
 
     // Check if this data satisfies the query constraints given
-    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qbounds, const float qradius, const SolidAngle& qangle) const {
+    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
         Vector3 obj_pos = bounding_sphere.center();
         float obj_radius = bounding_sphere.radius();
 
-        return satisfiesConstraintsBounds<SimulationTraits>(obj_pos, obj_radius, qpos, qbounds, qradius, qangle);
+        return satisfiesConstraintsBounds<SimulationTraits>(obj_pos, obj_radius, qpos, qregion, qmaxsize, qangle, qradius);
     }
 
     // Given an object and a time, select the best child node to put the object in
@@ -515,7 +515,7 @@ public:
     }
 
     // Check if this data satisfies the query constraints given
-    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qbounds, const float qradius, const SolidAngle& qangle) const {
+    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
         // We create a virtual stand in object which is the worst case object that could be in this subtree.
         // It's centered at the closest point on the hierarchical bounding sphere to the query, and has the
         // largest radius of any objects in the subtree.
@@ -523,7 +523,7 @@ public:
         Vector3 obj_pos = ThisBase::bounding_sphere.center();
         float obj_radius = ThisBase::bounding_sphere.radius();
 
-        return satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_pos, obj_radius, mMaxRadius, qpos, qbounds, qradius, qangle);
+        return satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_pos, obj_radius, mMaxRadius, qpos, qregion, qmaxsize, qangle, qradius);
     }
 
     // Given an object and a time, select the best child node to put the object in
