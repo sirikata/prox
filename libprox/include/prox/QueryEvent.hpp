@@ -37,28 +37,82 @@
 
 namespace Prox {
 
+/** Results from a query are a set of objects and imposter objects. Imposter
+ *  objects represent groups of real objects, and a result set should not
+ *  include imposters that are parents of objects which are in the result set.
+ *
+ *  A QueryEvent represents an update to the result set.  For initial results it
+ *  might just be the addition of a single object or imposter objects.  For
+ *  later events, it will be a refinement (add child nodes, remove parent nodes,
+ *  for example, removing an imposter and adding individual objects it
+ *  represented) or a reduction (remove child nodes, add parent nodes, for
+ *  example replacing individual objects with an imposter).
+ *
+ *  QueryEvents should, in some sense, be minimal: it should not be possible to
+ *  break the QueryEvent into multiple smaller QueryEvents without using
+ *  intermediate nodes that weren't in the original QueryEvent. (For instance,
+ *  if A has 4 grandchildren B, C, D, and E, a QueryEvent replacing A with its
+ *  grandchildren is "minimal" because the only way to break it into multiple
+ *  QueryEvents is to use its direct children for intermediate steps.) This
+ *  allows a client to infer what objects must be processed and added before
+ *  others are removed as precisely as possible.
+ */
 template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryEvent {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
 
-    enum Type {
-        Added,
-        Removed
+    enum ObjectType {
+        Normal,
+        Imposter
     };
 
-    QueryEvent(Type t, ObjectID id)
-     : mType(t), mID(id)
-    {}
+    class Action {
+    public:
+        Action(ObjectID id, ObjectType type)
+         : mID(id), mType(type)
+        {}
 
-    Type type() const { return mType; }
-    ObjectID id() const { return mID; }
+        ObjectID id() const { return mID; }
+        ObjectType type() const { return mType; }
+    private:
+        Action();
+        ObjectID mID;
+        ObjectType mType;
+    };
+    class Addition : private Action {
+    public:
+        Addition(ObjectID id, ObjectType type)
+         : Action(id, type)
+        {}
+
+        using Action::id;
+        using Action::type;
+    };
+    typedef std::vector<Addition> AdditionList;
+
+    class Removal : private Action {
+    public:
+        Removal(ObjectID id, ObjectType type)
+         : Action(id, type)
+        {}
+
+        using Action::id;
+        using Action::type;
+    };
+    typedef std::vector<Removal> RemovalList;
+
+    QueryEvent() {}
+
+    AdditionList& additions() { return mAdditions; }
+    const AdditionList& additions() const { return mAdditions; }
+
+    RemovalList& removals() { return mRemovals; }
+    const RemovalList& removals() const { return mRemovals; }
 
 private:
-    QueryEvent();
-
-    Type mType;
-    ObjectID mID;
+    AdditionList mAdditions;
+    RemovalList mRemovals;
 }; // class QueryEventListener
 
 } // namespace Prox

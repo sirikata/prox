@@ -80,11 +80,19 @@ public:
                 std::inserter(removed_objs, removed_objs.begin())
             );
 
-            for(IDSetIterator it = added_objs.begin(); it != added_objs.end(); it++)
-                changes->push_back(QueryEventType(QueryEventType::Added, *it));
+            // Approaches that use a QueryCache are not implementing imposters.
+            // Therefore, we always have single action QueryEvents
+            for(IDSetIterator it = added_objs.begin(); it != added_objs.end(); it++) {
+                QueryEventType evt;
+                evt.additions().push_back( typename QueryEventType::Addition(*it, QueryEventType::Normal) );
+                changes->push_back(evt);
+            }
 
-            for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++)
-                changes->push_back(QueryEventType(QueryEventType::Removed, *it));
+            for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++) {
+                QueryEventType evt;
+                evt.removals().push_back( typename QueryEventType::Removal(*it, QueryEventType::Normal) );
+                changes->push_back(evt);
+            }
         }
 
         mObjects = newcache.mObjects;

@@ -475,11 +475,17 @@ private:
                         bool in_results = (result_it != results.end());
                         if (child_satisfies && !in_results) {
                             results.insert(child_id);
-                            events.push_back(QueryEventType(QueryEventType::Added, child_id));
+
+                            QueryEventType evt;
+                            evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
+                            events.push_back(evt);
                         }
                         else if (!child_satisfies && in_results) {
                             results.erase(result_it);
-                            events.push_back(QueryEventType(QueryEventType::Removed, child_id));
+
+                            QueryEventType evt;
+                            evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                            events.push_back(evt);
                         }
                     }
 
@@ -555,7 +561,10 @@ private:
             bool in_results = (result_it != results.end());
             if (in_results) {
                 results.erase(result_it);
-                events.push_back(QueryEventType(QueryEventType::Removed, child_id));
+
+                QueryEventType evt;
+                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                events.push_back(evt);
             }
 
             validateCut();

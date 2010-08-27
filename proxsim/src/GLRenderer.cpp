@@ -105,13 +105,14 @@ void GLRenderer::queryHasEvents(Query* query) {
     query->popEvents(evts);
 
     for(std::deque<QueryEvent>::iterator it = evts.begin(); it != evts.end(); it++) {
-        if (it->type() == QueryEvent::Added) {
-            if (mSeenObjects.find(it->id()) == mSeenObjects.end())
-                mSeenObjects[it->id()] = 0;
-            mSeenObjects[it->id()]++;
+        for(QueryEvent::AdditionList::iterator add_it = it->additions().begin(); add_it != it->additions().end(); add_it++) {
+            if (mSeenObjects.find(add_it->id()) == mSeenObjects.end())
+                mSeenObjects[add_it->id()] = 0;
+            mSeenObjects[add_it->id()]++;
         }
-        else {
-            mSeenObjects[it->id()]--;
+
+        for(QueryEvent::RemovalList::iterator rem_it = it->removals().begin(); rem_it != it->removals().end(); rem_it++) {
+            mSeenObjects[rem_it->id()]--;
         }
     }
 }
