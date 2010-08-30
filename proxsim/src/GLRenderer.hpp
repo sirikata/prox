@@ -68,8 +68,9 @@ public:
 protected:
     // AggregateListener Interface
     virtual void aggregateCreated(const ObjectIDType& objid);
-    virtual void aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child);
-    virtual void aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child);
+    virtual void aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
+    virtual void aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
+    virtual void aggregateBoundsUpdated(const ObjectIDType& objid, const BoundingSphereType& bnds);
     virtual void aggregateDestroyed(const ObjectIDType& objid);
     virtual void aggregateObserved(const ObjectIDType& objid, uint32 nobservers);
 

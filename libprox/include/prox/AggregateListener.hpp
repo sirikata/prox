@@ -45,18 +45,31 @@ namespace Prox {
  *  events, the listener is only notified when the number of observers changes
  *  in a significant way (zero to non-zero, or non-zero to zero) so the listener
  *  knows whether the object is in use.
+ *
+ *  The bounding information about the bounds so data can be generated
+ *  for a location service.  Because we currently assume periodic
+ *  updates of bounds, these values only include a static bounding
+ *  volume, and no TimedMotionVector for movement.  Instead,
+ *  aggregateBoundsUpdated will be invoked regularly if there are
+ *  changes.  The trivial way to convert this to location and bounds
+ *  is to use the center as the location and change the bounds center
+ *  to the origin.
  */
 template<typename SimulationTraits>
 class AggregateListener {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectIDType;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphereType;
 
     AggregateListener() {}
     virtual ~AggregateListener() {}
 
     virtual void aggregateCreated(const ObjectIDType& objid) = 0;
-    virtual void aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child) = 0;
-    virtual void aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child) = 0;
+    virtual void aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
+    virtual void aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
+    // Only invoked on pure bounds updates. Passed as part of the
+    // callback for childAdded and childRemoved.
+    virtual void aggregateBoundsUpdated(const ObjectIDType& objid, const BoundingSphereType& bnds) = 0;
     virtual void aggregateDestroyed(const ObjectIDType& objid) = 0;
 
     virtual void aggregateObserved(const ObjectIDType& objid, uint32 nobservers) = 0;

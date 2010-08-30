@@ -139,14 +139,17 @@ void GLRenderer::aggregateCreated(const ObjectIDType& objid) {
     mAggregateObjects[objid] = ObjectIDSet();
 }
 
-void GLRenderer::aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child) {
+void GLRenderer::aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].insert(child);
 }
 
-void GLRenderer::aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child) {
+void GLRenderer::aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].erase(child);
+}
+
+void GLRenderer::aggregateBoundsUpdated(const ObjectIDType& objid, const BoundingSphereType& bnds) {
 }
 
 void GLRenderer::aggregateDestroyed(const ObjectIDType& objid) {

@@ -252,10 +252,11 @@ public:
             return node(i)->data();
     }
 
-    void recomputeData(const LocationServiceCacheType* loc, const Time& t) {
+    void recomputeData(const LocationServiceCacheType* loc, const Time& t, const Callbacks& cb) {
         mData = NodeData();
         for(int i = 0; i < size(); i++)
             mData.mergeIn( childData(i, loc, t) );
+        if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(aggregate, mData.getBounds());
     }
 
     void clear() {
@@ -276,7 +277,7 @@ public:
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, loc->iteratorID(obj));
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, loc->iteratorID(obj), mData.getBounds());
     }
 
     void insert(RTreeNode* node, const Callbacks& cb) {
@@ -287,7 +288,7 @@ public:
         count++;
         mData.mergeIn( node->data() );
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, node->aggregate);
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, node->aggregate, mData.getBounds());
     }
 
     // NOTE: does not recalculate the bounding sphere
@@ -303,7 +304,7 @@ public:
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
         count--;
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, loc->iteratorID(obj));
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, loc->iteratorID(obj), mData.getBounds());
     }
 
 private:
@@ -326,7 +327,7 @@ public:
             if (elements.nodes[node_idx] == node) break;
         erase(node_idx);
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, node->aggregate);
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, node->aggregate, mData.getBounds());
     }
 
     bool contains(const LocCacheIterator& obj) const {
@@ -466,6 +467,15 @@ public:
         }
     }
 
+    /** Gets the current bounds of the node.  This should be the true,
+     *  static bounds of the objects, not just the region they cover.
+     *  Use of this method (to generate aggregate object Loc
+     *  information) currently assumes we're not making aggregates be
+     *  moving objects.
+     */
+    BoundingSphere getBounds() const {
+        return bounding_sphere;
+    }
 protected:
     BoundingSphere bounding_sphere;
 };
@@ -588,6 +598,16 @@ public:
                 child.mMaxRadius, mMaxRadius
             );
         }
+    }
+
+    /** Gets the current bounds of the node.  This should be the true,
+     *  static bounds of the objects, not just the region they cover.
+     *  Use of this method (to generate aggregate object Loc
+     *  information) currently assumes we're not making aggregates be
+     *  moving objects.
+     */
+    BoundingSphere getBounds() const {
+        return BoundingSphere( ThisBase::bounding_sphere.center(), ThisBase::bounding_sphere.radius() + mMaxRadius );
     }
 private:
     float mMaxRadius;
@@ -730,7 +750,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
         RTreeNode<SimulationTraits, NodeData, CutNode>* parent = node->parent();
 
         // FIXME this is inefficient
-        node->recomputeData(loc, t);
+        node->recomputeData(loc, t, cb);
 
         if (parent == NULL) break;
 
@@ -947,7 +967,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
     n = recompute_start;
     while(n->parent() != NULL) {
         RTreeNode<SimulationTraits, NodeData, CutNode>* parent = n->parent();
-        n->recomputeData(loc, t);
+        n->recomputeData(loc, t, cb);
         n = parent;
     }
 
@@ -965,7 +985,7 @@ void RTree_update_up_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* nn = node;
 
     while(nn != NULL) {
-        nn->recomputeData(loc, t);
+        nn->recomputeData(loc, t, cb);
         nn = nn->parent();
     }
 }
@@ -1003,7 +1023,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_tree(
         }
     }
 
-    root->recomputeData(loc, t);
+    root->recomputeData(loc, t, cb);
 
     return root;
 }
