@@ -36,6 +36,7 @@
 #include <prox/Platform.hpp>
 #include <prox/LocationServiceCache.hpp>
 #include <prox/Constraints.hpp>
+#include <prox/AggregateListener.hpp>
 #include <float.h>
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
@@ -92,10 +93,13 @@ struct RTreeNode : public CutNodeContainer<CutNode> {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
+    typedef typename SimulationTraits::ObjectIDRandomType ObjectIDRandom;
     typedef typename SimulationTraits::TimeType Time;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
+
+    typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef RTreeLeafNode<SimulationTraits, CutNode> LeafNode;
 
@@ -109,6 +113,7 @@ public:
     typedef uint16 Index;
 
     struct Callbacks {
+        AggregateListenerType* aggregate;
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
         NodeSplitCallback nodeSplit;
@@ -128,6 +133,7 @@ private:
     uint8 flags;
     Index count;
     Index max_elements;
+    ObjectID aggregate;
 
 public:
     struct NodeChildOperations {
@@ -144,7 +150,7 @@ public:
         }
 
         void insert(RTreeNode* parent, const LocationServiceCacheType* loc, RTreeNode* newchild, const Time&, const Callbacks& cb) {
-            parent->insert(newchild);
+            parent->insert(newchild, cb);
         }
     };
 
@@ -167,8 +173,8 @@ public:
     };
 
 
-    RTreeNode(Index _max_elements)
-     : mParent(NULL), mData(), flags(0), count(0), max_elements(_max_elements)
+    RTreeNode(Index _max_elements, const Callbacks& callbacks)
+     : mParent(NULL), mData(), flags(0), count(0), max_elements(_max_elements), aggregate( ObjectIDRandom()() )
     {
         uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
         uint32 magic_size = max_element_size * max_elements;
@@ -176,13 +182,24 @@ public:
         memset(elements.magic, 0, magic_size);
 
         leaf(true);
+
+        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateCreated(aggregate);
     }
 
+    // We have a destroy method and hide the destructor in private in order to
+    // ensure the aggregate callbacks get invoked properly.
+    void destroy(const Callbacks& callbacks) {
+        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateDestroyed(aggregate);
+        delete this;
+    }
+
+private:
     ~RTreeNode() {
         delete[] elements.magic;
         assert(CutNodeContainer<CutNode>::cuts.size() == 0);
     }
 
+public:
     bool leaf() const {
         return (flags & LeafFlag);
     }
@@ -202,6 +219,8 @@ public:
     Index capacity() const {
         return max_elements;
     }
+
+    const ObjectID& aggregateID() const { return aggregate; }
 
     RTreeNode* parent() const {
         return mParent;
@@ -256,19 +275,23 @@ public:
         cb.objectLeafChanged(obj, this);
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
+
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, loc->iteratorID(obj));
     }
 
-    void insert(RTreeNode* node) {
+    void insert(RTreeNode* node, const Callbacks& cb) {
         assert (count < max_elements);
         assert (leaf() == false);
         node->parent(this);
         elements.nodes[count] = node;
         count++;
         mData.mergeIn( node->data() );
+
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, node->aggregate);
     }
 
     // NOTE: does not recalculate the bounding sphere
-    void erase(const LocCacheIterator& obj) {
+    void erase(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
         assert(count > 0);
         assert(leaf() == true);
         // find obj
@@ -279,18 +302,22 @@ public:
         for(Index rem_idx = obj_idx; rem_idx < count-1; rem_idx++)
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
         count--;
+
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, loc->iteratorID(obj));
     }
 
-    // NOTE: does not recalculate the bounding sphere
+private:
+    // NOTE: does not recalculate the bounding sphere.
+    // Internal helper.  Doesn't notify aggregates.
     void erase(int node_idx) {
         // push all the other objects back one
         for(Index rem_idx = node_idx; rem_idx < count-1; rem_idx++)
             elements.nodes[rem_idx] = elements.nodes[rem_idx+1];
         count--;
     }
-
+public:
     // NOTE: does not recalculate the bounding sphere
-    void erase(const RTreeNode* node) {
+    void erase(const RTreeNode* node, const Callbacks& cb) {
         assert(count > 0);
         assert(leaf() == false);
         // find node
@@ -298,6 +325,8 @@ public:
         for(node_idx = 0; node_idx < count; node_idx++)
             if (elements.nodes[node_idx] == node) break;
         erase(node_idx);
+
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, node->aggregate);
     }
 
     bool contains(const LocCacheIterator& obj) const {
@@ -663,7 +692,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
 
     // copy data into the correct nodes
     node->clear();
-    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity());
+    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity(), cb);
     nn->leaf(node->leaf());
     for(uint32 i = 0; i < split_children.size(); i++) {
         RTreeNode<SimulationTraits, NodeData, CutNode>* newparent = (split_groups[i] == 0) ? node : nn;
@@ -710,7 +739,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
             if (parent->full())
                 pp = RTree_split_node<SimulationTraits, NodeData, CutNode, RTreeNode<SimulationTraits, NodeData, CutNode>*, typename RTreeNode<SimulationTraits, NodeData, CutNode>::NodeChildOperations>(parent, nn, loc, t, cb);
             else
-                parent->insert(nn);
+                parent->insert(nn, cb);
         }
 
         node = parent;
@@ -720,10 +749,10 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
     // if we have a leftover split node, the root was split and we need to create
     // a new root one level higher
     if (nn != NULL) {
-        RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity());
+        RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity(), cb);
         new_root->leaf(false);
-        new_root->insert(node);
-        new_root->insert(nn);
+        new_root->insert(node, cb);
+        new_root->insert(nn, cb);
 
         node = new_root;
         nn = NULL;
@@ -885,7 +914,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
 
         // Then, remove nodes
         std::queue<RTreeNodeType*> removedNodes;
-        parent->erase(highest_removed);
+        parent->erase(highest_removed, cb);
         removedNodes.push(highest_removed);
 
         // FIXME this could reinsert entire nodes instead of individual objects, but we'd need a better idea of how to actually accomplish that...
@@ -899,11 +928,12 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             }
             else {
                 while(removed->size()) {
-                    removedNodes.push(removed->node(0));
-                    removed->erase(0);
+                    RTreeNodeType* child_removed = removed->node(0);
+                    removedNodes.push(child_removed);
+                    removed->erase(child_removed, cb);
                 }
             }
-            delete removed;
+            removed->destroy(cb);
         }
     }
 
@@ -992,7 +1022,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
         return root;
     }
 
-    leaf_with_obj->erase(obj_id);
+    leaf_with_obj->erase(loc, obj_id, cb);
 
     RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_condense_tree(leaf_with_obj, loc, t, cb);
 
@@ -1001,7 +1031,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
         new_root = root->node(0);
         new_root->parent(NULL);
         root->clear();
-        delete root;
+        root->destroy(cb);
     }
     return new_root;
 }
@@ -1024,6 +1054,8 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
 
+    typedef AggregateListener<SimulationTraits> AggregateListenerType;
+
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
 
     typedef typename RTreeNodeType::LiftCutCallback LiftCutCallback;
@@ -1031,18 +1063,20 @@ public:
 
     typedef typename RTreeNodeType::Index Index;
 
-    RTree(Index elements_per_node, LocationServiceCacheType* loccache, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
-     : mLocCache(loccache),
-       mRoot(new RTreeNodeType(elements_per_node))
+    RTree(Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
+     : mLocCache(loccache)
     {
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
 
+        mCallbacks.aggregate = agg;
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);
         mCallbacks.nodeSplit = node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
+
+        mRoot = new RTreeNodeType(elements_per_node, mCallbacks);
     }
 
     ~RTree() {

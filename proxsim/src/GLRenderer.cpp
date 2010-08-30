@@ -64,12 +64,13 @@ void glut_timer(int val) {
     GLRenderer_sRenderer->timer();
 }
 
-GLRenderer::GLRenderer(Simulator* sim)
+GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler)
  : Renderer(sim),
    mTime(Time::null()),
    mWinWidth(0), mWinHeight(0)
 {
     mSimulator->addListener(this);
+    handler->setAggregateListener(this);
 
     assert(GLRenderer_sRenderer == NULL);
     GLRenderer_sRenderer = this;
@@ -133,6 +134,30 @@ void GLRenderer::simulatorRemovedQuery(Query* query) {
     query->setEventListener(NULL);
 }
 
+void GLRenderer::aggregateCreated(const ObjectIDType& objid) {
+    assert( mAggregateObjects.find(objid) == mAggregateObjects.end() );
+    mAggregateObjects[objid] = ObjectIDSet();
+}
+
+void GLRenderer::aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child) {
+    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
+    mAggregateObjects[objid].insert(child);
+}
+
+void GLRenderer::aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child) {
+    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
+    mAggregateObjects[objid].erase(child);
+}
+
+void GLRenderer::aggregateDestroyed(const ObjectIDType& objid) {
+    AggregateObjectMap::iterator it = mAggregateObjects.find(objid);
+    assert(it != mAggregateObjects.end());
+    mAggregateObjects.erase(it);
+}
+
+void GLRenderer::aggregateObserved(const ObjectIDType& objid, uint32 nobservers) {
+    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
+}
 
 void GLRenderer::display() {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );

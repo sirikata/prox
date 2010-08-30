@@ -39,6 +39,7 @@
 #include <prox/QueryEventListener.hpp>
 #include <prox/QueryHandler.hpp>
 #include <prox/LocationServiceCache.hpp>
+#include <prox/AggregateListener.hpp>
 
 namespace Prox {
 namespace Simulation {
@@ -67,6 +68,8 @@ typedef Prox::QueryEventListener<DefaultSimulationTraits> QueryEventListener;
 typedef Prox::QueryHandler<DefaultSimulationTraits> QueryHandler;
 
 typedef Prox::LocationServiceCache<DefaultSimulationTraits> LocationServiceCache;
+
+typedef Prox::AggregateListener<DefaultSimulationTraits> AggregateListener;
 
 } // namespace Simulation
 } // namespace Prox

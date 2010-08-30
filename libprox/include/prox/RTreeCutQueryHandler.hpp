@@ -54,6 +54,8 @@ public:
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
+    typedef AggregateListener<SimulationTraits> AggregateListenerType;
+
     typedef Query<SimulationTraits> QueryType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
@@ -101,6 +103,7 @@ public:
 
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
+            aggregateListener(),
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
             std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
             std::tr1::bind(&CutNode::handleObjectRemoved, _1, _2)
@@ -252,17 +255,25 @@ private:
         RTreeNodeType* rtnode;
         bool satisfies;
 
-        CutNode(Cut* _parent, RTreeNodeType* _rt)
+        CutNode(Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
          : parent(_parent),
            rtnode(_rt),
            satisfies(false)
         {
             rtnode->insertCutNode(this);
+            if (listener != NULL) listener->aggregateObserved(rtnode->aggregateID(), rtnode->cutNodesSize());
         }
 
-        ~CutNode() {
+        void destroy(AggregateListenerType* listener) {
             rtnode->eraseCutNode(this);
+            if (listener != NULL) listener->aggregateObserved(rtnode->aggregateID(), rtnode->cutNodesSize());
+            delete this;
         }
+    private:
+        ~CutNode() {
+        }
+
+    public:
 
         bool updateSatisfies(const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
             satisfies = rtnode->data().satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
@@ -304,20 +315,20 @@ private:
         EventQueue events;
 
         CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it) {
-            CutNode* parent = *parent_it;
-            assert(!parent->leaf());
+            CutNode* parent_cn = *parent_it;
+            assert(!parent_cn->leaf());
             // Inserts before, so get next it
             CutNodeListIterator next_it = parent_it;
             next_it++;
             // Insert all new nodes. Going backwards leaves next_it as first of
             // new elements
-            for(int i = parent->rtnode->size()-1; i >=0; i--)
-                next_it = nodes.insert(next_it, new CutNode(this, parent->rtnode->node(i)));
+            for(int i = parent_cn->rtnode->size()-1; i >=0; i--)
+                next_it = nodes.insert(next_it, new CutNode(this, parent_cn->rtnode->node(i), parent->aggregateListener()));
             // Delete old node
             nodes.erase(parent_it);
-            length += (parent->rtnode->size()-1);
+            length += (parent_cn->rtnode->size()-1);
             // And clean up
-            delete parent;
+            parent_cn->destroy(parent->aggregateListener());
 
             return next_it;
         }
@@ -385,7 +396,7 @@ private:
          : parent(_parent),
            query(_query)
         {
-            nodes.push_back(new CutNode(this, root));
+            nodes.push_back(new CutNode(this, root, parent->aggregateListener()));
             length = 1;
             validateCut();
         }
@@ -393,7 +404,7 @@ private:
         ~Cut() {
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {
                 CutNode* node = *it;
-                delete node;
+                node->destroy(parent->aggregateListener());
             }
             nodes.clear();
             length = 0;
@@ -518,7 +529,7 @@ private:
             CutNodeListIterator orig_list_it = std::find(nodes.begin(), nodes.end(), cnode);
             CutNodeListIterator after_orig_list_it = orig_list_it; orig_list_it++;
 
-            nodes.insert(after_orig_list_it, new CutNode(this, new_node));
+            nodes.insert(after_orig_list_it, new CutNode(this, new_node, parent->aggregateListener()));
             length++;
 
             // Mid-operation, no validation
@@ -538,7 +549,7 @@ private:
 
                 if ( _is_ancestor(node->rtnode, to_node) ) {
                     it = nodes.erase(it);
-                    delete node;
+                    node->destroy(parent->aggregateListener());
                 }
                 else {
                     it++;
@@ -548,7 +559,7 @@ private:
             // New node insertion must happen at the end to avoid removing the
             // new node
             // FIXME to preserve ordering we need to select insertion point more carefully
-            nodes.insert(nodes.begin(), new CutNode(this, to_node));
+            nodes.insert(nodes.begin(), new CutNode(this, to_node, parent->aggregateListener()));
 
             validateCut();
         }
@@ -586,6 +597,7 @@ private:
         Cut* cut;
     };
 
+    AggregateListenerType* aggregateListener() { return QueryHandlerType::mAggregateListener; }
     typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, ObjectIDHasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;

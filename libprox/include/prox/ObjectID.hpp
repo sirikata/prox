@@ -88,6 +88,15 @@ public:
         }
     };
 
+    struct Random {
+        ObjectID operator() () const {
+            unsigned char buf[UUID_SIZE];
+            for(int i = 0; i < UUID_SIZE; i++)
+                buf[i] = (unsigned char)(rand() % 256);
+            return ObjectID(buf, UUID_SIZE);
+        }
+    };
+
     std::string toString() const {
         std::stringstream ss;
         ss << Hasher()(*this);

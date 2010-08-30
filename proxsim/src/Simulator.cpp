@@ -120,7 +120,7 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
     // Queries
     for(int i = 0; i < nqueries; i++) {
         // Pick a random object to use as a basis for this query
-        uint32 obj_idx = randUInt32(0, nobjects-1);
+        uint32 obj_idx = randUInt32(0, mObjects.size()-1);
         Object* obj = mObjects[obj_idx];
 
         Query* query = mHandler->registerQuery(

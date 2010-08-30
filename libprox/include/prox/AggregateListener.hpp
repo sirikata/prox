@@ -1,7 +1,7 @@
 /*  libprox
- *  DefaultSimulationTraits.hpp
+ *  AggregateListener.hpp
  *
- *  Copyright (c) 2009, Ewen Cheslack-Postava
+ *  Copyright (c) 2010, Ewen Cheslack-Postava
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,47 +30,39 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
-#define _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
-
-#include <prox/Vector3.hpp>
-#include <prox/MotionVector.hpp>
-
-#include <prox/BoundingSphere.hpp>
-
-#include <prox/SolidAngle.hpp>
-
-#include <prox/ObjectID.hpp>
-
-#include <prox/Time.hpp>
-#include <prox/Duration.hpp>
-
-// LocationServiceCache?
+#ifndef _PROX_AGGREGATE_LISTENER_HPP_
+#define _PROX_AGGREGATE_LISTENER_HPP_
 
 namespace Prox {
 
-class DefaultSimulationTraits {
+/** An AggregateListener is informed about updates to aggregates.  Aggregates
+ *  are collections of objects which may be returned because they would satisfy
+ *  a query, but none of their children would.
+ *
+ *  AggregateListeners learn about existence and membership events -- when
+ *  aggregates are generated and when their membership changes -- as well as
+ *  observance events -- when a query is actually aware of them.  For observance
+ *  events, the listener is only notified when the number of observers changes
+ *  in a significant way (zero to non-zero, or non-zero to zero) so the listener
+ *  knows whether the object is in use.
+ */
+template<typename SimulationTraits>
+class AggregateListener {
 public:
-    typedef float realType;
+    typedef typename SimulationTraits::ObjectIDType ObjectIDType;
 
-    typedef Reference::Vector3f Vector3Type;
-    typedef Reference::MotionVector3f MotionVector3Type;
+    AggregateListener() {}
+    virtual ~AggregateListener() {}
 
-    typedef Reference::BoundingSphere3f BoundingSphereType;
+    virtual void aggregateCreated(const ObjectIDType& objid) = 0;
+    virtual void aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child) = 0;
+    virtual void aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child) = 0;
+    virtual void aggregateDestroyed(const ObjectIDType& objid) = 0;
 
-    typedef Reference::SolidAngle SolidAngleType;
+    virtual void aggregateObserved(const ObjectIDType& objid, uint32 nobservers) = 0;
 
-    typedef Reference::ObjectID ObjectIDType;
-    typedef Reference::ObjectID::Hasher ObjectIDHasherType;
-    typedef Reference::ObjectID::Random ObjectIDRandomType;
-
-    typedef Reference::Time TimeType;
-    typedef Reference::Duration DurationType;
-
-    const static realType InfiniteRadius;
-
-}; // class DefaultSimulationTraits
+}; // class AggregateListener
 
 } // namespace Prox
 
-#endif //_PROX_DEFAULT_SIMULATION_TRAITS_HPP_
+#endif //_PROX_AGGREGATE_LISTENER_HPP_

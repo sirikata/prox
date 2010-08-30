@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         handler = new Prox::BruteForceQueryHandler<>();
 
     Simulator* simulator = new Simulator(handler);
-    Renderer* renderer = new GLRenderer(simulator);
+    Renderer* renderer = new GLRenderer(simulator, handler);
 
     simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 10000, 50, 100);
 

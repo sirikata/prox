@@ -42,9 +42,9 @@
 namespace Prox {
 namespace Simulation {
 
-class GLRenderer : public Renderer, public QueryEventListener, public SimulatorListener {
+class GLRenderer : public Renderer, public QueryEventListener, public SimulatorListener, public AggregateListener {
 public:
-    GLRenderer(Simulator* sim);
+    GLRenderer(Simulator* sim, QueryHandler* handler);
     virtual ~GLRenderer();
 
     // Renderer Interface
@@ -66,6 +66,13 @@ public:
     void keyboard(unsigned char key, int x, int y);
 
 protected:
+    // AggregateListener Interface
+    virtual void aggregateCreated(const ObjectIDType& objid);
+    virtual void aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child);
+    virtual void aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child);
+    virtual void aggregateDestroyed(const ObjectIDType& objid);
+    virtual void aggregateObserved(const ObjectIDType& objid, uint32 nobservers);
+
     GLRenderer();
 
     void drawbb(const BoundingBox3& bb);
@@ -75,6 +82,13 @@ protected:
     std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> mSeenObjects;
     Timer mTimer;
     int mWinWidth, mWinHeight;
+
+    // Gets bounds of an object or aggregate object
+    BoundingSphere getBounds(const ObjectID& obj);
+
+    typedef std::tr1::unordered_set<ObjectID, ObjectID::Hasher> ObjectIDSet;
+    typedef std::tr1::unordered_map<ObjectID, ObjectIDSet, ObjectID::Hasher> AggregateObjectMap;
+    AggregateObjectMap mAggregateObjects;
 }; // class Renderer
 
 } // namespace Simulation

@@ -36,6 +36,7 @@
 #include <prox/Query.hpp>
 #include <prox/LocationServiceCache.hpp>
 #include <prox/DefaultSimulationTraits.hpp>
+#include <prox/AggregateListener.hpp>
 
 namespace Prox {
 
@@ -44,6 +45,7 @@ class QueryHandler : public LocationUpdateListener<SimulationTraits>, public Que
 public:
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
+    typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
@@ -56,7 +58,8 @@ public:
 
     QueryHandler()
      : LocationUpdateListenerType(),
-       QueryChangeListenerType()
+       QueryChangeListenerType(),
+       mAggregateListener(NULL)
     {}
     virtual ~QueryHandler() {}
 
@@ -78,6 +81,13 @@ public:
     virtual uint32 numObjects() const = 0;
     virtual uint32 numQueries() const = 0;
 
+    void setAggregateListener(AggregateListenerType* listener) {
+        mAggregateListener = listener;
+    }
+    void removeAggregateListener() {
+        mAggregateListener = NULL;
+    }
+
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
@@ -94,6 +104,8 @@ public:
 
 protected:
     virtual void registerQuery(QueryType* query) = 0;
+
+    AggregateListenerType* mAggregateListener;
 }; // class QueryHandler
 
 } // namespace Prox
