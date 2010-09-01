@@ -108,6 +108,7 @@ public:
     // CutNode that split occurred at, the node that was split, the new node.
     typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> NodeSplitCallback;
     typedef std::tr1::function<void(CutNode, RTreeNode*)> LiftCutCallback;
+    typedef std::tr1::function<void(CutNode, const LocCacheIterator&, int)> ObjectInsertedCallback;
     typedef std::tr1::function<void(CutNode, const LocCacheIterator&)> ObjectRemovedCallback;
 
     typedef uint16 Index;
@@ -118,6 +119,7 @@ public:
         GetObjectLeafCallback getObjectLeaf;
         NodeSplitCallback nodeSplit;
         LiftCutCallback liftCut;
+        ObjectInsertedCallback objectInserted;
         ObjectRemovedCallback objectRemoved;
     };
 private:
@@ -272,12 +274,19 @@ public:
     void insert(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t, const Callbacks& cb) {
         assert (count < max_elements);
         assert (leaf() == true);
-        elements.objects[count] = LeafNode(obj);
+
+        int idx = count;
+        elements.objects[idx] = LeafNode(obj);
         cb.objectLeafChanged(obj, this);
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
 
         if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, loc->iteratorID(obj), mData.getBounds());
+
+        if (cb.objectInserted) {
+            for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
+                cb.objectInserted(*cut_it, obj, idx);
+        }
     }
 
     void insert(RTreeNode* node, const Callbacks& cb) {
@@ -1072,6 +1081,7 @@ template<typename SimulationTraits, typename NodeData, typename CutNode>
 class RTree {
 public:
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef NodeData NodeDataType;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
@@ -1084,11 +1094,12 @@ public:
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
 
     typedef typename RTreeNodeType::LiftCutCallback LiftCutCallback;
+    typedef typename RTreeNodeType::ObjectInsertedCallback ObjectInsertedCallback;
     typedef typename RTreeNodeType::ObjectRemovedCallback ObjectRemovedCallback;
 
     typedef typename RTreeNodeType::Index Index;
 
-    RTree(Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
+    RTree(Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
      : mLocCache(loccache)
     {
         using std::tr1::placeholders::_1;
@@ -1099,6 +1110,7 @@ public:
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);
         mCallbacks.nodeSplit = node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
+        mCallbacks.objectInserted = obj_ins_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
 
         mRoot = new RTreeNodeType(elements_per_node, mCallbacks);

@@ -107,6 +107,7 @@ public:
             aggregateListener(),
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
             std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
+            std::tr1::bind(&CutNode::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode::handleObjectRemoved, _1, _2)
         );
     }
@@ -246,8 +247,9 @@ private:
     struct CutNode;
     struct Cut;
 
-    //typedef Prox::RTree<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode*>, CutNode*> RTree;
-    typedef Prox::RTree<SimulationTraits, MaxSphereData<SimulationTraits, CutNode*>, CutNode*> RTree;
+    //typedef BoundingSphereData<SimulationTraits, CutNode*> NodeData;
+    typedef MaxSphereData<SimulationTraits, CutNode*> NodeData;
+    typedef Prox::RTree<SimulationTraits, NodeData, CutNode*> RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
 
@@ -291,6 +293,9 @@ private:
         void handleLiftCut(RTreeNodeType* to_node) {
             parent->handleLiftCut(this, to_node);
         }
+        void handleObjectInserted(const LocCacheIterator& objit, int objidx) {
+            parent->handleObjectInserted(this, objit, objidx);
+        }
         void handleObjectRemoved(const LocCacheIterator& objit) {
             parent->handleObjectRemoved(this, objit);
         }
@@ -314,6 +319,28 @@ private:
 
         typedef std::deque<QueryEventType> EventQueue;
         EventQueue events;
+
+        // Checks for child_id's membership in the result set.  This version
+        // should be used for non-aggregate queries.
+        void checkMembership(const ObjectID& child_id, const NodeData& child_data, const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
+            bool child_satisfies = child_data.satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+            typename ResultSet::iterator result_it = results.find(child_id);
+            bool in_results = (result_it != results.end());
+            if (child_satisfies && !in_results) {
+                results.insert(child_id);
+
+                QueryEventType evt;
+                evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
+                events.push_back(evt);
+            }
+            else if (!child_satisfies && in_results) {
+                results.erase(result_it);
+
+                QueryEventType evt;
+                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                events.push_back(evt);
+            }
+        }
 
         CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it, QueryEventType* qevt_out) {
             CutNode* parent_cn = *parent_it;
@@ -342,6 +369,28 @@ private:
             parent_cn->destroy(parent->aggregateListener());
 
             return next_it;
+        }
+
+        // Replaces a parent node with children objects in the result set.  This
+        // only makes sense for aggregates.  It should be used when one of the
+        // child objects satisfies the constraints and therefore pulls all the
+        // children in with it. Should not be used for non-leaf nodes.
+        void replaceParentWithChildrenResults(CutNode* cnode) {
+            QueryEventType evt;
+            for(int i = 0; i < cnode->rtnode->size(); i++) {
+                ObjectID child_id = parent->mLocCache->iteratorID(cnode->rtnode->object(i).object);
+                results.insert(child_id);
+                evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
+            }
+            // For some reason this:
+            //results.erase(result_it);
+            // is breaking, even though I can't see how
+            //result_it could ever be invalid. Instead, do
+            //it the hard way and assert:
+            size_t nremoved = results.erase(cnode->rtnode->aggregateID());
+            assert(nremoved == 1);
+            evt.removals().push_back( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
+            events.push_back(evt);
         }
 
         static RTreeNodeType* _get_root(RTreeNodeType* node) {
@@ -551,33 +600,10 @@ private:
                             // If this node wasn't already in the results, then
                             // all the children should be.  Just check the first
                             // one for sanity.
-
-                            /** FIXME: We should be doing this:
                             assert(
                                 node->rtnode->size() == 0 ||
                                 results.find( loc->iteratorID(node->rtnode->object(0).object) ) != results.end()
                             );
-
-                            But currently insertion doesn't ensure that cuts
-                            are made aware of new objects, so there may be some
-                            children that have not been checked. Therefore, we
-                            just run through and add missing results into the
-                            result set.  Note that we don't need to check for
-                            satisfaction since we know at least one sibling
-                            satisfies.
-                            **/
-                            for(int i = 0; i < node->rtnode->size(); i++) {
-                                ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                                typename ResultSet::iterator result_it = results.find(child_id);
-                                bool in_results = (result_it != results.end());
-                                if (!in_results) {
-                                    results.insert(child_id);
-
-                                    QueryEventType evt;
-                                    evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
-                                    events.push_back(evt);
-                                }
-                            }
                         }
                         else {
                             // If it is in the result set, we need to decide
@@ -599,21 +625,7 @@ private:
                                 }
                             }
                             if (should_replace_parent) {
-                                QueryEventType evt;
-                                for(int i = 0; i < node->rtnode->size(); i++) {
-                                    ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                                    results.insert(child_id);
-                                    evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
-                                }
-                                // For some reason this:
-                                //results.erase(result_it);
-                                // is breaking, even though I can't see how
-                                //result_it could ever be invalid. Instead, do
-                                //it the hard way and assert:
-                                size_t nremoved = results.erase(node->rtnode->aggregateID());
-                                assert(nremoved == 1);
-                                evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Imposter) );
-                                events.push_back(evt);
+                                replaceParentWithChildrenResults(node);
                             }
                         }
                     }
@@ -626,23 +638,7 @@ private:
                         // membership is correct.
                         for(int i = 0; i < node->rtnode->size(); i++) {
                             ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                            bool child_satisfies = node->rtnode->childData(i, loc, t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
-                            typename ResultSet::iterator result_it = results.find(child_id);
-                            bool in_results = (result_it != results.end());
-                            if (child_satisfies && !in_results) {
-                                results.insert(child_id);
-
-                                QueryEventType evt;
-                                evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
-                                events.push_back(evt);
-                            }
-                            else if (!child_satisfies && in_results) {
-                                results.erase(result_it);
-
-                                QueryEventType evt;
-                                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
-                                events.push_back(evt);
-                            }
+                            checkMembership(child_id, node->rtnode->childData(i, loc, t), qpos, qregion, qmaxsize, qangle, qradius);
                         }
                     }
 
@@ -762,6 +758,67 @@ private:
                 events.push_back(evt);
 
             validateCut();
+        }
+
+        void handleObjectInserted(CutNode* cnode, const LocCacheIterator& objit, int objidx) {
+            RTreeNodeType* node = cnode->rtnode;
+            assert(node->leaf());
+            assert(node->size() > 1); // Should be more children than just us
+
+            if (parent->mWithAggregates) {
+                // When dealing with aggregates, since this node is on the cut
+                // and a leaf, there are two possibilities -- the node is truly
+                // in the results and none of its children are or the node is
+                // not in the results and all of its children are.
+                //
+                // Therefore, we only have 2 choices.  If the node is in the
+                // result set, we need to check the child and possibly push the
+                // cut down.  If the node is not, we must simply add the child
+                // as a new result.
+                typename ResultSet::iterator parent_result_it = results.find(node->aggregateID());
+                bool parent_in_results = (parent_result_it != results.end());
+
+                if (!parent_in_results) {
+                    // Just add the child
+                    ObjectID child_id = parent->mLocCache->iteratorID(objit);
+                    assert(results.find(child_id) == results.end());
+
+                    results.insert(child_id);
+
+                    QueryEventType evt;
+                    evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal) );
+                    events.push_back(evt);
+                }
+                else {
+                    // Check this child to decide whether to replace parent with
+                    // children
+                    Time t = parent->mLastTime;
+                    Vector3 qpos = query->position(t);
+                    BoundingSphere qregion = query->region();
+                    float qmaxsize = query->maxSize();
+                    const SolidAngle& qangle = query->angle();
+                    float qradius = query->radius();
+
+                    ObjectID child_id = parent->mLocCache->iteratorID(objit);
+                    bool child_satisfies = node->childData(objidx, parent->mLocCache, t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                    if (child_satisfies) {
+                        replaceParentWithChildrenResults(cnode);
+                    }
+                }
+            }
+            else {
+                // If we're not dealing with aggregates, we just need to check
+                // if we should be adding this to the result set immediately.
+                Time t = parent->mLastTime;
+                Vector3 qpos = query->position(t);
+                BoundingSphere qregion = query->region();
+                float qmaxsize = query->maxSize();
+                const SolidAngle& qangle = query->angle();
+                float qradius = query->radius();
+
+                ObjectID child_id = parent->mLocCache->iteratorID(objit);
+                checkMembership(child_id, node->childData(objidx, parent->mLocCache, t), qpos, qregion, qmaxsize, qangle, qradius);
+            }
         }
 
         void handleObjectRemoved(CutNode* cnode, const LocCacheIterator& objit) {
