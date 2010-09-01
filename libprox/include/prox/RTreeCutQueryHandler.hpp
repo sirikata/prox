@@ -740,10 +740,7 @@ private:
                 results.erase(result_it);
 
                 QueryEventType evt;
-                // Note that the object might not be in the result set.
-                size_t nremoved = results.erase(child_id);
-                if (nremoved > 0)
-                    evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
                 events.push_back(evt);
             }
 

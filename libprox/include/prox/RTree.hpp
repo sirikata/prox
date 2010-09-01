@@ -1036,9 +1036,20 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_with_obj = cb.getObjectLeaf(loc->iteratorID(obj_id));
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename SimulationTraits::ObjectIDType ObjectIDType;
+
+    ObjectIDType real_obj_id = loc->iteratorID(obj_id);
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_with_obj = cb.getObjectLeaf(real_obj_id);
     if (leaf_with_obj == NULL) {
         return root;
+    }
+
+    // Notify any cuts that the object is leaving
+    assert(leaf_with_obj->leaf());
+    if (cb.objectRemoved) {
+        for(typename RTreeNodeType::CutNodeListConstIterator cut_it = leaf_with_obj->cutNodesBegin(); cut_it != leaf_with_obj->cutNodesEnd(); cut_it++)
+            cb.objectRemoved(*cut_it, obj_id);
     }
 
     leaf_with_obj->erase(loc, obj_id, cb);
