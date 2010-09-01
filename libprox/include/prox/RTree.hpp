@@ -815,7 +815,6 @@ int32 RTree_count(RTreeNode<SimulationTraits, NodeData, CutNode>* root) {
 
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_verify_constraints(RTreeNode<SimulationTraits, NodeData, CutNode>* root, const LocationServiceCache<SimulationTraits>* loc, const typename SimulationTraits::TimeType& t) {
-//#define PROXDEBUG
 #ifdef PROXDEBUG
     for(int i = 0; i < root->size(); i++) {
         if(!root->leaf()) {
@@ -874,11 +873,11 @@ template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_verify_no_cut_nodes(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node)
 {
-//#define PROXDEBUG
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 #ifdef PROXDEBUG
     assert(node->cutNodesSize() == 0);
     if (!node->leaf())
-        for(Index idx = 0; idx < node->size(); idx++)
+        for(typename RTreeNodeType::Index idx = 0; idx < node->size(); idx++)
             RTree_verify_no_cut_nodes(node->node(idx));
 #endif
 }

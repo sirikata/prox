@@ -79,8 +79,11 @@ protected:
     void drawbb(const BoundingBox3& bb);
     void drawbs(const BoundingSphere& bs);
 
+    void validateSeenObjects();
+
     Time mTime;
-    std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> mSeenObjects;
+    typedef std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> ObjectRefCountMap;
+    ObjectRefCountMap mSeenObjects;
     Timer mTimer;
     int mWinWidth, mWinHeight;
 

@@ -57,12 +57,12 @@ Simulator::Simulator(QueryHandler* handler)
 Simulator::~Simulator() {
     // Remove all objects
     while(!mObjects.empty()) {
-        Object* obj = mObjects.front();
+        Object* obj = mObjects.begin()->second;
         removeObject(obj);
     }
     // And delete them all
     while(!mRemovedObjects.empty()) {
-        Object* obj = mRemovedObjects.front();
+        Object* obj = mRemovedObjects.begin()->second;
         delete obj;
     }
 
@@ -111,7 +111,7 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
         // and removed.
 
         // Always insert to mRemovedObjects first.  addObject will remove from mRemovedObjects.
-        mRemovedObjects.push_back(obj);
+        mRemovedObjects[obj->id()] = obj;
 
         if (i > mChurn)
             addObject(obj);
@@ -121,7 +121,10 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
     for(int i = 0; i < nqueries; i++) {
         // Pick a random object to use as a basis for this query
         uint32 obj_idx = randUInt32(0, mObjects.size()-1);
-        Object* obj = mObjects[obj_idx];
+        ObjectList::iterator obj_it = mObjects.begin();
+        for(uint32 k = 0; k < obj_idx; k++)
+            obj_it++;
+        Object* obj = obj_it->second;
 
         Query* query = mHandler->registerQuery(
             obj->position(),
@@ -150,11 +153,11 @@ void Simulator::removeListener(SimulatorListener* listener) {
 
 void Simulator::tick(const Time& t) {
     for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
-        Object* obj = *(mObjects.begin());
+        Object* obj = mObjects.begin()->second;
         removeObject(obj);
     }
     for(int i = 0; !mRemovedObjects.empty() && i < mChurn; i++) {
-        Object* obj = *(mRemovedObjects.begin());
+        Object* obj = mRemovedObjects.begin()->second;
         addObject(obj);
     }
 
@@ -162,17 +165,17 @@ void Simulator::tick(const Time& t) {
 }
 
 void Simulator::addObject(Object* obj) {
-    mRemovedObjects.erase( std::find(mRemovedObjects.begin(), mRemovedObjects.end(), obj) );
-    mObjects.push_back(obj);
+    mRemovedObjects.erase( mRemovedObjects.find(obj->id()) );
+    mObjects[obj->id()] = obj;
     mLocCache->addObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorAddedObject(obj, obj->position(), obj->bounds());
 }
 
 void Simulator::removeObject(Object* obj) {
-    ObjectList::iterator it = std::find(mObjects.begin(), mObjects.end(), obj);
+    ObjectList::iterator it = mObjects.find(obj->id());
     mObjects.erase(it);
-    mRemovedObjects.push_back(obj);
+    mRemovedObjects[obj->id()] = obj;
     mLocCache->removeObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorRemovedObject(obj);
@@ -198,6 +201,10 @@ Simulator::ObjectIterator Simulator::objectsBegin() {
 
 Simulator::ObjectIterator Simulator::objectsEnd() {
     return mObjects.end();
+}
+
+Simulator::ObjectIterator Simulator::objectsFind(const ObjectID& objid) {
+    return mObjects.find(objid);
 }
 
 Simulator::QueryIterator Simulator::queriesBegin() {

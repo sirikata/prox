@@ -113,9 +113,23 @@ void GLRenderer::queryHasEvents(Query* query) {
         }
 
         for(QueryEvent::RemovalList::iterator rem_it = it->removals().begin(); rem_it != it->removals().end(); rem_it++) {
+            assert(mSeenObjects.find(rem_it->id()) != mSeenObjects.end());
             mSeenObjects[rem_it->id()]--;
         }
     }
+}
+
+void GLRenderer::validateSeenObjects() {
+#ifdef PROXDEBUG
+    // Validate
+    for (ObjectRefCountMap::iterator it = mSeenObjects.begin(); it != mSeenObjects.end(); it++) {
+        assert(
+            it->second == 0 ||
+            mAggregateObjects.find(it->first) != mAggregateObjects.end() ||
+            mSimulator->objectsFind(it->first) != mSimulator->objectsEnd()
+        );
+    }
+#endif //PROXDEBUG
 }
 
 void GLRenderer::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
@@ -166,7 +180,7 @@ void GLRenderer::display() {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     for(Simulator::ObjectIterator it = mSimulator->objectsBegin(); it != mSimulator->objectsEnd(); it++) {
-        Object* obj = *it;
+        Object* obj = it->second;
         BoundingSphere bb = obj->worldBounds(mTime);
 
         if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0)
@@ -223,6 +237,7 @@ void GLRenderer::timer() {
     mTimer.start();
     mSimulator->tick(mTime);
     printf("Real time elapsed: %f\n", mTimer.elapsed().seconds());
+    validateSeenObjects();
     glutTimerFunc(16, glut_timer, 0);
     glutPostRedisplay();
 }

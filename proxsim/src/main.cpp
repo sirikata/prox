@@ -59,7 +59,9 @@ int main(int argc, char** argv) {
     if (handler_type == "rtree")
         handler = new Prox::RTreeQueryHandler<>(10);
     else if (handler_type == "rtreecut")
-        handler = new Prox::RTreeCutQueryHandler<>(10);
+        handler = new Prox::RTreeCutQueryHandler<>(10, false);
+    else if (handler_type == "rtreecutagg")
+        handler = new Prox::RTreeCutQueryHandler<>(10, true);
     else
         handler = new Prox::BruteForceQueryHandler<>();
 

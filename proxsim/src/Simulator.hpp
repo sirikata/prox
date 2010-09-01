@@ -44,7 +44,7 @@ namespace Simulation {
 
 class Simulator {
 private:
-    typedef std::vector<Object*> ObjectList;
+    typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectList;
     typedef std::list<Query*> QueryList;
 public:
     Simulator(QueryHandler* handler);
@@ -64,6 +64,7 @@ public:
 
     ObjectIterator objectsBegin();
     ObjectIterator objectsEnd();
+    ObjectIterator objectsFind(const ObjectID& objid);
 
     QueryIterator queriesBegin();
     QueryIterator queriesEnd();
