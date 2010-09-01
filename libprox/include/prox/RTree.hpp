@@ -295,6 +295,7 @@ public:
     void erase(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
         assert(count > 0);
         assert(leaf() == true);
+
         // find obj
         Index obj_idx;
         for(obj_idx = 0; obj_idx < count; obj_idx++)
@@ -304,7 +305,13 @@ public:
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
         count--;
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, loc->iteratorID(obj), mData.getBounds());
+        ObjectID obj_id = loc->iteratorID(obj);
+        if (cb.objectRemoved) {
+            for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
+                cb.objectRemoved(*cut_it, obj);
+        }
+
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, obj_id, mData.getBounds());
     }
 
 private:
@@ -1040,11 +1047,6 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
 
     // Notify any cuts that the object is leaving
     assert(leaf_with_obj->leaf());
-    if (cb.objectRemoved) {
-        for(typename RTreeNodeType::CutNodeListConstIterator cut_it = leaf_with_obj->cutNodesBegin(); cut_it != leaf_with_obj->cutNodesEnd(); cut_it++)
-            cb.objectRemoved(*cut_it, obj_id);
-    }
-
     leaf_with_obj->erase(loc, obj_id, cb);
 
     RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_condense_tree(leaf_with_obj, loc, t, cb);
