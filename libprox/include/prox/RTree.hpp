@@ -847,13 +847,6 @@ void RTree_lift_cut_nodes(
     // Only notify cuts if we're moving *above* this node, not if this node is
     // both the starting point for recursion and the destination node
     if (from_node != to_node) {
-        // Notify any cuts that objects held by this node are gone
-        if (from_node->leaf() && cb.objectRemoved) {
-            for(Index idx = 0; idx < from_node->size(); idx++) {
-                for(typename RTreeNodeType::CutNodeListConstIterator cut_it = from_node->cutNodesBegin(); cut_it != from_node->cutNodesEnd(); cut_it++)
-                    cb.objectRemoved(*cut_it, from_node->object(idx).object);
-            }
-        }
         // Notify cuts to lift up to the right node
         // NOTE: We use this approach since the callback likely adjusts the cut
         // node list in from_node

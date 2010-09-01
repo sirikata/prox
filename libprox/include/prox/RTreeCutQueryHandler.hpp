@@ -682,6 +682,26 @@ private:
             // Mid-operation, no validation
         }
 
+        void removeObjectChildFromResults(const ObjectID& child_id) {
+            typename ResultSet::iterator result_it = results.find(child_id);
+            bool in_results = (result_it != results.end());
+            if (in_results) {
+                results.erase(result_it);
+
+                QueryEventType evt;
+                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                events.push_back(evt);
+            }
+        }
+
+        void removeObjectChildrenFromResults(RTreeNodeType* from_node) {
+            // Notify any cuts that objects held by this node are gone
+            assert(from_node->leaf());
+            for(typename RTreeNodeType::Index idx = 0; idx < from_node->size(); idx++) {
+                removeObjectChildFromResults( parent->mLocCache->iteratorID(from_node->object(idx).object) );
+            }
+        }
+
         void handleLiftCut(CutNode* cnode, RTreeNodeType* to_node) {
             validateCut();
 
@@ -692,19 +712,33 @@ private:
 
             QueryEventType evt;
 
-            // FIXME if we hit a leaf we need to remove objects from teh result set
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); ) {
                 CutNode* node = *it;
 
                 if ( _is_ancestor(node->rtnode, to_node) ) {
                     it = nodes.erase(it);
                     if (parent->mWithAggregates) {
-                        // The node might not be in the result set because it
-                        // may be a leaf but have its children in the result
+                        // When dealing with aggregates, we first check if the
+                        // node itself is in the result set since if it is, none
+                        // of its children can be (if it is a leaf).
                         // set.
                         size_t nremoved = results.erase(node->rtnode->aggregateID());
-                        if (nremoved > 0)
+                        if (nremoved > 0) {
                             evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Imposter) );
+                        }
+                        else {
+                            // If it wasn't there and this is a leaf, we need to
+                            // check for children in the result set.  In this
+                            // case, they should all be there.
+                            removeObjectChildrenFromResults(node->rtnode);
+                        }
+                    }
+                    else {
+                        // Without aggregates, we only need to check to remove
+                        // children from the result set if we're at a leaf.  In
+                        // this case, some may be there, some may not.
+                        if (node->rtnode->leaf())
+                            removeObjectChildrenFromResults(node->rtnode);
                     }
                     node->destroy(parent->aggregateListener());
                 }
@@ -734,15 +768,7 @@ private:
             // We just need to remove the object from the result set if we have
             // it.
             ObjectID child_id = parent->mLocCache->iteratorID(objit);
-            typename ResultSet::iterator result_it = results.find(child_id);
-            bool in_results = (result_it != results.end());
-            if (in_results) {
-                results.erase(result_it);
-
-                QueryEventType evt;
-                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
-                events.push_back(evt);
-            }
+            removeObjectChildFromResults(child_id);
 
             validateCut();
         }
