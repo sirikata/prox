@@ -51,8 +51,9 @@ public:
 
     BoundingSphere()
      : mCenter((real)0),
-       mRadius(0)
+       mRadius(-1.0)
     {
+        mRadius = -1.0;
     }
 
     BoundingSphere(const CoordType& c, const real r)
@@ -75,22 +76,32 @@ public:
     }
 
     BoundingSphere merge(const BoundingSphere& rhs) const {
-        if (rhs.degenerate())
+        if (rhs.invalid())
             return *this;
 
-        if (this->degenerate())
+        if (this->invalid())
             return rhs;
 
-        real center_dist = (rhs.mCenter - mCenter).length();
+        // Check if one is entirely contained within the other
+        CoordType to_other_center = rhs.mCenter - mCenter;
+        real center_dist = to_other_center.length();
         if (center_dist + mRadius <= rhs.mRadius)
             return rhs;
         if (center_dist + rhs.mRadius <= mRadius)
             return *this;
 
-        real new_radius = (mRadius + center_dist + rhs.mRadius) * 0.5;
-        real ratio = (new_radius - mRadius) / center_dist;
-        CoordType new_center = mCenter + (rhs.mCenter - mCenter) * ratio;
-        return BoundingSphere(new_center, new_radius);
+        real new_radius2 = (mRadius + center_dist + rhs.mRadius);
+        real new_radius = new_radius2 * 0.5;
+        if (center_dist > 1e-08) {
+            CoordType to_other_center_normalized = to_other_center / center_dist;
+            CoordType farthest_point_from_other = mCenter - (mRadius * to_other_center_normalized);
+            CoordType half_new_span = to_other_center_normalized * new_radius;
+            CoordType new_center = farthest_point_from_other + half_new_span;
+            return BoundingSphere(new_center, new_radius);
+        }
+        else {
+            return BoundingSphere(mCenter, new_radius);
+        }
     }
 
     bool contains(const BoundingSphere& other) const {
@@ -107,8 +118,12 @@ public:
         return ( (mCenter-pt).lengthSquared() <= mRadius*mRadius );
     }
 
-    bool degenerate() const {
+    bool invalid() const {
         return ( mRadius < 0 );
+    }
+
+    bool degenerate() const {
+        return ( mRadius <= 0 );
     }
 
     real volume() const {
