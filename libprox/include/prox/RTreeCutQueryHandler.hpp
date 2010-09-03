@@ -763,7 +763,9 @@ private:
         void handleObjectInserted(CutNode* cnode, const LocCacheIterator& objit, int objidx) {
             RTreeNodeType* node = cnode->rtnode;
             assert(node->leaf());
-            assert(node->size() > 1); // Should be more children than just us
+            // Should be more children than just us, unless this is the very
+            // first insertion on the root.
+            assert(node->size() > 1 || node->parent() == NULL);
 
             if (parent->mWithAggregates) {
                 // When dealing with aggregates, since this node is on the cut
