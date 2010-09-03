@@ -1070,8 +1070,9 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
         new_root = root->node(0);
         // Notify cuts so they can refine to the new root
         if (cb.rootReplaced) {
-            for(typename RTreeNodeType::CutNodeListConstIterator cut_it = root->cutNodesBegin(); cut_it != root->cutNodesEnd(); cut_it++) {
+            for(typename RTreeNodeType::CutNodeListConstIterator cut_it = root->cutNodesBegin(); cut_it != root->cutNodesEnd(); ) {
                 CutNode cutnode = *cut_it;
+                cut_it++; // Advance now to avoid invalidating iterator in callback
                 cb.rootReplaced(cutnode, root, new_root);
             }
         }
