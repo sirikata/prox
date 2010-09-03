@@ -105,6 +105,10 @@ public:
 
     typedef std::tr1::function<void(const LocCacheIterator&, RTreeNode*)> ObjectLeafChangedCallback;
     typedef std::tr1::function<RTreeNode*(const ObjectID&)> GetObjectLeafCallback;
+    // The root was left with only one child node, cuts on the old root need to
+    // "refine" themselves to the new node by simple replacement.  Parameters
+    // are the old root followed by the new root.
+    typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> RootReplacedByChildCallback;
     // CutNode that split occurred at, the node that was split, the new node.
     typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> NodeSplitCallback;
     typedef std::tr1::function<void(CutNode, RTreeNode*)> LiftCutCallback;
@@ -117,6 +121,7 @@ public:
         AggregateListenerType* aggregate;
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
+        RootReplacedByChildCallback rootReplaced;
         NodeSplitCallback nodeSplit;
         LiftCutCallback liftCut;
         ObjectInsertedCallback objectInserted;
@@ -1063,6 +1068,13 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     // We might need to shorten the tree if the root is left with only one child.
     if (!root->leaf() && root->size() == 1) {
         new_root = root->node(0);
+        // Notify cuts so they can refine to the new root
+        if (cb.rootReplaced) {
+            for(typename RTreeNodeType::CutNodeListConstIterator cut_it = root->cutNodesBegin(); cut_it != root->cutNodesEnd(); cut_it++) {
+                CutNode cutnode = *cut_it;
+                cb.rootReplaced(cutnode, root, new_root);
+            }
+        }
         new_root->parent(NULL);
         root->clear();
         root->destroy(cb);
@@ -1091,6 +1103,7 @@ public:
 
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
+    typedef typename RTreeNodeType::RootReplacedByChildCallback RootReplacedByChildCallback;
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
 
     typedef typename RTreeNodeType::LiftCutCallback LiftCutCallback;
@@ -1099,7 +1112,10 @@ public:
 
     typedef typename RTreeNodeType::Index Index;
 
-    RTree(Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL, NodeSplitCallback node_split_cb = 0, LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0)
+    RTree(Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL,
+        RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
+        LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
+    )
      : mLocCache(loccache)
     {
         using std::tr1::placeholders::_1;
@@ -1108,6 +1124,7 @@ public:
         mCallbacks.aggregate = agg;
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);
+        mCallbacks.rootReplaced = root_replaced_cb;
         mCallbacks.nodeSplit = node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
         mCallbacks.objectInserted = obj_ins_cb;

@@ -105,6 +105,7 @@ public:
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
             aggregateListener(),
+            std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
             std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
             std::tr1::bind(&CutNode::handleObjectInserted, _1, _2, _3),
@@ -287,6 +288,10 @@ private:
             return rtnode->leaf();
         }
 
+
+        void handleRootReplaced(RTreeNodeType* orig_root, RTreeNodeType* new_root) {
+            parent->handleRootReplaced(this, orig_root, new_root);
+        }
         void handleSplit(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
             parent->handleSplit(this, orig_node, new_node);
         }
@@ -652,6 +657,22 @@ private:
             // nodes allows
 
             query->pushEvents(events);
+        }
+
+        void handleRootReplaced(CutNode* cnode, RTreeNodeType* orig_root, RTreeNodeType* new_root) {
+            // The old root was replaced by the new root because the tree is
+            // getting smaller.  We just need to shift our cut down to the new
+            // node.
+            // FIXME linear search could be avoided by storing iterators
+            CutNodeListIterator it = std::find(nodes.begin(), nodes.end(), cnode);
+            if (parent->mWithAggregates) {
+                QueryEventType evt;
+                it = replaceParentWithChildren(it, &evt);
+                events.push_back(evt);
+            }
+            else {
+                it = replaceParentWithChildren(it, NULL);
+            }
         }
 
         // Handle a split of orig_node into orig_node and new_node. cnode is the
