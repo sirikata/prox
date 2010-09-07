@@ -88,6 +88,8 @@ public:
         mAggregateListener = NULL;
     }
 
+    virtual LocationServiceCacheType* locationCache() const = 0;
+
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;

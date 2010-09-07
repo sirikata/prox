@@ -130,6 +130,10 @@ public:
         return (uint32)mQueries.size();
     }
 
+    virtual LocationServiceCacheType* locationCache() const {
+        return mLocCache;
+    }
+
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         mObjects[obj_id] = mLocCache->startTracking(obj_id);
     }
