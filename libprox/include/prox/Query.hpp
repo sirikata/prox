@@ -55,6 +55,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
 
+    typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
     typedef QueryEventListener<SimulationTraits> QueryEventListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
@@ -63,6 +64,8 @@ public:
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
             (*it)->queryDeleted(this);
     }
+
+    QueryHandlerType* handler() const { return mParent; }
 
     const MotionVector3& position() const {
         return mPosition;
@@ -175,8 +178,9 @@ protected:
 
     Query();
 
-    Query(const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle)
-     : mPosition(pos),
+    Query(QueryHandlerType* parent, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle)
+     : mParent(parent),
+       mPosition(pos),
        mRegion(region),
        mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
@@ -187,8 +191,9 @@ protected:
     {
     }
 
-    Query(const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle, real radius)
-     : mPosition(pos),
+    Query(QueryHandlerType* parent, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle, real radius)
+     : mParent(parent),
+       mPosition(pos),
        mRegion(region),
        mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
@@ -197,6 +202,7 @@ protected:
     {
     }
 
+    QueryHandlerType* mParent;
 
     MotionVector3 mPosition;
     BoundingSphere mRegion;

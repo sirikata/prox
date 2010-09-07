@@ -66,12 +66,12 @@ public:
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
-        QueryType* q = new QueryType(pos, region, maxSize, minAngle);
+        QueryType* q = new QueryType(this, pos, region, maxSize, minAngle);
         registerQuery(q);
         return q;
     }
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle, float radius) {
-        QueryType* q = new QueryType(pos, region, maxSize, minAngle, radius);
+        QueryType* q = new QueryType(this, pos, region, maxSize, minAngle, radius);
         registerQuery(q);
         return q;
     }
