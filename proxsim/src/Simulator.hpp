@@ -80,6 +80,7 @@ private:
     int64 mObjectIDSource;
     QueryHandler* mHandler;
     ObjectLocationServiceCache* mLocCache;
+    ObjectList mAllObjects;
     ObjectList mObjects;
     QueryList mQueries;
     typedef std::list<SimulatorListener*> ListenerList;

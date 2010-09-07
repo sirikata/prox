@@ -105,23 +105,46 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
             BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1))
         );
 
+        mAllObjects[obj->id()] = obj;
         // Split objects into two groups. The first is added immediately,
         // guaranteeing testing of new queries over existing trees.  The rest
         // are left for churn, testing updates of queries as objects are added
         // and removed.
-
         // Always insert to mRemovedObjects first.  addObject will remove from mRemovedObjects.
         mRemovedObjects[obj->id()] = obj;
-
-        if (i > mChurn)
-            addObject(obj);
     }
 
-    // Queries
-    for(int i = 0; i < nqueries; i++) {
+    // Add some queries (so we get some added before any objects present)
+    for(int i = 0; i < nqueries/2; i++) {
         // Pick a random object to use as a basis for this query
-        uint32 obj_idx = randUInt32(0, mObjects.size()-1);
-        ObjectList::iterator obj_it = mObjects.begin();
+        uint32 obj_idx = randUInt32(0, mAllObjects.size()-1);
+        ObjectList::iterator obj_it = mAllObjects.begin();
+        for(uint32 k = 0; k < obj_idx; k++)
+            obj_it++;
+        Object* obj = obj_it->second;
+
+        Query* query = mHandler->registerQuery(
+            obj->position(),
+            BoundingSphere(obj->bounds().center(), 0),
+            obj->bounds().radius(),
+            SolidAngle( SolidAngle::Max / 1000 )
+        );
+        addQuery(query);
+    }
+
+    // Add objects
+    uint32 count = 0;
+    for(ObjectList::iterator it = mAllObjects.begin(); it != mAllObjects.end(); it++) {
+        count++;
+        if (count > mChurn)
+            addObject(it->second);
+    }
+
+    // Add rest of queries (so we get some added after objects present)
+    for(int i = 0; i < nqueries/2; i++) {
+        // Pick a random object to use as a basis for this query
+        uint32 obj_idx = randUInt32(0, mAllObjects.size()-1);
+        ObjectList::iterator obj_it = mAllObjects.begin();
         for(uint32 k = 0; k < obj_idx; k++)
             obj_it++;
         Object* obj = obj_it->second;
