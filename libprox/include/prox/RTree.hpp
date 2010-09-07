@@ -266,9 +266,30 @@ public:
         if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(aggregate, mData.getBounds());
     }
 
-    void clear() {
+private:
+    void notifyRemoved(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
+        ObjectID obj_id = loc->iteratorID(obj);
+        if (cb.objectRemoved) {
+            for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
+                cb.objectRemoved(*cut_it, obj);
+        }
+
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, obj_id, mData.getBounds());
+    }
+
+public:
+
+    void clear(const LocationServiceCacheType* loc, const Callbacks& cb) {
+        Index old_count = count;
         count = 0;
 
+        // If we have child objects, we need to notify cuts of removal
+        if (leaf()) {
+            for(Index i = 0; i < old_count; i++)
+                notifyRemoved(loc, this->elements.objects[i].object, cb);
+        }
+
+        // Clear out data for safety
         uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
         for(uint32 i = 0; i < max_element_size * max_elements; i++)
             elements.magic[i] = 0;
@@ -319,13 +340,7 @@ public:
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
         count--;
 
-        ObjectID obj_id = loc->iteratorID(obj);
-        if (cb.objectRemoved) {
-            for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
-                cb.objectRemoved(*cut_it, obj);
-        }
-
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, obj_id, mData.getBounds());
+        notifyRemoved(loc, obj, cb);
     }
 
 private:
@@ -732,7 +747,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
         RTree_pick_next_child(split_data, split_groups, group_data_0, group_data_1);
 
     // copy data into the correct nodes
-    node->clear();
+    node->clear(loc, cb);
     RTreeNode<SimulationTraits, NodeData, CutNode>* nn = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity(), cb);
     nn->leaf(node->leaf());
     for(uint32 i = 0; i < split_children.size(); i++) {
@@ -1077,7 +1092,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
             }
         }
         new_root->parent(NULL);
-        root->clear();
+        root->clear(loc, cb);
         root->destroy(cb);
     }
     return new_root;
