@@ -148,31 +148,31 @@ void GLRenderer::simulatorRemovedQuery(Query* query) {
     query->setEventListener(NULL);
 }
 
-void GLRenderer::aggregateCreated(const ObjectIDType& objid) {
+void GLRenderer::aggregateCreated(QueryHandlerType* handler, const ObjectIDType& objid) {
     assert( mAggregateObjects.find(objid) == mAggregateObjects.end() );
     mAggregateObjects[objid] = ObjectIDSet();
 }
 
-void GLRenderer::aggregateChildAdded(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
+void GLRenderer::aggregateChildAdded(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].insert(child);
 }
 
-void GLRenderer::aggregateChildRemoved(const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
+void GLRenderer::aggregateChildRemoved(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].erase(child);
 }
 
-void GLRenderer::aggregateBoundsUpdated(const ObjectIDType& objid, const BoundingSphereType& bnds) {
+void GLRenderer::aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) {
 }
 
-void GLRenderer::aggregateDestroyed(const ObjectIDType& objid) {
+void GLRenderer::aggregateDestroyed(QueryHandlerType* handler, const ObjectIDType& objid) {
     AggregateObjectMap::iterator it = mAggregateObjects.find(objid);
     assert(it != mAggregateObjects.end());
     mAggregateObjects.erase(it);
 }
 
-void GLRenderer::aggregateObserved(const ObjectIDType& objid, uint32 nobservers) {
+void GLRenderer::aggregateObserved(QueryHandlerType* handler, const ObjectIDType& objid, uint32 nobservers) {
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
 }
 

@@ -99,6 +99,8 @@ public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
+    typedef QueryHandler<SimulationTraits> QueryHandlerType;
+
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef RTreeLeafNode<SimulationTraits, CutNode> LeafNode;
@@ -118,6 +120,7 @@ public:
     typedef uint16 Index;
 
     struct Callbacks {
+        QueryHandlerType* handler;
         AggregateListenerType* aggregate;
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
@@ -190,13 +193,13 @@ public:
 
         leaf(true);
 
-        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateCreated(aggregate);
+        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateCreated(callbacks.handler, aggregate);
     }
 
     // We have a destroy method and hide the destructor in private in order to
     // ensure the aggregate callbacks get invoked properly.
     void destroy(const Callbacks& callbacks) {
-        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateDestroyed(aggregate);
+        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateDestroyed(callbacks.handler, aggregate);
         delete this;
     }
 
@@ -263,7 +266,7 @@ public:
         mData = NodeData();
         for(int i = 0; i < size(); i++)
             mData.mergeIn( childData(i, loc, t) );
-        if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(aggregate, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(cb.handler, aggregate, mData.getBounds());
     }
 
 private:
@@ -274,7 +277,7 @@ private:
                 cb.objectRemoved(*cut_it, obj);
         }
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, obj_id, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, obj_id, mData.getBounds());
     }
 
 public:
@@ -307,7 +310,7 @@ public:
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, loc->iteratorID(obj), mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.handler, aggregate, loc->iteratorID(obj), mData.getBounds());
 
         if (cb.objectInserted) {
             for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
@@ -323,7 +326,7 @@ public:
         count++;
         mData.mergeIn( node->data() );
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(aggregate, node->aggregate, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.handler, aggregate, node->aggregate, mData.getBounds());
     }
 
     // NOTE: does not recalculate the bounding sphere
@@ -363,7 +366,7 @@ public:
             if (elements.nodes[node_idx] == node) break;
         erase(node_idx);
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(aggregate, node->aggregate, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, node->aggregate, mData.getBounds());
     }
 
     bool contains(const LocCacheIterator& obj) const {
@@ -1117,6 +1120,7 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
 
+    typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef typename RTreeNodeType::RootReplacedByChildCallback RootReplacedByChildCallback;
@@ -1128,7 +1132,7 @@ public:
 
     typedef typename RTreeNodeType::Index Index;
 
-    RTree(Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL,
+    RTree(QueryHandlerType* handler, Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL,
         RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
@@ -1137,6 +1141,7 @@ public:
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
 
+        mCallbacks.handler = handler;
         mCallbacks.aggregate = agg;
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);

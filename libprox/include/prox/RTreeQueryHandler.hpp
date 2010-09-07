@@ -94,7 +94,7 @@ public:
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
 
-        mRTree = new RTree(mElementsPerNode, mLocCache);
+        mRTree = new RTree(this, mElementsPerNode, mLocCache);
     }
 
     void tick(const Time& t) {

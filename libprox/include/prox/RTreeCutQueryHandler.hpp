@@ -103,6 +103,7 @@ public:
         using std::tr1::placeholders::_3;
 
         mRTree = new RTree(
+            this,
             mElementsPerNode, mLocCache,
             aggregateListener(),
             std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
@@ -263,18 +264,18 @@ private:
         RTreeNodeType* rtnode;
         bool satisfies;
 
-        CutNode(Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
+        CutNode(QueryHandlerType* handler, Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
          : parent(_parent),
            rtnode(_rt),
            satisfies(false)
         {
             rtnode->insertCutNode(this);
-            if (listener != NULL) listener->aggregateObserved(rtnode->aggregateID(), rtnode->cutNodesSize());
+            if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize());
         }
 
-        void destroy(AggregateListenerType* listener) {
+        void destroy(QueryHandlerType* handler, AggregateListenerType* listener) {
             rtnode->eraseCutNode(this);
-            if (listener != NULL) listener->aggregateObserved(rtnode->aggregateID(), rtnode->cutNodesSize());
+            if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize());
             delete this;
         }
     private:
@@ -365,7 +366,7 @@ private:
                     qevt_out->additions().push_back( typename QueryEventType::Addition(child_rtnode->aggregateID(), QueryEventType::Imposter) );
                     results.insert(child_rtnode->aggregateID());
                 }
-                next_it = nodes.insert(next_it, new CutNode(this, child_rtnode, parent->aggregateListener()));
+                next_it = nodes.insert(next_it, new CutNode(parent, this, child_rtnode, parent->aggregateListener()));
             }
             // Delete old node
             if (qevt_out) {
@@ -375,7 +376,7 @@ private:
             nodes.erase(parent_it);
             length += (parent_cn->rtnode->size()-1);
             // And clean up
-            parent_cn->destroy(parent->aggregateListener());
+            parent_cn->destroy(parent, parent->aggregateListener());
 
             return next_it;
         }
@@ -471,7 +472,7 @@ private:
                 results.insert(root->aggregateID());
                 events.push_back(evt);
             }
-            nodes.push_back(new CutNode(this, root, parent->aggregateListener()));
+            nodes.push_back(new CutNode(parent, this, root, parent->aggregateListener()));
 
             length = 1;
             validateCut();
@@ -480,7 +481,7 @@ private:
         ~Cut() {
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {
                 CutNode* node = *it;
-                node->destroy(parent->aggregateListener());
+                node->destroy(parent, parent->aggregateListener());
             }
             nodes.clear();
             length = 0;
@@ -690,7 +691,7 @@ private:
             CutNodeListIterator orig_list_it = std::find(nodes.begin(), nodes.end(), cnode);
             CutNodeListIterator after_orig_list_it = orig_list_it; orig_list_it++;
 
-            CutNode* new_cnode = new CutNode(this, new_node, parent->aggregateListener());
+            CutNode* new_cnode = new CutNode(parent, this, new_node, parent->aggregateListener());
             if (parent->mWithAggregates) {
                 QueryEventType evt;
                 evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
@@ -761,7 +762,7 @@ private:
                         if (node->rtnode->leaf())
                             removeObjectChildrenFromResults(node->rtnode);
                     }
-                    node->destroy(parent->aggregateListener());
+                    node->destroy(parent, parent->aggregateListener());
                 }
                 else {
                     it++;
@@ -772,7 +773,7 @@ private:
             // new node
             // FIXME to preserve ordering we need to select insertion
             // point more carefully
-            CutNode* new_cnode = new CutNode(this, to_node, parent->aggregateListener());
+            CutNode* new_cnode = new CutNode(parent, this, to_node, parent->aggregateListener());
             if (parent->mWithAggregates) {
                 evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
                 results.insert(new_cnode->rtnode->aggregateID());
