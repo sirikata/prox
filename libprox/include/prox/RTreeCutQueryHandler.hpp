@@ -105,7 +105,7 @@ public:
         mRTree = new RTree(
             this,
             mElementsPerNode, mLocCache,
-            aggregateListener(),
+            (mWithAggregates ? aggregateListener() : NULL),
             std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
             std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
