@@ -36,7 +36,7 @@
 namespace Prox {
 namespace Simulation {
 
-BoundingSphere ObjectLocationServiceCache::sNullBoundingSphere = BoundingSphere(Reference::Vector3f(), 0.0f);
+BoundingSphere ObjectLocationServiceCache::sNullBoundingSphere = BoundingSphere(Reference::Vector3f(0,0,0), 0.0f);
 
 ObjectLocationServiceCache::ObjectLocationServiceCache() {
 }
