@@ -907,7 +907,7 @@ void RTree_verify_no_cut_nodes(
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 #ifdef PROXDEBUG
-    assert(node->cutNodesSize() == 0);
+    assert(node->parent() == NULL || node->cutNodesSize() == 0);
     if (!node->leaf())
         for(typename RTreeNodeType::Index idx = 0; idx < node->size(); idx++)
             RTree_verify_no_cut_nodes(node->node(idx));

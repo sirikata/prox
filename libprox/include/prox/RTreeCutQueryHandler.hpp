@@ -737,7 +737,8 @@ private:
 
             // FIXME we could avoid this linear search by storing iterators in CutNode
             CutNodeListIterator orig_list_it = std::find(nodes.begin(), nodes.end(), cnode);
-            CutNodeListIterator after_orig_list_it = orig_list_it; orig_list_it++;
+            assert(orig_list_it != nodes.end());
+            CutNodeListIterator after_orig_list_it = orig_list_it; after_orig_list_it++;
 
             CutNode* new_cnode = new CutNode(parent, this, new_node, parent->aggregateListener());
             if (parent->mWithAggregates) {
