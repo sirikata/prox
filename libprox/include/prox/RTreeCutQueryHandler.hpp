@@ -457,6 +457,52 @@ private:
             }
         };
 
+        // Rebuild an ordered cut.  This shouldn't be used normally, only for
+        // validation. Works recursively. Note that this also verifies the if a
+        // cut node was found in an rtree node, that processing children doesn't
+        // change the size of the cut (i.e. we didn't find a cutnode in a
+        // subtree where we shouldn't).  This is more expensive, but also covers
+        // the functionality of validateCutNodesUnrelated.
+        void rebuildOrderedCut(CutNodeList& inorder, RTreeNodeType* root) const {
+            bool had_cut = false;
+            for(typename RTreeNodeType::CutNodeListConstIterator node_its = root->cutNodesBegin();
+                node_its != root->cutNodesEnd();
+                node_its++)
+            {
+                CutNode* cnode = *node_its;
+                if (cnode->parent == this) {
+                    inorder.push_back(cnode);
+                    had_cut = true;
+                }
+            }
+
+            if (root->leaf())
+                return;
+
+            int num_before_children = inorder.size();
+            for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+                rebuildOrderedCut(inorder, root->node(i));
+            int num_after_children = inorder.size();
+            assert(!had_cut || num_before_children == num_after_children);
+        };
+
+        // Validates that the nodes in a cut are in order as they cut across the
+        // nodes of the RTree. This is a necessary condition for the cuts to get
+        // pushed up properly.
+        void validateCutOrdered() const {
+            // There's almost certainly a more efficient way to do this, but the
+            // easiest way is to build a new list by exploring the tree in-order
+            // for nodes
+            CutNodeList nodes_inorder;
+            rebuildOrderedCut(nodes_inorder, parent->mRTree->root());
+            assert(nodes_inorder.size() == nodes.size());
+            for(CutNodeListConstIterator it = nodes.begin(), other_it = nodes_inorder.begin();
+                it != nodes.end(); it++, other_it++) {
+                CutNode* node = *it;
+                CutNode* othernode = *other_it;
+                assert(node == othernode);
+            }
+        };
     public:
 
         /** Regular constructor.  A new cut simply starts with the root node and
@@ -491,7 +537,9 @@ private:
 #ifdef PROXDEBUG
             validateCutNodesInRTreeNodes();
             validateCutNodesInTree();
-            validateCutNodesUnrelated();
+            // Now covered by validateCutOrdere
+            //validateCutNodesUnrelated();
+            validateCutOrdered();
 #endif //PROXDEBUG
         };
 
@@ -734,10 +782,16 @@ private:
 
             QueryEventType evt;
 
-            for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); ) {
+            // We'll exit when we have last_was_ancestor == true and
+            // _is_ancestor == false, indicating we hit the end of the run for
+            // this parent node.
+            bool last_was_ancestor = false;
+            CutNodeListIterator it;
+            for(it = nodes.begin(); it != nodes.end(); ) {
                 CutNode* node = *it;
 
                 if ( _is_ancestor(node->rtnode, to_node) ) {
+                    last_was_ancestor = true;
                     it = nodes.erase(it);
                     if (parent->mWithAggregates) {
                         // When dealing with aggregates, we first check if the
@@ -765,20 +819,26 @@ private:
                     node->destroy(parent, parent->aggregateListener());
                 }
                 else {
+                    // If the last one was a child and we aren't then we can
+                    // stop traversing.  We don't advance the iterator because
+                    // leaving it here allows us to insert before the first
+                    // non-child, which should be the right place.
+                    if (last_was_ancestor)
+                        break;
                     it++;
                 }
             }
 
             // New node insertion must happen at the end to avoid removing the
             // new node
-            // FIXME to preserve ordering we need to select insertion
-            // point more carefully
+            // NOTE: We always do this because the callback shouldn't even be
+            // called unless we needed to remove one of these.
             CutNode* new_cnode = new CutNode(parent, this, to_node, parent->aggregateListener());
             if (parent->mWithAggregates) {
                 evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
                 results.insert(new_cnode->rtnode->aggregateID());
             }
-            nodes.insert(nodes.begin(), new_cnode);
+            nodes.insert(it, new_cnode);
 
             if (parent->mWithAggregates)
                 events.push_back(evt);
