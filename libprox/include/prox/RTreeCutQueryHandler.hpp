@@ -381,6 +381,51 @@ private:
             return next_it;
         }
 
+        // Replaces children with parent in a cut.  Returns an iterator to the
+        // new parent node.
+        CutNodeListIterator replaceChildrenWithParent(const CutNodeListIterator& last_child_it, QueryEventType* qevt_out) {
+            CutNodeListIterator child_it = last_child_it;
+            RTreeNodeType* parent_rtnode = (*child_it)->rtnode->parent();
+            int nchildren = parent_rtnode->size();
+
+            // Add the new node using the parent
+            if (qevt_out) {
+                qevt_out->additions().push_back( typename QueryEventType::Addition(parent_rtnode->aggregateID(), QueryEventType::Imposter) );
+                results.insert(parent_rtnode->aggregateID());
+            }
+            // Parent needs to be inserted after children, insert puts it before
+            // the iterator passed in.
+            CutNodeListIterator parent_insert_it = child_it;
+            parent_insert_it++;
+            CutNodeListIterator parent_it = nodes.insert(parent_insert_it, new CutNode(parent, this, parent_rtnode, parent->aggregateListener()));
+
+            // Work backwards removing all the children.
+            for(int i = nchildren-1; i >=0; i--) {
+                CutNode* child_cn = (*child_it);
+                RTreeNodeType* child_rtnode = child_cn->rtnode;
+                assert(child_rtnode->parent() == parent_rtnode);
+                assert(parent_rtnode->node(i) == child_rtnode);
+                if (qevt_out) {
+                    qevt_out->removals().push_back( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Imposter) );
+                    results.erase(child_rtnode->aggregateID());
+                }
+                // Erase and clean up the child. Returns *next* element, so move
+                // backwards to get previous child.
+                child_it = nodes.erase(child_it);
+                child_cn->destroy(parent, parent->aggregateListener());
+                // We should only be able to hit nodes.begin() if we've removed
+                // the last child *and* these children were the start of the cut
+                assert(child_it != nodes.begin() || i == 0);
+                // i > 0 is just a faster check for most iterations
+                if (i > 0 || child_it != nodes.begin())
+                    child_it--;
+            }
+
+            length -= (parent_rtnode->size()-1);
+
+            return parent_it;
+        }
+
         // Replaces a parent node with children objects in the result set.  This
         // only makes sense for aggregates.  It should be used when one of the
         // child objects satisfies the constraints and therefore pulls all the
@@ -543,6 +588,16 @@ private:
 #endif //PROXDEBUG
         };
 
+    private:
+        // Struct which keeps track of how many children do not satisfy the
+        // constraint so they can be collapsed.
+        struct ParentCollapseInfo {
+            RTreeNodeType* parent;
+            int count;
+        };
+
+    public:
+
         void update(LocationServiceCacheType* loc, const Time& t) {
             // Update assumes that the cut is already valid, i.e. that any
             // adjustments to the tree have already caused fixes in the cut
@@ -579,6 +634,11 @@ private:
             // happened, previous updating should have taken care of everything
             // except pushing the cut back up the tree for now-unsatisfied
             // nodes.
+
+            // Keeps track of candidates for collapse and the number of children
+            // they have that don't satisfy the constraint. Form a stack since
+            // they may get deeper in the tree.
+            std::stack<ParentCollapseInfo> collapseStack;
 
             Vector3 qpos = query->position(t);
             BoundingSphere qregion = query->region();
@@ -622,6 +682,97 @@ private:
                 // Aside from clean up above, if we don't satisfy the
                 // constraints there's no reason to continue with this node.
                 if (!satisfies) {
+                    // This section deals with tracking sequences of nodes that
+                    // do not satisfy the constraint.  The basic approach is to
+                    // maintain a stack of valid ancestors that have been
+                    // encountered on the cut, keep a count of children that do
+                    // not satisfy them, and collapse as appropriate.  The stack
+                    // is necessary because a cut might start high in the tree
+                    // and then get deeper; the deeper part could collapse,
+                    // leaving the earlier, higher part also collapsable. We
+                    // need the stack to keep track of these other candidates.
+                    // The stack gets cleaned out as we discover that the parent
+                    // node currently being considered is not an ancestor of the
+                    // current cut node anymore.
+
+                    RTreeNodeType* cur_parent = (collapseStack.empty() ? NULL : collapseStack.top().parent);
+
+                    // First make sure we have the right parent.
+                    RTreeNodeType* this_node = node->rtnode;
+                    RTreeNodeType* this_parent = node->rtnode->parent();
+                    // If we have a mismatch:
+                    if (this_parent != cur_parent) {
+                        // First we check if we need to pop nodes off since we
+                        // may have left a subtree.
+                        while(!collapseStack.empty()) {
+                            // FIXME this could be more efficient by tracing up
+                            // the parent tree and the stack at the same time.
+                            if (!_is_ancestor(this_node, collapseStack.top().parent))
+                                collapseStack.pop();
+                            else
+                                break;
+                        }
+                        // Update cur_parent to reflect new state
+                        cur_parent = (collapseStack.empty() ? NULL : collapseStack.top().parent);
+
+                        // Then we recheck if we still have a mismatch --
+                        // popping nodes may have found us the parent we were
+                        // looking for.  If we do have a mismatch, we need to
+                        // pop a new node on, but only if it is worth it (this
+                        // node is the first child node of the parent, otherwise
+                        // we should have found the parent or the first node
+                        // satisfied the constraint and this parent isn't really
+                        // an option).
+                        if (this_parent != cur_parent) {
+                            if (this_parent != NULL &&
+                                this_parent->node(0) == node->rtnode)
+                            {
+                                ParentCollapseInfo new_collapse_info;
+                                new_collapse_info.parent = this_parent;
+                                new_collapse_info.count = 0;
+                                collapseStack.push(new_collapse_info);
+                                // Update cur_parent
+                                cur_parent = this_parent;
+                            }
+                        }
+                    }
+
+                    // Now, if there's a match, increment. Finally, check if the
+                    // top node can be cleaned out.
+                    if (this_parent == cur_parent &&
+                        this_parent != NULL)
+                    {
+                        collapseStack.top().count++;
+                        if (collapseStack.top().count == collapseStack.top().parent->size()) {
+                            // And this collapse is only useful if the parent is
+                            // now *also* not satisfying the constraint.  This
+                            // must also be true, otherwise we will constantly
+                            // ping-pong back and forth between collapsing the
+                            // node and expanding it back again.
+                            bool parent_satisfies = this_parent->data().satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                            if (!parent_satisfies) {
+                                // Note that the iterator returned is the parent
+                                // cut node, so advancing the iterator at the
+                                // end of this block is safe.
+                                if (parent->mWithAggregates) {
+                                    QueryEventType evt;
+                                    it = replaceChildrenWithParent(it, &evt);
+                                    events.push_back(evt);
+                                }
+                                else {
+                                    it = replaceChildrenWithParent(it, NULL);
+                                }
+                                // Since we've replaced the parent, we need to
+                                // pop it off the candidate stack
+                                // FIXME should check if it needs to push *it's*
+                                // parent on the stack.
+                                collapseStack.pop();
+                            }
+                        }
+                    }
+
+                    // And of course, we need to advance the cut node iterator
+                    // and continue.
                     it++;
                     continue;
                 }
