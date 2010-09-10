@@ -105,7 +105,7 @@ public:
         mRTree = new RTree(
             this,
             mElementsPerNode, mLocCache,
-            (mWithAggregates ? aggregateListener() : NULL),
+            aggregateListener(),
             std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
             std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
@@ -934,7 +934,10 @@ private:
         Cut* cut;
     };
 
-    AggregateListenerType* aggregateListener() { return QueryHandlerType::mAggregateListener; }
+    AggregateListenerType* aggregateListener() {
+        return (mWithAggregates ? QueryHandlerType::mAggregateListener : NULL);
+    }
+
     typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, ObjectIDHasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
