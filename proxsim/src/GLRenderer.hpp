@@ -93,6 +93,8 @@ protected:
     typedef std::tr1::unordered_set<ObjectID, ObjectID::Hasher> ObjectIDSet;
     typedef std::tr1::unordered_map<ObjectID, ObjectIDSet, ObjectID::Hasher> AggregateObjectMap;
     AggregateObjectMap mAggregateObjects;
+
+    uint32 mMaxObservers;
 }; // class Renderer
 
 } // namespace Simulation

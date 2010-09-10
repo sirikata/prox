@@ -68,6 +68,7 @@ public:
 
     QueryIterator queriesBegin();
     QueryIterator queriesEnd();
+    uint32 queriesSize() const;
 
 private:
     void addObject(Object* obj);

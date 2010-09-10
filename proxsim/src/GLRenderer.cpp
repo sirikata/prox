@@ -67,7 +67,8 @@ void glut_timer(int val) {
 GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler)
  : Renderer(sim),
    mTime(Time::null()),
-   mWinWidth(0), mWinHeight(0)
+   mWinWidth(0), mWinHeight(0),
+   mMaxObservers(1)
 {
     mSimulator->addListener(this);
     handler->setAggregateListener(this);
@@ -110,6 +111,7 @@ void GLRenderer::queryHasEvents(Query* query) {
             if (mSeenObjects.find(add_it->id()) == mSeenObjects.end())
                 mSeenObjects[add_it->id()] = 0;
             mSeenObjects[add_it->id()]++;
+            mMaxObservers = std::max(mMaxObservers, mSeenObjects[add_it->id()]);
         }
 
         for(QueryEvent::RemovalList::iterator rem_it = it->removals().begin(); rem_it != it->removals().end(); rem_it++) {
@@ -183,8 +185,10 @@ void GLRenderer::display() {
         Object* obj = it->second;
         BoundingSphere bb = obj->worldBounds(mTime);
 
-        if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0)
-            glColor3f(1.f, 1.f, 1.f);
+        if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0) {
+            float col = 0.5f + 0.5f * ((float)mSeenObjects[obj->id()] / mMaxObservers);
+            glColor3f(col, col, col);
+        }
         else
             glColor3f(0.f, 0.f, 0.f);
 

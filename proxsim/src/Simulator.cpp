@@ -238,5 +238,9 @@ Simulator::QueryIterator Simulator::queriesEnd() {
     return mQueries.end();
 }
 
+uint32 Simulator::queriesSize() const {
+    return mQueries.size();
+}
+
 } // namespace Simulation
 } // namespace Prox
