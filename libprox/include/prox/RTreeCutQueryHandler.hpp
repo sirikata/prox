@@ -125,6 +125,7 @@ public:
 
     void tick(const Time& t) {
         mRTree->update(t);
+        //mRTree->restructure(t);
 
         mRTree->verifyConstraints(t);
         validateCuts();

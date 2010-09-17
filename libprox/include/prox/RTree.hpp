@@ -515,6 +515,12 @@ public:
     BoundingSphere getBounds() const {
         return bounding_sphere;
     }
+
+    /** Gets the volume of this bounds of this region. */
+    float volume() const {
+        return getBounds().volume();
+    }
+
 protected:
     BoundingSphere bounding_sphere;
 };
@@ -647,6 +653,11 @@ public:
      */
     BoundingSphere getBounds() const {
         return BoundingSphere( ThisBase::bounding_sphere.center(), ThisBase::bounding_sphere.radius() + mMaxRadius );
+    }
+
+    /** Gets the volume of this bounds of this region. */
+    float volume() const {
+        return getBounds().volume();
     }
 private:
     float mMaxRadius;
@@ -1059,6 +1070,254 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_tree(
     return root;
 }
 
+
+template<typename ChildType, typename NodeData>
+struct ChildInfo {
+    ChildType child;
+    NodeData data;
+
+    ChildInfo(const ChildType& _c, const NodeData& _d)
+     : child(_c), data(_d)
+    {
+    }
+
+
+    struct XComparator {
+        bool operator()(const ChildInfo& lhs, const ChildInfo& rhs) { return lhs.data.getBounds().center().x < rhs.data.getBounds().center().x; };
+    };
+    struct YComparator {
+        bool operator()(const ChildInfo& lhs, const ChildInfo& rhs) { return lhs.data.getBounds().center().y < rhs.data.getBounds().center().y; };
+    };
+    struct ZComparator {
+        bool operator()(const ChildInfo& lhs, const ChildInfo& rhs) { return lhs.data.getBounds().center().z < rhs.data.getBounds().center().z; };
+    };
+};
+
+
+/** Performs a binary split on a set of children along an axis.  This
+ *  is used as a step in reorganizing a set of nodes.  A bunch of
+ *  these split_children operations are performed recursively until
+ *  the set maps onto a single child node and can be stored.
+ */
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
+void RTree_restructure_split_children(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
+    std::vector<ChildInfo<ChildType, NodeData> >& children,
+    uint32 child_begin,
+    uint32 child_end)
+{
+    typedef typename SimulationTraits::Vector3Type Vector3;
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+
+    typedef ChildInfo<ChildType, NodeData> ChildInfoType;
+    typedef std::vector<ChildInfoType> ChildInfoList;
+
+    // Find the right axis to split along
+    float minx = FLT_MAX, maxx = -FLT_MAX;
+    float miny = FLT_MAX, maxy = -FLT_MAX;
+    float minz = FLT_MAX, maxz = -FLT_MAX;
+    for(uint32 i = child_begin; i <= child_end; i++) {
+        BoundingSphere cdata_bounds = children[i].data.getBounds();
+        Vector3 cdata_rad3(cdata_bounds.radius(), cdata_bounds.radius(), cdata_bounds.radius());
+        Vector3 cdata_min = cdata_bounds.center() - cdata_rad3;
+        Vector3 cdata_max = cdata_bounds.center() + cdata_rad3;
+        minx = std::min(minx, cdata_min.x);
+        maxx = std::max(maxx, cdata_max.x);
+        miny = std::min(miny, cdata_min.y);
+        maxy = std::max(maxy, cdata_max.y);
+        minz = std::min(minz, cdata_min.z);
+        maxz = std::max(maxz, cdata_max.z);
+    }
+
+    // Sort based on largest dimension
+    float diffx = maxx - minx, diffy = maxy - miny, diffz = maxz - minz;
+    float maxdiff = std::max(diffx, std::max(diffy, diffz));
+    if (maxdiff == diffx)
+        std::sort(children.begin() + child_begin, children.begin() + child_end + 1, typename ChildInfoType::XComparator());
+    else if (maxdiff == diffy)
+        std::sort(children.begin() + child_begin, children.begin() + child_end + 1, typename ChildInfoType::YComparator());
+    else if (maxdiff == diffz)
+        std::sort(children.begin() + child_begin, children.begin() + child_end + 1, typename ChildInfoType::ZComparator());
+}
+
+struct RestructureRangeMapping {
+    // To get all the range right, even with subdivisions, we track to
+    // total number of children and grandchildren, as well as the
+    // start and end of the current child range, in integral
+    // divisions.  From these, we can split correctly as well as
+    // compute the exact ranges we for children and grandchildren.
+    uint32 childCount;
+    uint32 grandchildCount;
+
+    uint32 divStart;
+    uint32 divEnd;
+
+public:
+    RestructureRangeMapping(
+        uint32 cc, uint32 gcc,
+        uint32 ds, uint32 de
+    )
+     : childCount(cc), grandchildCount(gcc),
+       divStart(ds), divEnd(de)
+    {
+        assert(ds < cc);
+        assert(de < cc);
+        assert(ds <= de);
+    }
+
+    uint32 child() const {
+        assert(singleDiv());
+        return divStart;
+    }
+
+    uint32 grandchildStart() const {
+        uint32 retval = (divStart*grandchildCount)/childCount;
+        assert(retval >= 0);
+        assert(retval < grandchildCount);
+        return retval;
+    }
+    uint32 grandchildEnd() const {
+        uint32 retval = ((divEnd+1)*grandchildCount)/childCount - 1;
+        assert(retval >= 0);
+        assert(retval < grandchildCount);
+        return retval;
+    }
+
+    bool singleDiv() const { return divStart == divEnd; }
+
+    RestructureRangeMapping bottomHalf() const {
+        return RestructureRangeMapping(
+            childCount, grandchildCount,
+            divStart, (divStart+divEnd)/2
+        );
+    }
+
+    RestructureRangeMapping topHalf() const {
+        return RestructureRangeMapping(
+            childCount, grandchildCount,
+            (divStart+divEnd)/2+1, divEnd
+        );
+    }
+};
+
+/** Given a node which has children that are significantly overlapping,
+ *  restructures the grandchildren of the node to improve the children's
+ *  layout.
+ */
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
+void RTree_restructure_nodes_children(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef typename SimulationTraits::Vector3Type Vector3;
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+
+    ChildOperations child_ops;
+
+    typedef ChildInfo<ChildType, NodeData> ChildInfoType;
+    std::vector<ChildInfoType> split_children;
+
+    // Add all grandchildren and clear out the child nodes.
+    for(int i = 0; i < node->size(); i++) {
+        RTreeNodeType* child_node = node->node(i);
+        for(int j = 0; j < child_node->size(); j++)
+            split_children.push_back( ChildInfoType( child_ops.childData(child_node, j), child_node->childData(j,loc,t) ) );
+        child_node->clear(loc, cb);
+    }
+
+    printf("Restructuring %d %d\n", (int)node->size(), (int)split_children.size());
+
+    // "Recursively" split subgroups of children.
+    std::stack<RestructureRangeMapping> childRangesStack;
+    // Start with the full range for both children and grandchildren
+    childRangesStack.push(
+        RestructureRangeMapping(node->size(), split_children.size(), 0, node->size()-1)
+    );
+    while(!childRangesStack.empty()) {
+        RestructureRangeMapping ranges = childRangesStack.top();
+        childRangesStack.pop();
+
+        // Base case - we've reached a single child
+        if (ranges.singleDiv()) {
+            // Map the children in the range back into the child
+            for(uint32 i = ranges.grandchildStart(); i <= ranges.grandchildEnd(); i++)
+                child_ops.insert( node->node(ranges.child()), loc, split_children[i].child, t, cb);
+        }
+        else {
+            RTree_restructure_split_children<SimulationTraits, NodeData, CutNode, ChildType, ChildOperations>(
+                node, loc, t, cb, split_children, ranges.grandchildStart(), ranges.grandchildEnd()
+            );
+            childRangesStack.push(ranges.bottomHalf());
+            childRangesStack.push(ranges.topHalf());
+        }
+    }
+
+    // Note that we're not notifying any cuts because restructure_tree should
+    // have already lifted them to the highest node we're not adjusting.
+}
+
+/* Recursively restructure the tree by looking for nodes with children that have
+ * become inefficient and restructuring them. */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+bool RTree_restructure_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    // The basic approach is to work bottom up, looking for "inefficient" nodes.
+
+    // We can't do anything about root leaves directly
+    if (root->leaf())
+        return false;
+
+    // Allow children to restructure first
+    bool any_children_restructured = false;
+    for(int i = 0; i < root->size(); i++) {
+        bool child_restructured = RTree_restructure_tree(root->node(i), loc, t, cb);
+        any_children_restructured = any_children_restructured || child_restructured;
+    }
+    if (any_children_restructured)
+        root->recomputeData(loc, t, cb);
+
+    // A node is considered inefficient if there is a lot of overlap between its
+    // children.  We can tell if there's a lot of overlap by comparing the sum
+    // of the children's volume with the parents volume.
+    float this_volume = root->data().volume();
+    float children_volume = 0.f;
+    for(int i = 0; i < root->size(); i++) {
+        children_volume += root->node(i)->data().volume();
+    }
+
+    if (children_volume / this_volume <= 2.f) // FIXME magic #
+        return any_children_restructured;
+
+    // Get cut nodes out of the way. They need to get up to the current root
+    // node we're considering. Since it will maintain the same nodes.
+    RTree_lift_cut_nodes(root, root, cb);
+    // Should be no cut nodes in children, could be some in this node
+    for(int i = 0; i < root->size(); i++)
+        RTree_verify_no_cut_nodes(root->node(i));
+
+    if (root->node(0)->leaf())
+        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb);
+    else
+        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, loc, t, cb);
+
+    root->recomputeData(loc, t, cb);
+
+    return true;
+}
+
 /* Deletes the object from the given tree.  Returns the new root. */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
@@ -1182,6 +1441,10 @@ public:
 
     void update(const Time& t) {
         mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
+    }
+
+    void restructure(const Time& t) {
+        RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
     }
 
     void erase(const LocCacheIterator& obj, const Time& t) {

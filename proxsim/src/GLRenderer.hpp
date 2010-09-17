@@ -95,6 +95,17 @@ protected:
     AggregateObjectMap mAggregateObjects;
 
     uint32 mMaxObservers;
+
+    ObjectIDSet mLeafAggregates;
+    typedef std::tr1::unordered_map<ObjectID, BoundingSphereType, ObjectID::Hasher> AggregateBounds;
+    AggregateBounds mAggregateBounds;
+
+    enum DisplayMode {
+        TimesSeen,
+        SmallestAggregates,
+        NumDisplayModes
+    };
+    DisplayMode mDisplayMode;
 }; // class Renderer
 
 } // namespace Simulation

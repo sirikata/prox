@@ -68,7 +68,8 @@ GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler)
  : Renderer(sim),
    mTime(Time::null()),
    mWinWidth(0), mWinHeight(0),
-   mMaxObservers(1)
+   mMaxObservers(1),
+   mDisplayMode(TimesSeen)
 {
     mSimulator->addListener(this);
     handler->setAggregateListener(this);
@@ -158,6 +159,11 @@ void GLRenderer::aggregateCreated(QueryHandlerType* handler, const ObjectIDType&
 void GLRenderer::aggregateChildAdded(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].insert(child);
+
+    if (mAggregateObjects.find(child) == mAggregateObjects.end())
+        mAggregateBounds[objid] = bnds;
+    else
+        mAggregateBounds.erase(objid);
 }
 
 void GLRenderer::aggregateChildRemoved(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
@@ -166,12 +172,16 @@ void GLRenderer::aggregateChildRemoved(QueryHandlerType* handler, const ObjectID
 }
 
 void GLRenderer::aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) {
+    if (mAggregateBounds.find(objid) != mAggregateBounds.end())
+        mAggregateBounds[objid] = bnds;
 }
 
 void GLRenderer::aggregateDestroyed(QueryHandlerType* handler, const ObjectIDType& objid) {
     AggregateObjectMap::iterator it = mAggregateObjects.find(objid);
     assert(it != mAggregateObjects.end());
     mAggregateObjects.erase(it);
+
+    mAggregateBounds.erase(objid);
 }
 
 void GLRenderer::aggregateObserved(QueryHandlerType* handler, const ObjectIDType& objid, uint32 nobservers) {
@@ -181,22 +191,57 @@ void GLRenderer::aggregateObserved(QueryHandlerType* handler, const ObjectIDType
 void GLRenderer::display() {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    for(Simulator::ObjectIterator it = mSimulator->objectsBegin(); it != mSimulator->objectsEnd(); it++) {
-        Object* obj = it->second;
-        BoundingSphere bb = obj->worldBounds(mTime);
+    glPointSize(2.f);
 
-        if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0) {
-            float col = 0.5f + 0.5f * ((float)mSeenObjects[obj->id()] / mMaxObservers);
-            glColor3f(col, col, col);
-        }
-        else
-            glColor3f(0.f, 0.f, 0.f);
+    switch(mDisplayMode) {
+      case TimesSeen:
+          {
+              for(Simulator::ObjectIterator it = mSimulator->objectsBegin(); it != mSimulator->objectsEnd(); it++) {
+                  Object* obj = it->second;
+                  BoundingSphere bb = obj->worldBounds(mTime);
 
-        //drawbb(bb);
-        glPointSize(2.f);
-        glBegin(GL_POINTS);
-        glVertex3f(bb.center().x, bb.center().y, bb.center().z);
-        glEnd();
+                  if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0) {
+                      float col = 0.5f + 0.5f * ((float)mSeenObjects[obj->id()] / mMaxObservers);
+                      glColor3f(col, col, col);
+                  }
+                  else
+                      glColor3f(0.f, 0.f, 0.f);
+
+                  //drawbb(bb);
+                  glPointSize(2.f);
+                  glBegin(GL_POINTS);
+                  glVertex3f(bb.center().x, bb.center().y, bb.center().z);
+                  glEnd();
+              }
+          }
+          break;
+      case SmallestAggregates:
+          {
+              int idx = 0;
+              for(AggregateBounds::iterator it = mAggregateBounds.begin(); it != mAggregateBounds.end(); it++) {
+                  ObjectID agg = it->first;
+                  BoundingSphere bb = it->second;
+
+                  glColor3f(
+                      (float)idx/mAggregateBounds.size(),
+                      (float)idx/mAggregateBounds.size(),
+                      (float)idx/mAggregateBounds.size()
+                  );
+                  idx++;
+
+                  ObjectIDSet& children = mAggregateObjects[agg];
+                  glBegin(GL_POINTS);
+                  for(ObjectIDSet::iterator cit = children.begin(); cit != children.end(); cit++) {
+                      Simulator::ObjectIterator oit = mSimulator->objectsFind(*cit);
+                      if (oit == mSimulator->objectsEnd()) continue;
+                      Object* obj = oit->second;
+                      BoundingSphere cbb = obj->worldBounds(mTime);
+                      glVertex3f(cbb.center().x, cbb.center().y, cbb.center().z);
+                  }
+                  glEnd();
+              }
+          }
+          break;
     }
 
     glColor3f(1.f, 0.f, 0.f);
@@ -249,6 +294,8 @@ void GLRenderer::timer() {
 void GLRenderer::keyboard(unsigned char key, int x, int y) {
     if (key == 27) // ESC
         exit(0);
+    if (key == 'd')
+        mDisplayMode = (DisplayMode) ( (mDisplayMode+1) % NumDisplayModes );
 }
 
 void GLRenderer::drawbb(const BoundingBox3& bb) {
