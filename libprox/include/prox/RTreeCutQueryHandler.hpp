@@ -255,12 +255,14 @@ private:
     struct Cut;
 
     //typedef BoundingSphereData<SimulationTraits, CutNode*> NodeData;
-    typedef MaxSphereData<SimulationTraits, CutNode*> NodeData;
-    typedef Prox::RTree<SimulationTraits, NodeData, CutNode*> RTree;
+    typedef MaxSphereData<SimulationTraits, CutNode> NodeData;
+    typedef Prox::RTree<SimulationTraits, NodeData, CutNode> RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
 
     struct CutNode {
+        typedef Cut CutType;
+
         Cut* parent;
         RTreeNodeType* rtnode;
         bool satisfies;
@@ -511,15 +513,12 @@ private:
         // the functionality of validateCutNodesUnrelated.
         void rebuildOrderedCut(CutNodeList& inorder, RTreeNodeType* root) const {
             bool had_cut = false;
-            for(typename RTreeNodeType::CutNodeListConstIterator node_its = root->cutNodesBegin();
-                node_its != root->cutNodesEnd();
-                node_its++)
-            {
-                CutNode* cnode = *node_its;
-                if (cnode->parent == this) {
-                    inorder.push_back(cnode);
-                    had_cut = true;
-                }
+            typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
+            if (node_its != root->cutNodesEnd()) {
+                CutNode* cnode = node_its->second;
+                assert(cnode->parent == this);
+                inorder.push_back(cnode);
+                had_cut = true;
             }
 
             if (root->leaf())
@@ -857,9 +856,6 @@ private:
             }
 
             validateCut();
-
-            // FIXME implement pushing cut up where strings of non-satisfying
-            // nodes allows
 
             query->pushEvents(events);
         }

@@ -239,8 +239,14 @@ private:
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 
-    //typedef RTree<SimulationTraits, BoundingSphereData<SimulationTraits, void*>, void*> RTree;
-    typedef Prox::RTree<SimulationTraits, MaxSphereData<SimulationTraits, void*>, void*> RTree;
+    struct Cut {
+    };
+    struct CutNode {
+        typedef Cut CutType;
+    };
+
+    //typedef RTree<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode>, CutNode> RTree;
+    typedef Prox::RTree<SimulationTraits, MaxSphereData<SimulationTraits, CutNode>, CutNode> RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     LocationServiceCacheType* mLocCache;

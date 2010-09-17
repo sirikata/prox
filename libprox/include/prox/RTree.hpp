@@ -45,7 +45,9 @@ namespace Prox {
 
 template<typename CutNode>
 struct CutNodeContainer {
-    typedef std::tr1::unordered_set<CutNode> CutNodeList;
+    typedef typename CutNode::CutType Cut;
+    typedef const Cut* ConstCutPtr;
+    typedef std::tr1::unordered_map<const Cut*, CutNode*> CutNodeList;
     CutNodeList cuts;
 
     typedef typename CutNodeList::iterator CutNodeListIterator;
@@ -55,11 +57,13 @@ struct CutNodeContainer {
     CutNodeListIterator cutNodesEnd() { return cuts.end(); }
     CutNodeListConstIterator cutNodesEnd() const { return cuts.end(); }
 
-    void insertCutNode(const CutNode& cn) {
-        cuts.insert(cn);
+    void insertCutNode(CutNode* cn) {
+        cuts[cn->parent] = cn;
     }
-    void eraseCutNode(const CutNode& cn) {
-        cuts.erase(cn);
+    void eraseCutNode(CutNode* cn) {
+        assert(cuts.find(cn->parent) != cuts.end());
+        assert(cuts[cn->parent] == cn);
+        cuts.erase(cn->parent);
     }
     size_t cutNodesSize() const {
         return cuts.size();
@@ -67,11 +71,21 @@ struct CutNodeContainer {
     bool cutNodesEmpty() const {
         return cuts.empty();
     }
-    CutNodeListIterator findCutNode(const CutNode& cn) {
-        return cuts.find(cn);
+    CutNodeListIterator findCutNode(ConstCutPtr const& ct) {
+        return cuts.find(ct);
     }
-    CutNodeListConstIterator findCutNode(const CutNode& cn) const {
-        return cuts.find(cn);
+    CutNodeListIterator findCutNode(ConstCutPtr const& ct) const {
+        return cuts.find(ct);
+    }
+    CutNodeListIterator findCutNode(CutNode* cn) {
+        CutNodeListIterator it = cuts.find(cn->parent);
+        assert(it == cuts.end() || it->second == cn);
+        return it;
+    }
+    CutNodeListConstIterator findCutNode(CutNode* cn) const {
+        CutNodeListConstIterator it = cuts.find(cn->parent);
+        assert(it == cuts.end() || it->second == cn);
+        return it;
     }
 };
 
@@ -110,12 +124,12 @@ public:
     // The root was left with only one child node, cuts on the old root need to
     // "refine" themselves to the new node by simple replacement.  Parameters
     // are the old root followed by the new root.
-    typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> RootReplacedByChildCallback;
+    typedef std::tr1::function<void(CutNode*, RTreeNode*, RTreeNode*)> RootReplacedByChildCallback;
     // CutNode that split occurred at, the node that was split, the new node.
-    typedef std::tr1::function<void(CutNode, RTreeNode*, RTreeNode*)> NodeSplitCallback;
-    typedef std::tr1::function<void(CutNode, RTreeNode*)> LiftCutCallback;
-    typedef std::tr1::function<void(CutNode, const LocCacheIterator&, int)> ObjectInsertedCallback;
-    typedef std::tr1::function<void(CutNode, const LocCacheIterator&)> ObjectRemovedCallback;
+    typedef std::tr1::function<void(CutNode*, RTreeNode*, RTreeNode*)> NodeSplitCallback;
+    typedef std::tr1::function<void(CutNode*, RTreeNode*)> LiftCutCallback;
+    typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, int)> ObjectInsertedCallback;
+    typedef std::tr1::function<void(CutNode*, const LocCacheIterator&)> ObjectRemovedCallback;
 
     typedef uint16 Index;
 
@@ -274,7 +288,7 @@ private:
         ObjectID obj_id = loc->iteratorID(obj);
         if (cb.objectRemoved) {
             for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
-                cb.objectRemoved(*cut_it, obj);
+                cb.objectRemoved(cut_it->second, obj);
         }
 
         if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, obj_id, mData.getBounds());
@@ -314,7 +328,7 @@ public:
 
         if (cb.objectInserted) {
             for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
-                cb.objectInserted(*cut_it, obj, idx);
+                cb.objectInserted(cut_it->second, obj, idx);
         }
     }
 
@@ -774,7 +788,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
     // nodes.
     if (cb.nodeSplit) {
         for(typename RTreeNodeType::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd(); cut_it++) {
-            CutNode cutnode = *cut_it;
+            CutNode* cutnode = cut_it->second;
             cb.nodeSplit(cutnode, node, nn);
         }
     }
@@ -901,7 +915,7 @@ void RTree_lift_cut_nodes(
         // NOTE: We use this approach since the callback likely adjusts the cut
         // node list in from_node
         while(!from_node->cutNodesEmpty())
-            cb.liftCut(*from_node->cutNodesBegin(), to_node);
+            cb.liftCut(from_node->cutNodesBegin()->second, to_node);
     }
 
     // And recurse
@@ -1348,7 +1362,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
         // Notify cuts so they can refine to the new root
         if (cb.rootReplaced) {
             for(typename RTreeNodeType::CutNodeListConstIterator cut_it = root->cutNodesBegin(); cut_it != root->cutNodesEnd(); ) {
-                CutNode cutnode = *cut_it;
+                CutNode* cutnode = cut_it->second;
                 cut_it++; // Advance now to avoid invalidating iterator in callback
                 cb.rootReplaced(cutnode, root, new_root);
             }
