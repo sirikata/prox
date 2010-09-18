@@ -45,6 +45,23 @@ using namespace Prox;
 namespace Prox {
 namespace Simulation {
 
+struct GLColor {
+    float r, g, b;
+};
+#define COLOR_PALETTE_COLORS 1024
+static GLColor color_palette[COLOR_PALETTE_COLORS];
+static bool color_palette_initialized = false;
+
+static void color_palette_initialize() {
+    if (color_palette_initialized) return;
+
+    for(int i = 0; i < COLOR_PALETTE_COLORS; i++) {
+        color_palette[i].r = (rand() % 255)/255.f;
+        color_palette[i].g = (rand() % 255)/255.f;
+        color_palette[i].b = (rand() % 255)/255.f;
+    }
+}
+
 static GLRenderer* GLRenderer_sRenderer = NULL;
 
 
@@ -53,6 +70,7 @@ void glut_display() {
 }
 
 void glut_reshape(int w, int h) {
+    color_palette_initialize();
     GLRenderer_sRenderer->reshape(w, h);
 }
 
@@ -191,7 +209,7 @@ void GLRenderer::aggregateObserved(QueryHandlerType* handler, const ObjectIDType
 void GLRenderer::display() {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    glPointSize(2.f);
+    glPointSize(4.f);
 
     switch(mDisplayMode) {
       case TimesSeen:
@@ -208,7 +226,6 @@ void GLRenderer::display() {
                       glColor3f(0.f, 0.f, 0.f);
 
                   //drawbb(bb);
-                  glPointSize(2.f);
                   glBegin(GL_POINTS);
                   glVertex3f(bb.center().x, bb.center().y, bb.center().z);
                   glEnd();
@@ -222,12 +239,8 @@ void GLRenderer::display() {
                   ObjectID agg = it->first;
                   BoundingSphere bb = it->second;
 
-                  glColor3f(
-                      (float)idx/mAggregateBounds.size(),
-                      (float)idx/mAggregateBounds.size(),
-                      (float)idx/mAggregateBounds.size()
-                  );
-                  idx++;
+                  int col_idx = ObjectID::Hasher()(agg) % COLOR_PALETTE_COLORS;
+                  glColor3f(color_palette[col_idx].r, color_palette[col_idx].g, color_palette[col_idx].b);
 
                   ObjectIDSet& children = mAggregateObjects[agg];
                   glBegin(GL_POINTS);
