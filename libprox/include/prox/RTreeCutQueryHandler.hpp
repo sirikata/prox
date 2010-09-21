@@ -126,6 +126,7 @@ public:
     void tick(const Time& t) {
         mRTree->update(t);
         //mRTree->restructure(t);
+        validateCuts();
 
         mRTree->verifyConstraints(t);
         validateCuts();
@@ -505,13 +506,14 @@ private:
             }
         };
 
-        // Rebuild an ordered cut.  This shouldn't be used normally, only for
-        // validation. Works recursively. Note that this also verifies the if a
-        // cut node was found in an rtree node, that processing children doesn't
-        // change the size of the cut (i.e. we didn't find a cutnode in a
-        // subtree where we shouldn't).  This is more expensive, but also covers
-        // the functionality of validateCutNodesUnrelated.
-        void rebuildOrderedCut(CutNodeList& inorder, RTreeNodeType* root) const {
+        // Rebuild an ordered cut. Works recursively.
+        //
+        // Note that in PROXDEBUG mode this also verifies, if a cut node was
+        // found in an rtree node, that processing children doesn't change the
+        // size of the cut (i.e. we didn't find a cutnode in a subtree where we
+        // shouldn't).  This is more expensive, but also covers the
+        // functionality of validateCutNodesUnrelated.
+        void rebuildOrderedCut(CutNodeList& inorder, RTreeNodeType* root) {
             bool had_cut = false;
             typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
             if (node_its != root->cutNodesEnd()) {
@@ -524,17 +526,31 @@ private:
             if (root->leaf())
                 return;
 
-            int num_before_children = inorder.size();
-            for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
-                rebuildOrderedCut(inorder, root->node(i));
-            int num_after_children = inorder.size();
-            assert(!had_cut || num_before_children == num_after_children);
+            // With PROXDEBUG we verify no children get added if we process
+            // children nodes, i.e. that we don't have sibling cutnodes in
+            // ancestor rtree nodes.  Without PROXDEBUG, only processes children
+            // nodes if a cut node wasn't found at this node, efficiently
+            // culling the tree.
+#if !defined(PROXDEBUG)
+            if (!had_cut) {
+#else
+                int num_before_children = inorder.size();
+#endif
+
+                for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+                    rebuildOrderedCut(inorder, root->node(i));
+#if defined(PROXDEBUG)
+                int num_after_children = inorder.size();
+                assert(!had_cut || num_before_children == num_after_children);
+#else
+            }
+#endif
         };
 
         // Validates that the nodes in a cut are in order as they cut across the
         // nodes of the RTree. This is a necessary condition for the cuts to get
         // pushed up properly.
-        void validateCutOrdered() const {
+        void validateCutOrdered() {
             // There's almost certainly a more efficient way to do this, but the
             // easiest way is to build a new list by exploring the tree in-order
             // for nodes
@@ -578,7 +594,7 @@ private:
             length = 0;
         }
 
-        void validateCut() const {
+        void validateCut() {
 #ifdef PROXDEBUG
             validateCutNodesInRTreeNodes();
             validateCutNodesInTree();
@@ -998,9 +1014,6 @@ private:
         void handleObjectInserted(CutNode* cnode, const LocCacheIterator& objit, int objidx) {
             RTreeNodeType* node = cnode->rtnode;
             assert(node->leaf());
-            // Should be more children than just us, unless this is the very
-            // first insertion on the root.
-            assert(node->size() > 1 || node->parent() == NULL);
 
             if (parent->mWithAggregates) {
                 // When dealing with aggregates, since this node is on the cut
@@ -1067,6 +1080,18 @@ private:
             validateCut();
         }
 
+        /** Rebuilds and actually replaces the cut node list.  Assumes that no
+         *  CutNodes have become invalidated, only that they've become jumbled.
+         *  This can be used when the tree is reorganized such that nodes shift
+         *  position, but the overall topology of the tree does not change,
+         *  e.g. if nodes are reordered for better coherence, but all the nodes
+         *  should still be valid.
+         */
+        void rebuildCutOrder() {
+            CutNodeList in_order;
+            rebuildOrderedCut(in_order, parent->mRTree->root());
+            nodes.swap(in_order);
+        }
     };
 
 

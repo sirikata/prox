@@ -46,8 +46,8 @@ namespace Prox {
 template<typename CutNode>
 struct CutNodeContainer {
     typedef typename CutNode::CutType Cut;
-    typedef const Cut* ConstCutPtr;
-    typedef std::tr1::unordered_map<const Cut*, CutNode*> CutNodeList;
+    typedef Cut* CutPtr;
+    typedef std::tr1::unordered_map<Cut*, CutNode*> CutNodeList;
     CutNodeList cuts;
 
     typedef typename CutNodeList::iterator CutNodeListIterator;
@@ -71,18 +71,18 @@ struct CutNodeContainer {
     bool cutNodesEmpty() const {
         return cuts.empty();
     }
-    CutNodeListIterator findCutNode(ConstCutPtr const& ct) {
+    CutNodeListIterator findCutNode(CutPtr const& ct) {
         return cuts.find(ct);
     }
-    CutNodeListIterator findCutNode(ConstCutPtr const& ct) const {
+    CutNodeListIterator findCutNode(CutPtr const& ct) const {
         return cuts.find(ct);
     }
-    CutNodeListIterator findCutNode(CutNode* cn) {
+    CutNodeListIterator findCutNode(const CutNode* cn) {
         CutNodeListIterator it = cuts.find(cn->parent);
         assert(it == cuts.end() || it->second == cn);
         return it;
     }
-    CutNodeListConstIterator findCutNode(CutNode* cn) const {
+    CutNodeListConstIterator findCutNode(const CutNode* cn) const {
         CutNodeListConstIterator it = cuts.find(cn->parent);
         assert(it == cuts.end() || it->second == cn);
         return it;
@@ -743,10 +743,10 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
      */
     RTreeNodeType* parent = node->parent();
     if (parent)
-        RTree_lift_cut_nodes(node, parent, cb);
+        RTree_lift_cut_nodes_from_tree(node, parent, cb);
     else
-        RTree_lift_cut_nodes(node, node, cb);
-    RTree_verify_no_cut_nodes(node);
+        RTree_lift_cut_nodes_from_tree(node, node, cb);
+    RTree_verify_no_cut_nodes_in_tree(node);
 
 
     ChildOperations child_ops;
@@ -894,10 +894,9 @@ void RTree_verify_constraints(RTreeNode<SimulationTraits, NodeData, CutNode>* ro
 }
 
 
-/** Get all cuts in from_node and its children to "lift" themselves up to
- *  to_node so the subtree can be operated on.  This may require the cuts
- *  adjusting other subtrees as well, so the tree should be in a clean state
- *  before calling this.
+/** Get all cuts in from_node to "lift" themselves up to to_node so the node can
+ *  be operated on. This may require the cuts adjusting other subtrees as well,
+ *  so the tree should be in a clean state before calling this.
  */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_lift_cut_nodes(
@@ -905,9 +904,6 @@ void RTree_lift_cut_nodes(
     RTreeNode<SimulationTraits, NodeData, CutNode>* to_node,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
-    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
-    typedef typename RTreeNodeType::Index Index;
-
     // Only notify cuts if we're moving *above* this node, not if this node is
     // both the starting point for recursion and the destination node
     if (from_node != to_node) {
@@ -917,11 +913,28 @@ void RTree_lift_cut_nodes(
         while(!from_node->cutNodesEmpty())
             cb.liftCut(from_node->cutNodesBegin()->second, to_node);
     }
+}
+
+/** Get all cuts in from_node and its children to "lift" themselves up to
+ *  to_node so the subtree can be operated on.  This may require the cuts
+ *  adjusting other subtrees as well, so the tree should be in a clean state
+ *  before calling this.
+ */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_lift_cut_nodes_from_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* from_node,
+    RTreeNode<SimulationTraits, NodeData, CutNode>* to_node,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename RTreeNodeType::Index Index;
+
+    RTree_lift_cut_nodes(from_node, to_node, cb);
 
     // And recurse
     if (!from_node->leaf()) {
         for(Index idx = 0; idx < from_node->size(); idx++) {
-            RTree_lift_cut_nodes(from_node->node(idx), to_node, cb);
+            RTree_lift_cut_nodes_from_tree(from_node->node(idx), to_node, cb);
         }
     }
 }
@@ -933,9 +946,19 @@ void RTree_verify_no_cut_nodes(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 #ifdef PROXDEBUG
     assert(node->parent() == NULL || node->cutNodesSize() == 0);
+#endif
+}
+
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_verify_no_cut_nodes_in_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+#ifdef PROXDEBUG
+    RTree_verify_no_cut_nodes(node);
     if (!node->leaf())
         for(typename RTreeNodeType::Index idx = 0; idx < node->size(); idx++)
-            RTree_verify_no_cut_nodes(node->node(idx));
+            RTree_verify_no_cut_nodes_in_tree(node->node(idx));
 #endif
 }
 
@@ -985,8 +1008,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
 
         // First, get any cuts in the subtree to "lift" themselves up to the
         // parent node.
-        RTree_lift_cut_nodes(highest_removed, parent, cb);
-        RTree_verify_no_cut_nodes(highest_removed);
+        RTree_lift_cut_nodes_from_tree(highest_removed, parent, cb);
+        RTree_verify_no_cut_nodes_in_tree(highest_removed);
 
         // Then, remove nodes
         std::queue<RTreeNodeType*> removedNodes;
@@ -1218,6 +1241,26 @@ public:
     }
 };
 
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_collect_cuts(RTreeNode<SimulationTraits, NodeData, CutNode>* node, std::tr1::unordered_set<typename CutNode::CutType*>* cuts)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename CutNode::CutType Cut;
+
+    for(typename RTreeNodeType::CutNodeListIterator it = node->cutNodesBegin(); it != node->cutNodesEnd(); it++) {
+        Cut* cut = it->first;
+        cuts->insert(cut);
+    }
+
+    if (node->leaf())
+        return;
+
+    for(int i = 0; i < node->size(); i++) {
+        RTreeNodeType* child_node = node->node(i);
+        RTree_collect_cuts(child_node, cuts);
+    }
+}
+
 /** Given a node which has children that are significantly overlapping,
  *  restructures the grandchildren of the node to improve the children's
  *  layout.
@@ -1233,6 +1276,38 @@ void RTree_restructure_nodes_children(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
+    // First we need to do some preparation for cuts. First, cuts that cross
+    // multiple layers of affected nodes need to get moved out of the way. We
+    // only actually shuffle the grandchildren, so anything that only passes
+    // through the root, only through the grandchildren, or only through deeper
+    // descendents will be safe.  We're only in danger of cross-over if a cut
+    // passes through a child and a deeper node (grandchild or deeper).  This
+    // step is simply conservative and lifts all cuts that pass through any
+    // child up to the root.
+    for(int i = 0; i < node->size(); i++) {
+        RTreeNodeType* child_node = node->node(i);
+        RTree_lift_cut_nodes(child_node, node, cb);
+    }
+    for(int i = 0; i < node->size(); i++)
+        RTree_verify_no_cut_nodes(node->node(i));
+
+
+    // Second, we collect a list of all the cuts that will be affected by the
+    // reorganization.  Basically, since we've lifted any cuts that pass through
+    // any of the children, this will boil down to any cuts that pass through
+    // any descendents of the children (grandchildren, great-grandchildren,
+    // etc).  At the end, at worst these will have just been shuffled, so we can
+    // use this list to rebuild those cuts.
+    typedef typename CutNode::CutType Cut;
+    typedef std::tr1::unordered_set<Cut*> CutSet;
+    CutSet affected_cuts;
+    for(int i = 0; i < node->size(); i++) {
+        RTreeNodeType* child_node = node->node(i);
+        RTree_collect_cuts(child_node, &affected_cuts);
+    }
+
+
+    // Next we need to collect all the information about the grandchildren we're rearranging
     ChildOperations child_ops;
 
     typedef ChildInfo<ChildType, NodeData> ChildInfoType;
@@ -1273,8 +1348,13 @@ void RTree_restructure_nodes_children(
         }
     }
 
-    // Note that we're not notifying any cuts because restructure_tree should
-    // have already lifted them to the highest node we're not adjusting.
+    // Finally, we take our list of cuts we compiled at the beginning and have
+    // them reorganize their cut node list.  All the *cut nodes* should have
+    // remained valid, we just need to get them sorted back in the right order.
+    for(typename CutSet::iterator it = affected_cuts.begin(); it != affected_cuts.end(); it++) {
+        Cut* cut = *it;
+        cut->rebuildCutOrder();
+    }
 }
 
 /* Recursively restructure the tree by looking for nodes with children that have
@@ -1314,13 +1394,6 @@ bool RTree_restructure_tree(
 
     if (children_volume / this_volume <= 2.f) // FIXME magic #
         return any_children_restructured;
-
-    // Get cut nodes out of the way. They need to get up to the current root
-    // node we're considering. Since it will maintain the same nodes.
-    RTree_lift_cut_nodes(root, root, cb);
-    // Should be no cut nodes in children, could be some in this node
-    for(int i = 0; i < root->size(); i++)
-        RTree_verify_no_cut_nodes(root->node(i));
 
     if (root->node(0)->leaf())
         RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb);
