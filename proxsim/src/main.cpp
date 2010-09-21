@@ -47,11 +47,17 @@ int main(int argc, char** argv) {
 
     // Parse arguments
     std::string HANDLER_ARG("--handler=");
+    std::string DISPLAY_ARG("--display=");
     std::string handler_type = "brute";
+    bool display = true;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
             handler_type = arg.substr(HANDLER_ARG.size());
+        else if (arg.find(DISPLAY_ARG) != std::string::npos) {
+            std::string display_arg = arg.substr(DISPLAY_ARG.size());
+            display = (display_arg == "on" || display_arg == "true");
+        }
     }
 
     // Setup query handler
@@ -66,7 +72,7 @@ int main(int argc, char** argv) {
         handler = new Prox::BruteForceQueryHandler<>();
 
     Simulator* simulator = new Simulator(handler);
-    Renderer* renderer = new GLRenderer(simulator, handler);
+    Renderer* renderer = new GLRenderer(simulator, handler, display);
 
     simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 10000, 50, 100);
 

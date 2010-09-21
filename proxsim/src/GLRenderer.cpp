@@ -82,8 +82,9 @@ void glut_timer(int val) {
     GLRenderer_sRenderer->timer();
 }
 
-GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler)
+GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
  : Renderer(sim),
+   mDisplay(display),
    mTime(Time::null()),
    mWinWidth(0), mWinHeight(0),
    mMaxObservers(1),
@@ -97,14 +98,17 @@ GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler)
 
     int argc = 0;
     glutInit( &argc, NULL );
-    glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
-    glutInitWindowSize( 512, 512 );
 
-    glutCreateWindow( "Proximity Simulation" );
+    if (display) {
+        glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
+        glutInitWindowSize( 512, 512 );
 
-    glutDisplayFunc( glut_display );
-    glutReshapeFunc( glut_reshape );
-    glutKeyboardFunc( glut_keyboard );
+        glutCreateWindow( "Proximity Simulation" );
+
+        glutDisplayFunc( glut_display );
+        glutReshapeFunc( glut_reshape );
+        glutKeyboardFunc( glut_keyboard );
+    }
 
     mTimer.start();
 }
@@ -117,8 +121,14 @@ GLRenderer::~GLRenderer() {
 void GLRenderer::run() {
     reshape(mWinWidth, mWinHeight);
 
-    glutTimerFunc(16, glut_timer, 0);
-    glutMainLoop();
+    if (mDisplay) {
+        glutTimerFunc(16, glut_timer, 0);
+        glutMainLoop();
+    }
+    else {
+        while(true)
+            glut_timer(true);
+    }
 }
 
 void GLRenderer::queryHasEvents(Query* query) {
@@ -275,6 +285,8 @@ void GLRenderer::reshape(int w, int h) {
 
     BoundingBox3 sim_bb = mSimulator->region();
 
+    if (!mDisplay) return;
+
     glClearColor( .3, .3, .3, 1 );
     glClearDepth(1.0);
 
@@ -301,7 +313,8 @@ void GLRenderer::timer() {
     printf("Real time elapsed: %f\n", mTimer.elapsed().seconds());
     validateSeenObjects();
     glutTimerFunc(16, glut_timer, 0);
-    glutPostRedisplay();
+    if (mDisplay)
+        glutPostRedisplay();
 }
 
 void GLRenderer::keyboard(unsigned char key, int x, int y) {

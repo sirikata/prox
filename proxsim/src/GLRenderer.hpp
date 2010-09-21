@@ -44,7 +44,7 @@ namespace Simulation {
 
 class GLRenderer : public Renderer, public QueryEventListener, public SimulatorListener, public AggregateListener {
 public:
-    GLRenderer(Simulator* sim, QueryHandler* handler);
+    GLRenderer(Simulator* sim, QueryHandler* handler, bool display = true);
     virtual ~GLRenderer();
 
     // Renderer Interface
@@ -80,6 +80,8 @@ protected:
     void drawbs(const BoundingSphere& bs);
 
     void validateSeenObjects();
+
+    bool mDisplay;
 
     Time mTime;
     typedef std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> ObjectRefCountMap;
