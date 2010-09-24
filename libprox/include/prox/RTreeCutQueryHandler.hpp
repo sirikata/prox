@@ -472,6 +472,55 @@ private:
             return false;
         }
 
+        void removeObjectChildFromResults(const ObjectID& child_id) {
+            typename ResultSet::iterator result_it = results.find(child_id);
+            bool in_results = (result_it != results.end());
+            if (in_results) {
+                results.erase(result_it);
+
+                QueryEventType evt;
+                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                events.push_back(evt);
+            }
+        }
+
+        void removeObjectChildrenFromResults(RTreeNodeType* from_node) {
+            // Notify any cuts that objects held by this node are gone
+            assert(from_node->leaf());
+            for(typename RTreeNodeType::Index idx = 0; idx < from_node->size(); idx++) {
+                removeObjectChildFromResults( parent->mLocCache->iteratorID(from_node->object(idx).object) );
+            }
+        }
+
+        // Utility that removes and destroys a cut node, and removes results it
+        // had triggered from the result set.
+        void destroyCutNode(CutNode* node, QueryEventType& evt) {
+            if (parent->mWithAggregates) {
+                // When dealing with aggregates, we first check if the
+                // node itself is in the result set since if it is, none
+                // of its children can be (if it is a leaf).
+                // set.
+                size_t nremoved = results.erase(node->rtnode->aggregateID());
+                if (nremoved > 0) {
+                    evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Imposter) );
+                }
+                else {
+                    // If it wasn't there and this is a leaf, we need to
+                    // check for children in the result set.  In this
+                    // case, they should all be there.
+                    removeObjectChildrenFromResults(node->rtnode);
+                }
+            }
+            else {
+                // Without aggregates, we only need to check to remove
+                // children from the result set if we're at a leaf.  In
+                // this case, some may be there, some may not.
+                if (node->rtnode->leaf())
+                    removeObjectChildrenFromResults(node->rtnode);
+            }
+            node->destroy(parent, parent->aggregateListener());
+        }
+
         void validateCutNodesInRTreeNodes() const {
             for(CutNodeListConstIterator it = nodes.begin(); it != nodes.end(); it++) {
                 CutNode* node = *it;
@@ -546,6 +595,129 @@ private:
             }
 #endif
         };
+
+
+        // Helper for rebuildOrderedCutWithViolations. Looks for CutNodes in a
+        // subtree and a) removes them and b) removes any results they had from
+        // the result set.
+        void rebuildOrderedCutWithViolations_removeChildrenCutNodes(QueryEventType& evt, RTreeNodeType* root) {
+            // First, check for a cut node at this bvh node
+            typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
+            if (node_its != root->cutNodesEnd()) {
+                CutNode* cnode = node_its->second;
+                assert(cnode->parent == this);
+                destroyCutNode(cnode, evt);
+            }
+
+            // Then, recurse and check within children
+            if (root->leaf()) return;
+            for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+                rebuildOrderedCutWithViolations_removeChildrenCutNodes(evt, root->node(i));
+        };
+
+        // Driver for rebuildOrderedCutWithViolations first pass. Scans the tree
+        // with a pre-order traversal to filter out cut nodes that appear
+        // beneath other cut nodes.
+        void rebuildOrderedCutWithViolations_filterChildrenPass(QueryEventType& evt, RTreeNodeType* root) {
+            typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
+
+            if (root->leaf()) return;
+
+            // If there's a cut node here, remove all children cut nodes
+            if (node_its != root->cutNodesEnd()) {
+                for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+                    rebuildOrderedCutWithViolations_removeChildrenCutNodes(evt, root->node(i));
+            } // Otherwise, recurse
+            else {
+                for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+                    rebuildOrderedCutWithViolations_filterChildrenPass(evt, root->node(i));
+            }
+        };
+
+        // Driver for rebuildOrderedCutWithViolations second pass. Scans through
+        // looking for gaps and inserts new CutNodes.
+        bool rebuildOrderedCutWithViolations_fillGapsPass(QueryEventType& evt, RTreeNodeType* root, bool treat_as_root = false) {
+            // The basic approach is to process all children of this node
+            // recursively and record whether the child had data filled in
+            // (returned true).  If no children found CutNodes, then no data
+            // would be filled in and we just return, leaving the cut to be
+            // handled at a higher level.  If any children did have nodes, then
+            // those that returned that they were empty get a cut node and those
+            // that returned that they found a cut node should already be
+            // filled.
+
+            // If there's a cut node of ours on this node, we're done with this subtree
+            typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
+            if (node_its != root->cutNodesEnd()) return true;
+
+            // Base case: at a leaf, there's no additional processing to be
+            // done. This subtree is empty.
+            if (root->leaf()) return false;
+
+            // Next, process each of the children, recording whether they are
+            // filled or not.
+            std::vector<bool> children_results;
+            bool any_child_was_filled = false;
+            for(typename RTreeNodeType::Index i = 0; i < root->size(); i++) {
+                bool child_was_filled = rebuildOrderedCutWithViolations_fillGapsPass(evt, root->node(i));
+                children_results.push_back(child_was_filled);
+                any_child_was_filled = (any_child_was_filled || child_was_filled);
+            }
+
+            // Now, either everything was empty...
+            if (!any_child_was_filled) {
+                // If we're the root and all children were empty, fill in a
+                // CutNode for us.
+                if (treat_as_root) {
+                    CutNode* new_cnode = new CutNode(parent, this, root, parent->aggregateListener());
+                    if (parent->mWithAggregates) {
+                        evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
+                        results.insert(new_cnode->rtnode->aggregateID());
+                    }
+                }
+                return false;
+            }
+            // Or we need to fill in the empties
+            for(typename RTreeNodeType::Index i = 0; i < root->size(); i++) {
+                if (children_results[i] == true) // Already filled
+                    continue;
+                // Add a CutNode for this child
+                CutNode* new_cnode = new CutNode(parent, this, root->node(i), parent->aggregateListener());
+                if (parent->mWithAggregates) {
+                    evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
+                    results.insert(new_cnode->rtnode->aggregateID());
+                }
+                // Not adding to list since we're rebuilding it in the next pass
+            }
+            return true;
+        }
+
+        // Rebuild an ordered cut. Works recursively. Handles cut nodes that
+        // have been resorted such that there are parent/child violations and
+        // full cut violations: cut nodes may have been reordered such that
+        // there are gaps and there are cut nodes in subtrees of other cut
+        // nodes.
+        void rebuildOrderedCutWithViolations(CutNodeList& inorder, RTreeNodeType* root) {
+            // This works in two passes.
+            QueryEventType evt;
+            // On the first pass, we make sure we don't have any overlapping cut
+            // nodes, i.e. that reordering hasn't caused the rtnode of one cut
+            // node to become the child of the rtnode of another cut node.
+            rebuildOrderedCutWithViolations_filterChildrenPass(evt, root);
+            // On the second pass, we look for gaps and fill them in with new
+            // CutNodes. Last parameter indicates that, if all children were
+            // empty we should treat this as the root and make sure a cut node
+            // exists.
+            rebuildOrderedCutWithViolations_fillGapsPass(evt, root, true);
+            // On the third pass, we actually rebuild the cut.  This just uses
+            // the normal approach since the previous passes guarantee gap-free,
+            // non-overlapping CutNodes.
+            rebuildOrderedCut(inorder, root);
+            // Save the adjustments triggered by this.
+            if (evt.size() > 0)
+                events.push_back(evt);
+        }
+
 
         // Validates that the nodes in a cut are in order as they cut across the
         // nodes of the RTree. This is a necessary condition for the cuts to get
@@ -917,26 +1089,6 @@ private:
             // Mid-operation, no validation
         }
 
-        void removeObjectChildFromResults(const ObjectID& child_id) {
-            typename ResultSet::iterator result_it = results.find(child_id);
-            bool in_results = (result_it != results.end());
-            if (in_results) {
-                results.erase(result_it);
-
-                QueryEventType evt;
-                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
-                events.push_back(evt);
-            }
-        }
-
-        void removeObjectChildrenFromResults(RTreeNodeType* from_node) {
-            // Notify any cuts that objects held by this node are gone
-            assert(from_node->leaf());
-            for(typename RTreeNodeType::Index idx = 0; idx < from_node->size(); idx++) {
-                removeObjectChildFromResults( parent->mLocCache->iteratorID(from_node->object(idx).object) );
-            }
-        }
-
         void handleLiftCut(CutNode* cnode, RTreeNodeType* to_node) {
             validateCut();
 
@@ -958,30 +1110,7 @@ private:
                 if ( _is_ancestor(node->rtnode, to_node) ) {
                     last_was_ancestor = true;
                     it = nodes.erase(it);
-                    if (parent->mWithAggregates) {
-                        // When dealing with aggregates, we first check if the
-                        // node itself is in the result set since if it is, none
-                        // of its children can be (if it is a leaf).
-                        // set.
-                        size_t nremoved = results.erase(node->rtnode->aggregateID());
-                        if (nremoved > 0) {
-                            evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Imposter) );
-                        }
-                        else {
-                            // If it wasn't there and this is a leaf, we need to
-                            // check for children in the result set.  In this
-                            // case, they should all be there.
-                            removeObjectChildrenFromResults(node->rtnode);
-                        }
-                    }
-                    else {
-                        // Without aggregates, we only need to check to remove
-                        // children from the result set if we're at a leaf.  In
-                        // this case, some may be there, some may not.
-                        if (node->rtnode->leaf())
-                            removeObjectChildrenFromResults(node->rtnode);
-                    }
-                    node->destroy(parent, parent->aggregateListener());
+                    destroyCutNode(node, evt);
                 }
                 else {
                     // If the last one was a child and we aren't then we can
@@ -1089,8 +1218,9 @@ private:
          */
         void rebuildCutOrder() {
             CutNodeList in_order;
-            rebuildOrderedCut(in_order, parent->mRTree->root());
+            rebuildOrderedCutWithViolations(in_order, parent->mRTree->root());
             nodes.swap(in_order);
+            //validateCut();
         }
     };
 

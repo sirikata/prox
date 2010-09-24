@@ -110,6 +110,8 @@ public:
     RemovalList& removals() { return mRemovals; }
     const RemovalList& removals() const { return mRemovals; }
 
+    uint32 size() const { return mAdditions.size() + mRemovals.size(); }
+
 private:
     AdditionList mAdditions;
     RemovalList mRemovals;

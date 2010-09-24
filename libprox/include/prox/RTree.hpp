@@ -1276,28 +1276,11 @@ void RTree_restructure_nodes_children(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
-    // First we need to do some preparation for cuts. First, cuts that cross
-    // multiple layers of affected nodes need to get moved out of the way. We
-    // only actually shuffle the grandchildren, so anything that only passes
-    // through the root, only through the grandchildren, or only through deeper
-    // descendents will be safe.  We're only in danger of cross-over if a cut
-    // passes through a child and a deeper node (grandchild or deeper).  This
-    // step is simply conservative and lifts all cuts that pass through any
-    // child up to the root.
-    for(int i = 0; i < node->size(); i++) {
-        RTreeNodeType* child_node = node->node(i);
-        RTree_lift_cut_nodes(child_node, node, cb);
-    }
-    for(int i = 0; i < node->size(); i++)
-        RTree_verify_no_cut_nodes(node->node(i));
-
-
-    // Second, we collect a list of all the cuts that will be affected by the
-    // reorganization.  Basically, since we've lifted any cuts that pass through
-    // any of the children, this will boil down to any cuts that pass through
-    // any descendents of the children (grandchildren, great-grandchildren,
-    // etc).  At the end, at worst these will have just been shuffled, so we can
-    // use this list to rebuild those cuts.
+    // We collect a list of all the cuts that will be affected by the
+    // reorganization.  This will boil down to any cuts that pass through any
+    // children or descendents of the children.  After reorganization there
+    // could be violations in cut nodes, so the more complex rebuilding process,
+    // handling gaps and overlaps, must be used.
     typedef typename CutNode::CutType Cut;
     typedef std::tr1::unordered_set<Cut*> CutSet;
     CutSet affected_cuts;
@@ -1321,7 +1304,7 @@ void RTree_restructure_nodes_children(
         child_node->clear(loc, cb);
     }
 
-    printf("Restructuring %d %d\n", (int)node->size(), (int)split_children.size());
+    //printf("Restructuring %d %d\n", (int)node->size(), (int)split_children.size());
 
     // "Recursively" split subgroups of children.
     std::stack<RestructureRangeMapping> childRangesStack;
