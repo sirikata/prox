@@ -41,6 +41,7 @@
 #include <string>
 #include <stdint.h>
 
+#include <boost/lexical_cast.hpp>
 
 int main(int argc, char** argv) {
     using namespace Prox::Simulation;
@@ -48,8 +49,14 @@ int main(int argc, char** argv) {
     // Parse arguments
     std::string HANDLER_ARG("--handler=");
     std::string DISPLAY_ARG("--display=");
+    std::string BRANCH_ARG("--branch=");
+    std::string NOBJECTS_ARG("--nobjects=");
+    std::string NQUERIES_ARG("--nqueries=");
     std::string handler_type = "brute";
     bool display = true;
+    int branching = 16;
+    int nobjects = 10000;
+    int nqueries = 50;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -58,23 +65,35 @@ int main(int argc, char** argv) {
             std::string display_arg = arg.substr(DISPLAY_ARG.size());
             display = (display_arg == "on" || display_arg == "true");
         }
+        else if (arg.find(BRANCH_ARG) != std::string::npos) {
+            std::string branch_arg = arg.substr(BRANCH_ARG.size());
+            branching = boost::lexical_cast<int>(branch_arg);
+        }
+        else if (arg.find(NOBJECTS_ARG) != std::string::npos) {
+            std::string nobjects_arg = arg.substr(NOBJECTS_ARG.size());
+            nobjects = boost::lexical_cast<int>(nobjects_arg);
+        }
+        else if (arg.find(NQUERIES_ARG) != std::string::npos) {
+            std::string nqueries_arg = arg.substr(NQUERIES_ARG.size());
+            nqueries = boost::lexical_cast<int>(nqueries_arg);
+        }
     }
 
     // Setup query handler
     QueryHandler* handler = NULL;
     if (handler_type == "rtree")
-        handler = new Prox::RTreeQueryHandler<>(10);
+        handler = new Prox::RTreeQueryHandler<>(branching);
     else if (handler_type == "rtreecut")
-        handler = new Prox::RTreeCutQueryHandler<>(10, false);
+        handler = new Prox::RTreeCutQueryHandler<>(branching, false);
     else if (handler_type == "rtreecutagg")
-        handler = new Prox::RTreeCutQueryHandler<>(10, true);
+        handler = new Prox::RTreeCutQueryHandler<>(branching, true);
     else
         handler = new Prox::BruteForceQueryHandler<>();
 
     Simulator* simulator = new Simulator(handler);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), 10000, 50, 100);
+    simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, nqueries, 100);
 
     renderer->run();
 
