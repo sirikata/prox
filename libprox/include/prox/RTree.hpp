@@ -244,6 +244,18 @@ public:
         return max_elements;
     }
 
+    // Size of this tree, including this node.
+    int treeSize() const {
+        int result = 1;
+        // For leaves, we count the children ourselves
+        if (leaf())
+            result += size();
+        else // Otherwise recurse
+            for(Index i = 0; i < size(); i++)
+                result += node(i)->treeSize();
+        return result;
+    }
+
     const ObjectID& aggregateID() const { return aggregate; }
 
     RTreeNode* parent() const {
@@ -1493,6 +1505,8 @@ public:
     const RTreeNodeType* root() const {
         return mRoot;
     }
+
+    int size() const { return mRoot->treeSize(); }
 
     void insert(const LocCacheIterator& obj, const Time& t) {
         const ObjectID& objid = mLocCache->iteratorID(obj);

@@ -55,23 +55,29 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef Query<SimulationTraits> QueryType;
+    typedef typename QueryType::ID QueryID;
 
     QueryHandler()
      : LocationUpdateListenerType(),
        QueryChangeListenerType(),
-       mAggregateListener(NULL)
+       mQueryIDSource(0),
+       mAggregateListener(NULL),
+       mTrackChecks(false)
     {}
     virtual ~QueryHandler() {}
+
+
+    void trackChecks(bool t) { mTrackChecks = t; }
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
-        QueryType* q = new QueryType(this, pos, region, maxSize, minAngle);
+        QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);
         registerQuery(q);
         return q;
     }
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle, float radius) {
-        QueryType* q = new QueryType(this, pos, region, maxSize, minAngle, radius);
+        QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle, radius);
         registerQuery(q);
         return q;
     }
@@ -107,7 +113,11 @@ public:
 protected:
     virtual void registerQuery(QueryType* query) = 0;
 
+    QueryID mQueryIDSource;
     AggregateListenerType* mAggregateListener;
+
+    // Whether to track constraint checks
+    bool mTrackChecks;
 }; // class QueryHandler
 
 } // namespace Prox

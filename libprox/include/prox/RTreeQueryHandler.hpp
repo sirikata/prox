@@ -99,11 +99,20 @@ public:
 
     void tick(const Time& t) {
         mRTree->update(t);
-
+        //mRTree->restructure(t);
         mRTree->verifyConstraints(t);
-        int count = 0;
-        int ncount = 0;
+
+        uint32 nrtnodes = 0;
+        if (QueryHandlerType::mTrackChecks) {
+            nrtnodes = mRTree->size();
+            printf("tick\n");
+        }
+
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
+            int tcount = 0; // total
+            int ncount = 0; // negatives, anywhere
+            int internal_ncount = 0; // negatives, internal
+
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
             QueryCacheType newcache;
@@ -122,18 +131,22 @@ public:
 
                 if (node->leaf()) {
                     for(int i = 0; i < node->size(); i++) {
-                        count++;
+                        tcount++;
                         if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius))
                             newcache.add(mLocCache->iteratorID(node->object(i).object));
+                        else
+                            ncount++;
                     }
                 }
                 else {
                     for(int i = 0; i < node->size(); i++) {
-                        count++;
+                        tcount++;
                         if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius))
                             node_stack.push(node->node(i));
-                        else
+                        else {
+                            internal_ncount++;
                             ncount++;
+                        }
                     }
                 }
             }
@@ -142,8 +155,10 @@ public:
             state->cache.exchange(newcache, &events);
 
             query->pushEvents(events);
+
+            if (QueryHandlerType::mTrackChecks)
+                printf("{ id: %d, nodes : %d, checks : { positive : %d, negative : %d, negativeinternal : %d, total : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
         }
-        //printf("count: %d %d\n", count, ncount);
         mLastTime = t;
     }
 

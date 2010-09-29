@@ -43,6 +43,10 @@
 
 #include <boost/lexical_cast.hpp>
 
+static bool convert_bool(const std::string& arg) {
+    return (arg == "on" || arg == "true");
+}
+
 int main(int argc, char** argv) {
     using namespace Prox::Simulation;
 
@@ -52,18 +56,20 @@ int main(int argc, char** argv) {
     std::string BRANCH_ARG("--branch=");
     std::string NOBJECTS_ARG("--nobjects=");
     std::string NQUERIES_ARG("--nqueries=");
+    std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string handler_type = "brute";
     bool display = true;
     int branching = 16;
     int nobjects = 10000;
     int nqueries = 50;
+    bool track_checks = false;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
             handler_type = arg.substr(HANDLER_ARG.size());
         else if (arg.find(DISPLAY_ARG) != std::string::npos) {
             std::string display_arg = arg.substr(DISPLAY_ARG.size());
-            display = (display_arg == "on" || display_arg == "true");
+            display = convert_bool(display_arg);
         }
         else if (arg.find(BRANCH_ARG) != std::string::npos) {
             std::string branch_arg = arg.substr(BRANCH_ARG.size());
@@ -76,6 +82,10 @@ int main(int argc, char** argv) {
         else if (arg.find(NQUERIES_ARG) != std::string::npos) {
             std::string nqueries_arg = arg.substr(NQUERIES_ARG.size());
             nqueries = boost::lexical_cast<int>(nqueries_arg);
+        }
+        else if (arg.find(TRACK_CHECKS_ARG) != std::string::npos) {
+            std::string track_checks_arg = arg.substr(TRACK_CHECKS_ARG.size());
+            track_checks = convert_bool(track_checks_arg);
         }
     }
 
@@ -94,6 +104,9 @@ int main(int argc, char** argv) {
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
     simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, nqueries, 100);
+
+    // Optional logging
+    handler->trackChecks(track_checks);
 
     renderer->run();
 

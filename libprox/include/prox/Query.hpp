@@ -60,12 +60,16 @@ public:
     typedef QueryEventListener<SimulationTraits> QueryEventListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
+    typedef int ID;
+
     ~Query() {
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
             (*it)->queryDeleted(this);
     }
 
     QueryHandlerType* handler() const { return mParent; }
+
+    ID id() const { return mID; }
 
     const MotionVector3& position() const {
         return mPosition;
@@ -178,8 +182,9 @@ protected:
 
     Query();
 
-    Query(QueryHandlerType* parent, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle)
+    Query(QueryHandlerType* parent, ID id, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle)
      : mParent(parent),
+       mID(id),
        mPosition(pos),
        mRegion(region),
        mMaxSize(maxSize),
@@ -191,8 +196,9 @@ protected:
     {
     }
 
-    Query(QueryHandlerType* parent, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle, real radius)
+    Query(QueryHandlerType* parent, ID id, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle, real radius)
      : mParent(parent),
+       mID(id),
        mPosition(pos),
        mRegion(region),
        mMaxSize(maxSize),
@@ -203,6 +209,7 @@ protected:
     }
 
     QueryHandlerType* mParent;
+    ID mID;
 
     MotionVector3 mPosition;
     BoundingSphere mRegion;
