@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
     std::string DURATION_ARG("--duration=");
     std::string REALTIME_ARG("--realtime=");
     std::string TRACK_CHECKS_ARG("--track-checks=");
+    std::string RESTRUCTURE_ARG("--restructure=");
     std::string handler_type = "brute";
     bool display = true;
     int branching = 16;
@@ -67,6 +68,7 @@ int main(int argc, char** argv) {
     int duration = 60; // seconds
     bool realtime = true; // realtime or simulated time steps
     bool track_checks = false;
+    bool restructure = false;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -99,6 +101,10 @@ int main(int argc, char** argv) {
             std::string track_checks_arg = arg.substr(TRACK_CHECKS_ARG.size());
             track_checks = convert_bool(track_checks_arg);
         }
+        else if (arg.find(RESTRUCTURE_ARG) != std::string::npos) {
+            std::string restructure_arg = arg.substr(RESTRUCTURE_ARG.size());
+            restructure = convert_bool(restructure_arg);
+        }
     }
 
     // Setup query handler
@@ -117,8 +123,9 @@ int main(int argc, char** argv) {
 
     simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, nqueries, 100);
 
-    // Optional logging
+    // Optional logging, triggers
     handler->trackChecks(track_checks);
+    handler->shouldRestructure(restructure);
 
     renderer->run();
 

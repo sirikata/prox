@@ -99,7 +99,8 @@ public:
 
     void tick(const Time& t) {
         mRTree->update(t);
-        //mRTree->restructure(t);
+        if (QueryHandlerType::mShouldRestructure)
+            mRTree->restructure(t);
         mRTree->verifyConstraints(t);
 
         uint32 nrtnodes = 0;
@@ -255,6 +256,7 @@ private:
     typedef typename QueryMap::iterator QueryMapIterator;
 
     struct Cut {
+        void rebuildCutOrder() {}
     };
     struct CutNode {
         typedef Cut CutType;

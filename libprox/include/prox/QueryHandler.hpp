@@ -62,12 +62,14 @@ public:
        QueryChangeListenerType(),
        mQueryIDSource(0),
        mAggregateListener(NULL),
-       mTrackChecks(false)
+       mTrackChecks(false),
+       mShouldRestructure(false)
     {}
     virtual ~QueryHandler() {}
 
 
     void trackChecks(bool t) { mTrackChecks = t; }
+    void shouldRestructure(bool r) { mShouldRestructure = r; }
 
     virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
 
@@ -118,6 +120,7 @@ protected:
 
     // Whether to track constraint checks
     bool mTrackChecks;
+    bool mShouldRestructure;
 }; // class QueryHandler
 
 } // namespace Prox

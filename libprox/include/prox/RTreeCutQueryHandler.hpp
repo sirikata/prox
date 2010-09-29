@@ -125,13 +125,12 @@ public:
 
     void tick(const Time& t) {
         mRTree->update(t);
-        //mRTree->restructure(t);
-        validateCuts();
+        if (QueryHandlerType::mShouldRestructure)
+            mRTree->restructure(t);
 
         mRTree->verifyConstraints(t);
         validateCuts();
-        int count = 0;
-        int ncount = 0;
+
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
