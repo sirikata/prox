@@ -417,7 +417,7 @@ public:
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     BoundingSphereDataBase()
-     : bounding_sphere(Vector3(), -1.f) // Invalid, should merge properly
+     : bounding_sphere(Vector3(0,0,0), -1.f) // Invalid, should merge properly
     {
     }
 
