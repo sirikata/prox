@@ -85,7 +85,6 @@ void glut_timer(int val) {
 GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
  : Renderer(sim),
    mDisplay(display),
-   mTime(Time::null()),
    mWinWidth(0), mWinHeight(0),
    mMaxObservers(1),
    mDisplayMode(TimesSeen)
@@ -126,7 +125,7 @@ void GLRenderer::run() {
         glutMainLoop();
     }
     else {
-        while(true)
+        while(!mSimulator->finished())
             glut_timer(true);
     }
 }
@@ -226,7 +225,7 @@ void GLRenderer::display() {
           {
               for(Simulator::ObjectIterator it = mSimulator->objectsBegin(); it != mSimulator->objectsEnd(); it++) {
                   Object* obj = it->second;
-                  BoundingSphere bb = obj->worldBounds(mTime);
+                  BoundingSphere bb = obj->worldBounds(mSimulator->time());
 
                   if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0) {
                       float col = 0.5f + 0.5f * ((float)mSeenObjects[obj->id()] / mMaxObservers);
@@ -258,7 +257,7 @@ void GLRenderer::display() {
                       Simulator::ObjectIterator oit = mSimulator->objectsFind(*cit);
                       if (oit == mSimulator->objectsEnd()) continue;
                       Object* obj = oit->second;
-                      BoundingSphere cbb = obj->worldBounds(mTime);
+                      BoundingSphere cbb = obj->worldBounds(mSimulator->time());
                       glVertex3f(cbb.center().x, cbb.center().y, cbb.center().z);
                   }
                   glEnd();
@@ -270,7 +269,7 @@ void GLRenderer::display() {
     glColor3f(1.f, 0.f, 0.f);
     for(Simulator::QueryIterator it = mSimulator->queriesBegin(); it != mSimulator->queriesEnd(); it++) {
         Query* query = *it;
-        Vector3 center = query->position(mTime);
+        Vector3 center = query->position(mSimulator->time());
         glPushMatrix();
         glTranslatef(center.x, center.y, center.z);
         glutSolidSphere(1.f, 10, 10);
@@ -306,15 +305,16 @@ void GLRenderer::reshape(int w, int h) {
 
 void GLRenderer::timer() {
     //printf("Real time elapsed: %f\n", mTimer.elapsed().seconds());
-    mTime += Duration::milliseconds(static_cast<uint32>(10));
     //mSeenObjects.clear();
     mTimer.start();
-    mSimulator->tick(mTime);
+    mSimulator->tick();
     printf("Real time elapsed: %f\n", mTimer.elapsed().seconds());
     validateSeenObjects();
     glutTimerFunc(16, glut_timer, 0);
-    if (mDisplay)
+    if (mDisplay) {
+        if (mSimulator->finished()) exit(0);
         glutPostRedisplay();
+    }
 }
 
 void GLRenderer::keyboard(unsigned char key, int x, int y) {

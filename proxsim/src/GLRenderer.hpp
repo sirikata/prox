@@ -83,7 +83,6 @@ protected:
 
     bool mDisplay;
 
-    Time mTime;
     typedef std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> ObjectRefCountMap;
     ObjectRefCountMap mSeenObjects;
     Timer mTimer;

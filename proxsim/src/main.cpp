@@ -56,12 +56,16 @@ int main(int argc, char** argv) {
     std::string BRANCH_ARG("--branch=");
     std::string NOBJECTS_ARG("--nobjects=");
     std::string NQUERIES_ARG("--nqueries=");
+    std::string DURATION_ARG("--duration=");
+    std::string REALTIME_ARG("--realtime=");
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string handler_type = "brute";
     bool display = true;
     int branching = 16;
     int nobjects = 10000;
     int nqueries = 50;
+    int duration = 60; // seconds
+    bool realtime = true; // realtime or simulated time steps
     bool track_checks = false;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
@@ -83,6 +87,14 @@ int main(int argc, char** argv) {
             std::string nqueries_arg = arg.substr(NQUERIES_ARG.size());
             nqueries = boost::lexical_cast<int>(nqueries_arg);
         }
+        else if (arg.find(DURATION_ARG) != std::string::npos) {
+            std::string duration_arg = arg.substr(DURATION_ARG.size());
+            duration = boost::lexical_cast<int>(duration_arg);
+        }
+        else if (arg.find(REALTIME_ARG) != std::string::npos) {
+            std::string realtime_arg = arg.substr(REALTIME_ARG.size());
+            realtime = convert_bool(realtime_arg);
+        }
         else if (arg.find(TRACK_CHECKS_ARG) != std::string::npos) {
             std::string track_checks_arg = arg.substr(TRACK_CHECKS_ARG.size());
             track_checks = convert_bool(track_checks_arg);
@@ -100,10 +112,10 @@ int main(int argc, char** argv) {
     else
         handler = new Prox::BruteForceQueryHandler<>();
 
-    Simulator* simulator = new Simulator(handler);
+    Simulator* simulator = new Simulator(handler, duration, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    simulator->initialize(Time::null(), BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, nqueries, 100);
+    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, nqueries, 100);
 
     // Optional logging
     handler->trackChecks(track_checks);

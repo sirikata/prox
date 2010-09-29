@@ -47,8 +47,12 @@ static uint32 randUInt32(uint32 minval, uint32 maxval) {
     return r;
 }
 
-Simulator::Simulator(QueryHandler* handler)
- : mObjectIDSource(0),
+Simulator::Simulator(QueryHandler* handler, int duration, bool realtime)
+ : mFinished(false),
+   mDuration(duration),
+   mRealtime(realtime),
+   mTime(Time::null()),
+   mObjectIDSource(0),
    mHandler(handler),
    mLocCache(NULL)
 {
@@ -64,6 +68,7 @@ Simulator::~Simulator() {
     while(!mRemovedObjects.empty()) {
         Object* obj = mRemovedObjects.begin()->second;
         delete obj;
+        mRemovedObjects.erase(mRemovedObjects.begin());
     }
 
     while(!mQueries.empty()) {
@@ -75,7 +80,7 @@ Simulator::~Simulator() {
     delete mLocCache;
 }
 
-void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries, int churnrate) {
+void Simulator::initialize(const BoundingBox3& region, int nobjects, int nqueries, int churnrate) {
     mChurn = churnrate;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
@@ -98,7 +103,7 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
         Object* obj = new Object(
             ObjectID(oid_data,ObjectID::static_size),
             MotionVector3(
-                t,
+                Time::null(),
                 region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
                 Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
             ),
@@ -133,7 +138,7 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
     }
 
     // Add objects
-    uint32 count = 0;
+    int32 count = 0;
     for(ObjectList::iterator it = mAllObjects.begin(); it != mAllObjects.end(); it++) {
         count++;
         if (count > mChurn)
@@ -157,6 +162,8 @@ void Simulator::initialize(const Time& t, const BoundingBox3& region, int nobjec
         );
         addQuery(query);
     }
+
+    mTimer.start();
 }
 
 const BoundingBox3& Simulator::region() const {
@@ -174,7 +181,23 @@ void Simulator::removeListener(SimulatorListener* listener) {
     mListeners.erase(it);
 }
 
-void Simulator::tick(const Time& t) {
+void Simulator::tick() {
+    if (mRealtime) {
+        Duration elapsed = mTimer.elapsed();
+        if (mDuration > 0 && elapsed.seconds() > mDuration) {
+            mFinished = true;
+            return;
+        }
+        mTime = Time::null() + elapsed;
+    }
+    else {
+        mTime += Duration::milliseconds(static_cast<uint32>(10));
+        if (mDuration > 0 && ((mTime - Time::null()).seconds() > mDuration)) {
+            mFinished = true;
+            return;
+        }
+    }
+
     for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
         Object* obj = mObjects.begin()->second;
         removeObject(obj);
@@ -184,7 +207,7 @@ void Simulator::tick(const Time& t) {
         addObject(obj);
     }
 
-    mHandler->tick(t);
+    mHandler->tick(mTime);
 }
 
 void Simulator::addObject(Object* obj) {

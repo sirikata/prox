@@ -38,6 +38,7 @@
 #include "Object.hpp"
 #include "SimulatorListener.hpp"
 #include "ObjectLocationServiceCache.hpp"
+#include "Timer.hpp"
 
 namespace Prox {
 namespace Simulation {
@@ -47,17 +48,20 @@ private:
     typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectList;
     typedef std::list<Query*> QueryList;
 public:
-    Simulator(QueryHandler* handler);
+    Simulator(QueryHandler* handler, int duration, bool realtime);
     ~Simulator();
 
-    void initialize(const Time& t, const BoundingBox3& region, int nobjects, int nqueries, int churnrate);
+    void initialize(const BoundingBox3& region, int nobjects, int nqueries, int churnrate);
 
     const BoundingBox3& region() const;
 
     void addListener(SimulatorListener* listener);
     void removeListener(SimulatorListener* listener);
 
-    void tick(const Time& t);
+    Time time() const { return mTime; }
+    bool finished() const { return mFinished; }
+
+    void tick();
 
     typedef ObjectList::iterator ObjectIterator;
     typedef QueryList::iterator QueryIterator;
@@ -76,6 +80,14 @@ private:
 
     void addQuery(Query* query);
     void removeQuery(Query* query);
+
+    bool mFinished;
+
+    int mDuration;
+    bool mRealtime;
+
+    Timer mTimer;
+    Time mTime;
 
     BoundingBox3 mRegion;
     int64 mObjectIDSource;
