@@ -255,8 +255,11 @@ private:
     struct CutNode;
     struct Cut;
 
-    //typedef BoundingSphereData<SimulationTraits, CutNode*> NodeData;
+#if RTREE_DATA == RTREE_DATA_BOUNDS
+    typedef BoundingSphereData<SimulationTraits, CutNode> NodeData;
+#elif RTREE_DATA == RTREE_DATA_MAXSIZE
     typedef MaxSphereData<SimulationTraits, CutNode> NodeData;
+#endif
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode> RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
