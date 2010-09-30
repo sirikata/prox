@@ -310,18 +310,25 @@ public:
 
     void clear(const LocationServiceCacheType* loc, const Callbacks& cb) {
         Index old_count = count;
-        count = 0;
 
         // If we have child objects, we need to notify cuts of removal
+        // To allow validation after notifyRemoved we need to work 1 at a time.
         if (leaf()) {
-            for(Index i = 0; i < old_count; i++)
-                notifyRemoved(loc, this->elements.objects[i].object, cb);
+            for(int i = 0; i < old_count; i++) {
+                count = old_count-i-1;
+                notifyRemoved(loc, this->elements.objects[old_count-i-1].object, cb);
+            }
+        }
+        else {
+            count = 0;
         }
 
+#ifdef PROXDEBUG
         // Clear out data for safety
         uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
         for(uint32 i = 0; i < max_element_size * max_elements; i++)
             elements.magic[i] = 0;
+#endif
 
         mData = NodeData();
     }

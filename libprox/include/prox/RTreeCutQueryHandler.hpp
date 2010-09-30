@@ -738,6 +738,70 @@ private:
                 assert(node == othernode);
             }
         };
+
+        // Validates that all entries in a subtree (aggregates and
+        // non-aggregates) are *not* in the result set.
+        void validateSubtreeObjectsNotInResults(RTreeNodeType* root) {
+            assert(results.find(root->aggregateID()) == results.end());
+            validateChildrenSubtreesObjectsNotInResults(root);
+        }
+
+        void validateChildrenSubtreesObjectsNotInResults(RTreeNodeType* root) {
+            for(typename RTreeNodeType::Index i = 0; i < root->size(); i++) {
+                if (root->leaf())
+                    assert( results.find(parent->mLocCache->iteratorID(root->object(i).object)) == results.end());
+                else
+                    validateSubtreeObjectsNotInResults(root->node(i));
+            }
+        }
+
+        // Validates that the result set matches the nodes the cut goes through,
+        // checking both for missing entries (e.g. one leaf object out of 5
+        // children is missing) and for extra entries (e.g. a cut moved, but
+        // somebody neglected to remove the entry or child objects' entries from
+        // results).
+        void validateResultsMatchCut() {
+            ResultSet accounted;
+            for(CutNodeListConstIterator it = nodes.begin(); it != nodes.end(); it++) {
+                CutNode* node = *it;
+                RTreeNodeType* rtnode = node->rtnode;
+                if (parent->mWithAggregates) {
+                    // Check for the aggregate and invalidate children
+                    if (results.find(rtnode->aggregateID()) != results.end()) {
+                        accounted.insert(rtnode->aggregateID());
+                        validateChildrenSubtreesObjectsNotInResults(rtnode);
+                    }
+                    else { // Otherwise, we better have all the children
+                        for(typename RTreeNodeType::Index i = 0; i < rtnode->size(); i++)
+                            accounted.insert( rtnode->leaf() ? parent->mLocCache->iteratorID(rtnode->object(i).object) : rtnode->node(i)->aggregateID() );
+                    }
+                }
+                else {
+                    // Without aggregates, we should have some subset of the
+                    // children of the node.
+                    if (!rtnode->leaf()) continue;
+                    // To avoid actually evaluating, we're conservative in this
+                    // case and might miss some false positives. We just add all
+                    // leaf children we encounter
+                    for(typename RTreeNodeType::Index i = 0; i < rtnode->size(); i++)
+                        accounted.insert( parent->mLocCache->iteratorID(rtnode->object(i).object) );
+                }
+            }
+
+            // Now that we've collected the information, we can report errors.
+
+            // Accounted - results = objects that are missing from the results
+            // We can only do this with aggregates since we had to be
+            // conservative with non-aggregates.
+            if (parent->mWithAggregates) {
+                for(typename ResultSet::iterator it = accounted.begin(); it != accounted.end(); it++)
+                    assert( results.find(*it) != results.end() );
+            }
+            // Results - accounted = extra objects in the result set
+            for(typename ResultSet::iterator it = results.begin(); it != results.end(); it++)
+                assert( accounted.find(*it) != accounted.end() );
+        }
+
     public:
 
         /** Regular constructor.  A new cut simply starts with the root node and
@@ -775,6 +839,7 @@ private:
             // Now covered by validateCutOrdere
             //validateCutNodesUnrelated();
             validateCutOrdered();
+            validateResultsMatchCut();
 #endif //PROXDEBUG
         };
 
