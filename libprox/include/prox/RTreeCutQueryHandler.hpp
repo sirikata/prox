@@ -394,8 +394,8 @@ private:
             RTreeNodeType* parent_rtnode = (*child_it)->rtnode->parent();
             int nchildren = parent_rtnode->size();
 
-            // Add the new node using the parent
-            if (qevt_out) {
+            // Add the new node using the parent.
+            if (parent->mWithAggregates) {
                 qevt_out->additions().push_back( typename QueryEventType::Addition(parent_rtnode->aggregateID(), QueryEventType::Imposter) );
                 results.insert(parent_rtnode->aggregateID());
             }
@@ -411,10 +411,31 @@ private:
                 RTreeNodeType* child_rtnode = child_cn->rtnode;
                 assert(child_rtnode->parent() == parent_rtnode);
                 assert(parent_rtnode->node(i) == child_rtnode);
-                if (qevt_out) {
-                    qevt_out->removals().push_back( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Imposter) );
-                    results.erase(child_rtnode->aggregateID());
+
+                bool aggregate_was_in_results = false;
+                // Only try to remove the child node from results for aggregates
+                if (parent->mWithAggregates) {
+                    size_t nremoved = results.erase(child_rtnode->aggregateID());
+                    if (nremoved > 0) {
+                        aggregate_was_in_results = true;
+                        qevt_out->removals().push_back( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Imposter) );
+                    }
                 }
+                // At leaves, if the aggregate wasn't in the results (either
+                // because it had been refined or because we're not returning
+                // aggregates), we need to check for children in the result set.
+                if (!aggregate_was_in_results && child_rtnode->leaf()) {
+                    // FIXME for sanity checking we could track # of removed
+                    // children when mWithAggregates is true and validate that
+                    // it is the same as the total number of children
+                    for(int leafidx = 0; leafidx < child_rtnode->size(); leafidx++) {
+                        ObjectID leaf_id = parent->mLocCache->iteratorID(child_rtnode->object(leafidx).object);
+                        size_t n_leaf_removed = results.erase(leaf_id);
+                        if (n_leaf_removed > 0)
+                            qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal) );
+                    }
+                }
+
                 // Erase and clean up the child. Returns *next* element, so move
                 // backwards to get previous child.
                 child_it = nodes.erase(child_it);
@@ -1009,14 +1030,13 @@ private:
                                 // Note that the iterator returned is the parent
                                 // cut node, so advancing the iterator at the
                                 // end of this block is safe.
-                                if (parent->mWithAggregates) {
-                                    QueryEventType evt;
-                                    it = replaceChildrenWithParent(it, &evt);
+                                // We need an event for both with and without
+                                // aggregates because the removal of a leaf node
+                                // could affect the result set in either case.
+                                QueryEventType evt;
+                                it = replaceChildrenWithParent(it, &evt);
+                                if (evt.size() > 0)
                                     events.push_back(evt);
-                                }
-                                else {
-                                    it = replaceChildrenWithParent(it, NULL);
-                                }
                                 // Since we've replaced the parent, we need to
                                 // pop it off the candidate stack
                                 // FIXME should check if it needs to push *it's*
