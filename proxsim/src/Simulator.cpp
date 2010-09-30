@@ -191,12 +191,14 @@ void Simulator::tick() {
         mTime = Time::null() + elapsed;
     }
     else {
-        mTime += Duration::milliseconds(static_cast<uint32>(10));
+        mTime += Duration::milliseconds(static_cast<uint32>(50));
         if (mDuration > 0 && ((mTime - Time::null()).seconds() > mDuration)) {
             mFinished = true;
             return;
         }
     }
+
+    fprintf(stderr, "Tick: %f\n", (mTime - Time::null()).seconds());
 
     for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
         Object* obj = mObjects.begin()->second;
