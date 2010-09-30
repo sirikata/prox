@@ -61,6 +61,8 @@ public:
     Time time() const { return mTime; }
     bool finished() const { return mFinished; }
 
+    void printRate(bool p) { mReportRate = p; }
+
     void tick();
 
     typedef ObjectList::iterator ObjectIterator;
@@ -101,6 +103,10 @@ private:
 
     ObjectList mRemovedObjects;
     int32 mChurn; // Rate at which objects are added and removed
+
+    bool mReportRate;
+    int32 mItsSinceRateApprox;
+    Duration mRateApproxStart;
 }; // class Simulator
 
 } // namespace Simulation

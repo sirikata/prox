@@ -85,7 +85,6 @@ protected:
 
     typedef std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> ObjectRefCountMap;
     ObjectRefCountMap mSeenObjects;
-    Timer mTimer;
     int mWinWidth, mWinHeight;
 
     // Gets bounds of an object or aggregate object

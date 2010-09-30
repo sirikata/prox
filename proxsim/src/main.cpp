@@ -62,6 +62,7 @@ int main(int argc, char** argv) {
     std::string REALTIME_ARG("--realtime=");
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
+    std::string REPORT_RATE_ARG("--report-rate=");
     std::string handler_type = "brute";
     bool display = false;
     int branching = 16;
@@ -73,6 +74,7 @@ int main(int argc, char** argv) {
     bool realtime = true; // realtime or simulated time steps
     bool track_checks = false;
     bool restructure = false;
+    bool report_rate = false;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -117,6 +119,10 @@ int main(int argc, char** argv) {
             std::string restructure_arg = arg.substr(RESTRUCTURE_ARG.size());
             restructure = convert_bool(restructure_arg);
         }
+        else if (arg.find(REPORT_RATE_ARG) != std::string::npos) {
+            std::string report_rate_arg = arg.substr(REPORT_RATE_ARG.size());
+            report_rate = convert_bool(report_rate_arg);
+        }
     }
 
     // Setup query handler
@@ -138,6 +144,7 @@ int main(int argc, char** argv) {
     // Optional logging, triggers
     handler->trackChecks(track_checks);
     handler->shouldRestructure(restructure);
+    simulator->printRate(report_rate);
 
     renderer->run();
 

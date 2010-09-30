@@ -34,6 +34,8 @@
 #include <stdint.h>
 #include <algorithm>
 
+#define RATE_APPROX_ITERATIONS 100
+
 namespace Prox {
 namespace Simulation {
 
@@ -54,7 +56,10 @@ Simulator::Simulator(QueryHandler* handler, int duration, bool realtime)
    mTime(Time::null()),
    mObjectIDSource(0),
    mHandler(handler),
-   mLocCache(NULL)
+   mLocCache(NULL),
+   mReportRate(false),
+   mItsSinceRateApprox(0),
+   mRateApproxStart(0)
 {
 }
 
@@ -192,8 +197,8 @@ void Simulator::removeListener(SimulatorListener* listener) {
 }
 
 void Simulator::tick() {
+    Duration elapsed = mTimer.elapsed();
     if (mRealtime) {
-        Duration elapsed = mTimer.elapsed();
         if (mDuration > 0 && elapsed.seconds() > mDuration) {
             mFinished = true;
             return;
@@ -208,7 +213,7 @@ void Simulator::tick() {
         }
     }
 
-    fprintf(stderr, "Tick: %f\n", (mTime - Time::null()).seconds());
+    //fprintf(stderr, "Tick: %f\n", (mTime - Time::null()).seconds());
 
     for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
         Object* obj = mObjects.begin()->second;
@@ -220,6 +225,16 @@ void Simulator::tick() {
     }
 
     mHandler->tick(mTime);
+
+    mItsSinceRateApprox++;
+    if (mItsSinceRateApprox > RATE_APPROX_ITERATIONS) {
+        float its_per_sec = float(RATE_APPROX_ITERATIONS) * queriesSize() / (elapsed - mRateApproxStart).seconds();
+        if (mReportRate)
+            printf("{ \"rate\" : %f }\n", its_per_sec);
+        // Reset for next round
+        mItsSinceRateApprox = 0;
+        mRateApproxStart = elapsed;
+    }
 }
 
 void Simulator::addObject(Object* obj) {

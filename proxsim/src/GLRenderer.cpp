@@ -108,8 +108,6 @@ GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
         glutReshapeFunc( glut_reshape );
         glutKeyboardFunc( glut_keyboard );
     }
-
-    mTimer.start();
 }
 
 GLRenderer::~GLRenderer() {
@@ -304,11 +302,8 @@ void GLRenderer::reshape(int w, int h) {
 }
 
 void GLRenderer::timer() {
-    //printf("Real time elapsed: %f\n", mTimer.elapsed().seconds());
     //mSeenObjects.clear();
-    mTimer.start();
     mSimulator->tick();
-    printf("Real time elapsed: %f\n", mTimer.elapsed().seconds());
     validateSeenObjects();
     glutTimerFunc(16, glut_timer, 0);
     if (mDisplay) {
