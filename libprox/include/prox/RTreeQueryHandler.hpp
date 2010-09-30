@@ -158,7 +158,7 @@ public:
             query->pushEvents(events);
 
             if (QueryHandlerType::mTrackChecks)
-                printf("{ id: %d, nodes : %d, checks : { positive : %d, negative : %d, negativeinternal : %d, total : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
+                printf("{ \"id\" : %d, \"nodes\" : %d, \"checks\" : { \"positive\" : %d, \"negative\" : %d, \"negativeinternal\" : %d, \"total\" : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
         }
         mLastTime = t;
     }
