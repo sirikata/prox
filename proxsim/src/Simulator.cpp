@@ -80,7 +80,28 @@ Simulator::~Simulator() {
     delete mLocCache;
 }
 
-void Simulator::initialize(const BoundingBox3& region, int nobjects, int nqueries, int churnrate) {
+static Query* generateQueryFromObject(QueryHandler* handler, Object* obj, bool static_objects, bool static_queries) {
+    Vector3 qpos = obj->position().position();
+    Vector3 qvel =
+        (static_queries ?
+            Vector3(0, 0, 0) :
+            ( static_objects ?
+                Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/) :
+                obj->position().velocity()
+            )
+        )
+        ;
+
+    Query* query = handler->registerQuery(
+        MotionVector3(Time::null(), qpos, qvel),
+        BoundingSphere(obj->bounds().center(), 0),
+        obj->bounds().radius(),
+        SolidAngle( SolidAngle::Max / 1000 )
+    );
+    return query;
+}
+
+void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static_objects, int nqueries, bool static_queries, int churnrate) {
     mChurn = churnrate;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
@@ -105,7 +126,10 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, int nquerie
             MotionVector3(
                 Time::null(),
                 region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
-                Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
+                (static_objects ?
+                    Vector3(0, 0, 0) :
+                    Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
+                )
             ),
             BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1))
         );
@@ -127,14 +151,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, int nquerie
         for(uint32 k = 0; k < obj_idx; k++)
             obj_it++;
         Object* obj = obj_it->second;
-
-        Query* query = mHandler->registerQuery(
-            obj->position(),
-            BoundingSphere(obj->bounds().center(), 0),
-            obj->bounds().radius(),
-            SolidAngle( SolidAngle::Max / 1000 )
-        );
-        addQuery(query);
+        addQuery( generateQueryFromObject(mHandler, obj, static_objects, static_queries) );
     }
 
     // Add objects
@@ -153,14 +170,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, int nquerie
         for(uint32 k = 0; k < obj_idx; k++)
             obj_it++;
         Object* obj = obj_it->second;
-
-        Query* query = mHandler->registerQuery(
-            obj->position(),
-            BoundingSphere(obj->bounds().center(), 0),
-            obj->bounds().radius(),
-            SolidAngle( SolidAngle::Max / 1000 )
-        );
-        addQuery(query);
+        addQuery( generateQueryFromObject(mHandler, obj, static_objects, static_queries) );
     }
 
     mTimer.start();

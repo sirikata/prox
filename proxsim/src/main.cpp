@@ -55,7 +55,9 @@ int main(int argc, char** argv) {
     std::string DISPLAY_ARG("--display=");
     std::string BRANCH_ARG("--branch=");
     std::string NOBJECTS_ARG("--nobjects=");
+    std::string STATIC_OBJECTS_ARG("--static-objects=");
     std::string NQUERIES_ARG("--nqueries=");
+    std::string STATIC_QUERIES_ARG("--static-queries=");
     std::string DURATION_ARG("--duration=");
     std::string REALTIME_ARG("--realtime=");
     std::string TRACK_CHECKS_ARG("--track-checks=");
@@ -64,7 +66,9 @@ int main(int argc, char** argv) {
     bool display = false;
     int branching = 16;
     int nobjects = 10000;
+    bool static_objects = false;
     int nqueries = 50;
+    bool static_queries = false;
     int duration = 60; // seconds
     bool realtime = true; // realtime or simulated time steps
     bool track_checks = false;
@@ -85,9 +89,17 @@ int main(int argc, char** argv) {
             std::string nobjects_arg = arg.substr(NOBJECTS_ARG.size());
             nobjects = boost::lexical_cast<int>(nobjects_arg);
         }
+        else if (arg.find(STATIC_OBJECTS_ARG) != std::string::npos) {
+            std::string static_arg = arg.substr(STATIC_OBJECTS_ARG.size());
+            static_objects = convert_bool(static_arg);
+        }
         else if (arg.find(NQUERIES_ARG) != std::string::npos) {
             std::string nqueries_arg = arg.substr(NQUERIES_ARG.size());
             nqueries = boost::lexical_cast<int>(nqueries_arg);
+        }
+        else if (arg.find(STATIC_QUERIES_ARG) != std::string::npos) {
+            std::string static_arg = arg.substr(STATIC_QUERIES_ARG.size());
+            static_queries = convert_bool(static_arg);
         }
         else if (arg.find(DURATION_ARG) != std::string::npos) {
             std::string duration_arg = arg.substr(DURATION_ARG.size());
@@ -121,7 +133,7 @@ int main(int argc, char** argv) {
     Simulator* simulator = new Simulator(handler, duration, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, nqueries, 100);
+    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, static_objects, nqueries, static_queries, 100);
 
     // Optional logging, triggers
     handler->trackChecks(track_checks);
