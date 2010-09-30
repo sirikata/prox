@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
     std::string NQUERIES_ARG("--nqueries=");
     std::string STATIC_QUERIES_ARG("--static-queries=");
     std::string DURATION_ARG("--duration=");
+    std::string ITERATIONS_ARG("--iterations=");
     std::string REALTIME_ARG("--realtime=");
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
@@ -70,7 +71,8 @@ int main(int argc, char** argv) {
     bool static_objects = false;
     int nqueries = 50;
     bool static_queries = false;
-    int duration = 60; // seconds
+    int duration = 0; // seconds
+    int iterations = 0; // iterations before termination
     bool realtime = true; // realtime or simulated time steps
     bool track_checks = false;
     bool restructure = false;
@@ -107,6 +109,10 @@ int main(int argc, char** argv) {
             std::string duration_arg = arg.substr(DURATION_ARG.size());
             duration = boost::lexical_cast<int>(duration_arg);
         }
+        else if (arg.find(ITERATIONS_ARG) != std::string::npos) {
+            std::string iterations_arg = arg.substr(ITERATIONS_ARG.size());
+            iterations = boost::lexical_cast<int>(iterations_arg);
+        }
         else if (arg.find(REALTIME_ARG) != std::string::npos) {
             std::string realtime_arg = arg.substr(REALTIME_ARG.size());
             realtime = convert_bool(realtime_arg);
@@ -136,7 +142,7 @@ int main(int argc, char** argv) {
     else
         handler = new Prox::BruteForceQueryHandler<>();
 
-    Simulator* simulator = new Simulator(handler, duration, realtime);
+    Simulator* simulator = new Simulator(handler, duration, iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
     simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, static_objects, nqueries, static_queries, 100);

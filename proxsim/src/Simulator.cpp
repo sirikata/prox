@@ -49,9 +49,11 @@ static uint32 randUInt32(uint32 minval, uint32 maxval) {
     return r;
 }
 
-Simulator::Simulator(QueryHandler* handler, int duration, bool realtime)
+Simulator::Simulator(QueryHandler* handler, int duration, int iterations, bool realtime)
  : mFinished(false),
    mDuration(duration),
+   mIterations(0),
+   mTerminateIterations(iterations),
    mRealtime(realtime),
    mTime(Time::null()),
    mObjectIDSource(0),
@@ -227,7 +229,7 @@ void Simulator::tick() {
     mHandler->tick(mTime);
 
     mItsSinceRateApprox++;
-    if (mItsSinceRateApprox > RATE_APPROX_ITERATIONS) {
+    if (mItsSinceRateApprox >= RATE_APPROX_ITERATIONS) {
         float its_per_sec = float(RATE_APPROX_ITERATIONS) * queriesSize() / (elapsed - mRateApproxStart).seconds();
         if (mReportRate)
             printf("{ \"rate\" : %f }\n", its_per_sec);
@@ -235,6 +237,10 @@ void Simulator::tick() {
         mItsSinceRateApprox = 0;
         mRateApproxStart = elapsed;
     }
+
+    mIterations++;
+    if (mTerminateIterations > 0 && mIterations >= mTerminateIterations)
+        mFinished = true;
 }
 
 void Simulator::addObject(Object* obj) {

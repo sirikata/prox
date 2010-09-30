@@ -48,7 +48,7 @@ private:
     typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectList;
     typedef std::list<Query*> QueryList;
 public:
-    Simulator(QueryHandler* handler, int duration, bool realtime);
+    Simulator(QueryHandler* handler, int duration, int iterations, bool realtime);
     ~Simulator();
 
     void initialize(const BoundingBox3& region, int nobjects, bool static_objects, int nqueries, bool static_queries, int churnrate);
@@ -86,6 +86,8 @@ private:
     bool mFinished;
 
     int mDuration;
+    int mIterations;
+    int mTerminateIterations;
     bool mRealtime;
 
     Timer mTimer;
