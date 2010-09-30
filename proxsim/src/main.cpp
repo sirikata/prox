@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
     std::string handler_type = "brute";
-    bool display = true;
+    bool display = false;
     int branching = 16;
     int nobjects = 10000;
     int nqueries = 50;
