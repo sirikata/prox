@@ -305,9 +305,9 @@ void GLRenderer::timer() {
     //mSeenObjects.clear();
     mSimulator->tick();
     validateSeenObjects();
-    glutTimerFunc(16, glut_timer, 0);
     if (mDisplay) {
         if (mSimulator->finished()) exit(0);
+        glutTimerFunc(16, glut_timer, 0);
         glutPostRedisplay();
     }
 }
