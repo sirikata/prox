@@ -160,6 +160,8 @@ int main(int argc, char** argv) {
 
     renderer->run();
 
+    simulator->shutdown();
+
     delete renderer;
     delete simulator;
 

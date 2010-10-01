@@ -52,6 +52,7 @@ public:
     ~Simulator();
 
     void initialize(const BoundingBox3& region, int nobjects, bool static_objects, int nqueries, bool static_queries, int churnrate);
+    void shutdown();
 
     const BoundingBox3& region() const;
 

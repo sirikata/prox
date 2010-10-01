@@ -66,25 +66,6 @@ Simulator::Simulator(QueryHandler* handler, int duration, int iterations, bool r
 }
 
 Simulator::~Simulator() {
-    // Remove all objects
-    while(!mObjects.empty()) {
-        Object* obj = mObjects.begin()->second;
-        removeObject(obj);
-    }
-    // And delete them all
-    while(!mRemovedObjects.empty()) {
-        Object* obj = mRemovedObjects.begin()->second;
-        delete obj;
-        mRemovedObjects.erase(mRemovedObjects.begin());
-    }
-
-    while(!mQueries.empty()) {
-        Query* query = mQueries.front();
-        removeQuery(query);
-        delete query;
-    }
-
-    delete mLocCache;
 }
 
 static Query* generateQueryFromObject(QueryHandler* handler, Object* obj, bool static_objects, bool static_queries) {
@@ -181,6 +162,28 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static
     }
 
     mTimer.start();
+}
+
+void Simulator::shutdown() {
+    // Remove all objects
+    while(!mObjects.empty()) {
+        Object* obj = mObjects.begin()->second;
+        removeObject(obj);
+    }
+    // And delete them all
+    while(!mRemovedObjects.empty()) {
+        Object* obj = mRemovedObjects.begin()->second;
+        delete obj;
+        mRemovedObjects.erase(mRemovedObjects.begin());
+    }
+
+    while(!mQueries.empty()) {
+        Query* query = mQueries.front();
+        removeQuery(query);
+        delete query;
+    }
+
+    delete mLocCache;
 }
 
 const BoundingBox3& Simulator::region() const {
