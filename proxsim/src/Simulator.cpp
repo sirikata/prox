@@ -170,7 +170,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static
     }
 
     // Add rest of queries (so we get some added after objects present)
-    for(int i = 0; i < nqueries/2; i++) {
+    for(int i = 0; i < nqueries/2 + (nqueries % 2); i++) {
         // Pick a random object to use as a basis for this query
         uint32 obj_idx = randUInt32(0, mAllObjects.size()-1);
         ObjectList::iterator obj_it = mAllObjects.begin();
