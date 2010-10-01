@@ -56,6 +56,7 @@ int main(int argc, char** argv) {
     std::string BRANCH_ARG("--branch=");
     std::string NOBJECTS_ARG("--nobjects=");
     std::string STATIC_OBJECTS_ARG("--static-objects=");
+    std::string MOVING_FRAC_ARG("--moving-frac=");
     std::string NQUERIES_ARG("--nqueries=");
     std::string STATIC_QUERIES_ARG("--static-queries=");
     std::string DURATION_ARG("--duration=");
@@ -69,7 +70,6 @@ int main(int argc, char** argv) {
     bool display = false;
     int branching = 16;
     int nobjects = 10000;
-    bool static_objects = false;
     int nqueries = 50;
     bool static_queries = false;
     int duration = 0; // seconds
@@ -79,6 +79,7 @@ int main(int argc, char** argv) {
     bool restructure = false;
     bool report_rate = false;
     int churn_rate = 0;
+    float moving_frac = 1.0f;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -97,7 +98,12 @@ int main(int argc, char** argv) {
         }
         else if (arg.find(STATIC_OBJECTS_ARG) != std::string::npos) {
             std::string static_arg = arg.substr(STATIC_OBJECTS_ARG.size());
-            static_objects = convert_bool(static_arg);
+            bool static_objects = convert_bool(static_arg);
+            if (static_objects) moving_frac = 0.0f;
+        }
+        else if (arg.find(MOVING_FRAC_ARG) != std::string::npos) {
+            std::string moving_arg = arg.substr(MOVING_FRAC_ARG.size());
+            moving_frac = boost::lexical_cast<float>(moving_arg);
         }
         else if (arg.find(NQUERIES_ARG) != std::string::npos) {
             std::string nqueries_arg = arg.substr(NQUERIES_ARG.size());
@@ -151,7 +157,7 @@ int main(int argc, char** argv) {
     Simulator* simulator = new Simulator(handler, duration, iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, static_objects, nqueries, static_queries, churn_rate);
+    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac, nqueries, static_queries, churn_rate);
 
     // Optional logging, triggers
     handler->trackChecks(track_checks);

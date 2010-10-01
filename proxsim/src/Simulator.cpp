@@ -68,39 +68,57 @@ Simulator::Simulator(QueryHandler* handler, int duration, int iterations, bool r
 Simulator::~Simulator() {
 }
 
-static Query* generateQueryFromObject(QueryHandler* handler, Object* obj, bool static_objects, bool static_queries) {
-    Vector3 qpos = obj->position().position();
-    Vector3 qvel =
-        (static_queries ?
-            Vector3(0, 0, 0) :
-            ( static_objects ?
-                Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/) :
-                obj->position().velocity()
-            )
-        )
-        ;
+static Vector3 generatePosition(const BoundingBox3& region) {
+    Vector3 region_min = region.min();
+    Vector3 region_extents = region.extents();
+
+    return region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/);
+}
+
+static Vector3 generateDirection(bool moving) {
+    return
+        (moving ?
+            Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/) :
+            Vector3(0, 0, 0)
+        );
+};
+
+static BoundingBox3 generateObjectBounds() {
+    return BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1));
+};
+
+static BoundingBox3 generateQueryBounds() {
+    return BoundingBox3( Vector3(0, 0, 0), Vector3(0, 0, 0) );
+}
+
+static float generateQueryRadius() {
+    static float val = sqrtf(6.f) / 2.f; // Diagonal of bounding box
+    return val;
+}
+
+static Query* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries) {
+    Vector3 qpos = generatePosition(region);
+    Vector3 qvel = generateDirection(!static_queries);
 
     Query* query = handler->registerQuery(
         MotionVector3(Time::null(), qpos, qvel),
-        BoundingSphere(obj->bounds().center(), 0),
-        obj->bounds().radius(),
+        generateQueryBounds(),
+        generateQueryRadius(),
         SolidAngle( SolidAngle::Max / 1000 )
     );
     return query;
 }
 
-void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static_objects, int nqueries, bool static_queries, int churnrate) {
+void Simulator::initialize(const BoundingBox3& region, int nobjects, float moving_frac, int nqueries, bool static_queries, int churnrate) {
     mChurn = churnrate;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
     addListener(loc_cache);
     mLocCache = loc_cache;
 
-    mHandler->initialize(mLocCache, static_objects);
+    mHandler->initialize(mLocCache, (moving_frac == 0.0f));
 
     mRegion = region;
-    Vector3 region_min = region.min();
-    Vector3 region_extents = region.extents();
 
     // Generate objects
     for(int i = 0; i < nobjects; i++) {
@@ -109,17 +127,16 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static
         memcpy(oid_data,&mObjectIDSource,ObjectID::static_size<sizeof(mObjectIDSource)?ObjectID::static_size:sizeof(mObjectIDSource));
         ObjectID oid(oid_data,ObjectID::static_size);
 
+        bool moving = (randFloat() < moving_frac);
+
         Object* obj = new Object(
             ObjectID(oid_data,ObjectID::static_size),
             MotionVector3(
                 Time::null(),
-                region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/),
-                (static_objects ?
-                    Vector3(0, 0, 0) :
-                    Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/)
-                )
+                generatePosition(region),
+                generateDirection(moving)
             ),
-            BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1))
+            generateObjectBounds()
         );
 
         mAllObjects[obj->id()] = obj;
@@ -133,13 +150,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static
 
     // Add some queries (so we get some added before any objects present)
     for(int i = 0; i < nqueries/2; i++) {
-        // Pick a random object to use as a basis for this query
-        uint32 obj_idx = randUInt32(0, mAllObjects.size()-1);
-        ObjectList::iterator obj_it = mAllObjects.begin();
-        for(uint32 k = 0; k < obj_idx; k++)
-            obj_it++;
-        Object* obj = obj_it->second;
-        addQuery( generateQueryFromObject(mHandler, obj, static_objects, static_queries) );
+        addQuery( generateQuery(mHandler, region, static_queries) );
     }
 
     // Add objects
@@ -152,13 +163,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static
 
     // Add rest of queries (so we get some added after objects present)
     for(int i = 0; i < nqueries/2 + (nqueries % 2); i++) {
-        // Pick a random object to use as a basis for this query
-        uint32 obj_idx = randUInt32(0, mAllObjects.size()-1);
-        ObjectList::iterator obj_it = mAllObjects.begin();
-        for(uint32 k = 0; k < obj_idx; k++)
-            obj_it++;
-        Object* obj = obj_it->second;
-        addQuery( generateQueryFromObject(mHandler, obj, static_objects, static_queries) );
+        addQuery( generateQuery(mHandler, region, static_queries) );
     }
 
     mTimer.start();
