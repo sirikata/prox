@@ -80,6 +80,28 @@ MARK_AS_ADVANCED(
     CMAKE_EXE_LINKER_FLAGS_RELEASE
     CMAKE_SHARED_LINKER_FLAGS_RELEASE )
 
+
+#-fno-rtti
+SET(CMAKE_CXX_FLAGS_OPROFILE "-O2 -g -Wall -Wno-unused-function -Wno-unused-variable -fvisibility=hidden" CACHE STRING
+    "Built cxxflags with default settings."
+    FORCE )
+SET( CMAKE_C_FLAGS_OPROFILE "-O2 -g -Wall -Wno-unused-function -Wno-unused-variable -fvisibility=hidden" CACHE STRING
+    "Built cflags with default settings."
+    FORCE )
+SET( CMAKE_EXE_LINKER_FLAGS_OPROFILE
+    "" CACHE STRING
+    "Linking binaries with default settings."
+    FORCE )
+SET( CMAKE_SHARED_LINKER_FLAGS_OPROFILE
+    "" CACHE STRING
+    "Building shared libraries with default settings."
+    FORCE )
+MARK_AS_ADVANCED(
+    CMAKE_CXX_FLAGS_OPROFILE
+    CMAKE_C_FLAGS_OPROFILE
+    CMAKE_EXE_LINKER_FLAGS_OPROFILE
+    CMAKE_SHARED_LINKER_FLAGS_OPROFILE )
+
 #project global flags
 
 PROJECT(libprox C CXX)
