@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
     std::string REPORT_RATE_ARG("--report-rate=");
+    std::string CHURN_RATE_ARG("--churn-rate=");
     std::string handler_type = "brute";
     bool display = false;
     int branching = 16;
@@ -77,6 +78,7 @@ int main(int argc, char** argv) {
     bool track_checks = false;
     bool restructure = false;
     bool report_rate = false;
+    int churn_rate = 0;
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -129,6 +131,10 @@ int main(int argc, char** argv) {
             std::string report_rate_arg = arg.substr(REPORT_RATE_ARG.size());
             report_rate = convert_bool(report_rate_arg);
         }
+        else if (arg.find(CHURN_RATE_ARG) != std::string::npos) {
+            std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
+            churn_rate = convert_bool(churn_rate_arg);
+        }
     }
 
     // Setup query handler
@@ -145,7 +151,7 @@ int main(int argc, char** argv) {
     Simulator* simulator = new Simulator(handler, duration, iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, static_objects, nqueries, static_queries, 100);
+    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, static_objects, nqueries, static_queries, churn_rate);
 
     // Optional logging, triggers
     handler->trackChecks(track_checks);
