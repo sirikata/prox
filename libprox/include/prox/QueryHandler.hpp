@@ -63,13 +63,15 @@ public:
        mQueryIDSource(0),
        mAggregateListener(NULL),
        mTrackChecks(false),
-       mShouldRestructure(false)
+       mShouldRestructure(false),
+       mReportHealth(false)
     {}
     virtual ~QueryHandler() {}
 
 
     void trackChecks(bool t) { mTrackChecks = t; }
     void shouldRestructure(bool r) { mShouldRestructure = r; }
+    void reportHealth(bool r) { mReportHealth = r; }
 
     virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects) = 0;
 
@@ -121,6 +123,7 @@ protected:
     // Whether to track constraint checks
     bool mTrackChecks;
     bool mShouldRestructure;
+    bool mReportHealth;
 }; // class QueryHandler
 
 } // namespace Prox

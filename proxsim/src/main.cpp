@@ -44,7 +44,7 @@
 #include <boost/lexical_cast.hpp>
 
 static bool convert_bool(const std::string& arg) {
-    return (arg == "on" || arg == "true");
+    return (arg == "on" || arg == "true" || arg == "yes");
 }
 
 int main(int argc, char** argv) {
@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
     std::string REALTIME_ARG("--realtime=");
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
+    std::string REPORT_HEALTH_ARG("--report-health=");
     std::string REPORT_RATE_ARG("--report-rate=");
     std::string CHURN_RATE_ARG("--churn-rate=");
     std::string handler_type = "brute";
@@ -77,6 +78,7 @@ int main(int argc, char** argv) {
     bool realtime = true; // realtime or simulated time steps
     bool track_checks = false;
     bool restructure = false;
+    bool report_health = false;
     bool report_rate = false;
     int churn_rate = 0;
     float moving_frac = 1.0f;
@@ -133,6 +135,10 @@ int main(int argc, char** argv) {
             std::string restructure_arg = arg.substr(RESTRUCTURE_ARG.size());
             restructure = convert_bool(restructure_arg);
         }
+        else if (arg.find(REPORT_HEALTH_ARG) != std::string::npos) {
+            std::string report_health_arg = arg.substr(REPORT_HEALTH_ARG.size());
+            report_health = convert_bool(report_health_arg);
+        }
         else if (arg.find(REPORT_RATE_ARG) != std::string::npos) {
             std::string report_rate_arg = arg.substr(REPORT_RATE_ARG.size());
             report_rate = convert_bool(report_rate_arg);
@@ -162,6 +168,7 @@ int main(int argc, char** argv) {
     // Optional logging, triggers
     handler->trackChecks(track_checks);
     handler->shouldRestructure(restructure);
+    handler->reportHealth(report_health);
     simulator->printRate(report_rate);
 
     renderer->run();

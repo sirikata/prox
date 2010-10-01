@@ -142,6 +142,9 @@ public:
 
         mRTree->verifyConstraints(t);
         validateCuts();
+
+        if (QueryHandlerType::mReportHealth)
+            mRTree->reportBounds(t);
     }
 
     virtual uint32 numObjects() const {

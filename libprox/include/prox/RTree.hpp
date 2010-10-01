@@ -1359,6 +1359,37 @@ void RTree_restructure_nodes_children(
     }
 }
 
+/* Recursively report the bounds tightness of nodes. This is basically a
+ * read-only version of tree restructuring. */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_report_bounds(
+    FILE* fout,
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t)
+{
+    fprintf(fout, "{ ");
+
+    // Report this nodes volume
+    float this_volume = root->data().volume();
+    fprintf(fout, " \"volume\" : %f, \"children\" : { ", this_volume);
+    // Recurse
+    if (root->leaf()) {
+        for(int i = 0; i < root->size(); i++) {
+            if (i > 0) fprintf(fout, ", ");
+            fprintf(fout, "{ \"volume\" : %f }", root->childData(i, loc, t).volume());
+        }
+    }
+    else {
+        for(int i = 0; i < root->size(); i++) {
+            if (i > 0) fprintf(fout, ", ");
+            RTree_report_bounds(fout, root->node(i), loc, t);
+        }
+    }
+
+    fprintf(fout, " } }");
+}
+
 /* Recursively restructure the tree by looking for nodes with children that have
  * become inefficient and restructuring them. */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
@@ -1536,6 +1567,11 @@ public:
     void update(const Time& t) {
         if (!mStaticObjects)
             mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
+    }
+
+    void reportBounds(const Time& t) {
+        RTree_report_bounds(stdout, mRoot, mLocCache, t);
+        fprintf(stdout, "\n");
     }
 
     void restructure(const Time& t) {

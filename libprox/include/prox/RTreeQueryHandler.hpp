@@ -161,6 +161,9 @@ public:
                 printf("{ \"id\" : %d, \"nodes\" : %d, \"checks\" : { \"positive\" : %d, \"negative\" : %d, \"negativeinternal\" : %d, \"total\" : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
         }
         mLastTime = t;
+
+        if (QueryHandlerType::mReportHealth)
+            mRTree->reportBounds(t);
     }
 
     virtual uint32 numObjects() const {
