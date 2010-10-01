@@ -1480,11 +1480,14 @@ public:
 
     typedef typename RTreeNodeType::Index Index;
 
-    RTree(QueryHandlerType* handler, Index elements_per_node, LocationServiceCacheType* loccache, AggregateListenerType* agg = NULL,
+    RTree(QueryHandlerType* handler, Index elements_per_node, LocationServiceCacheType* loccache,
+        bool static_objects,
+        AggregateListenerType* agg = NULL,
         RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
-     : mLocCache(loccache)
+     : mLocCache(loccache),
+       mStaticObjects(static_objects)
     {
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
@@ -1531,7 +1534,8 @@ public:
     }
 
     void update(const Time& t) {
-        mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
+        if (!mStaticObjects)
+            mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
     }
 
     void restructure(const Time& t) {
@@ -1571,6 +1575,7 @@ private:
     // Index for object's leaf nodes
     typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
     ObjectLeafIndex mObjectLeaves;
+    bool mStaticObjects;
 }; // class RTree
 
 } // namespace Prox

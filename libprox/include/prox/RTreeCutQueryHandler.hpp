@@ -94,7 +94,7 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache) {
+    void initialize(LocationServiceCacheType* loc_cache, bool static_objects) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
 
@@ -105,6 +105,7 @@ public:
         mRTree = new RTree(
             this,
             mElementsPerNode, mLocCache,
+            static_objects,
             aggregateListener(),
             std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),

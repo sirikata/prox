@@ -90,11 +90,11 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache) {
+    void initialize(LocationServiceCacheType* loc_cache, bool static_objects) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
 
-        mRTree = new RTree(this, mElementsPerNode, mLocCache);
+        mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
     }
 
     void tick(const Time& t) {

@@ -96,7 +96,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, bool static
     addListener(loc_cache);
     mLocCache = loc_cache;
 
-    mHandler->initialize(mLocCache);
+    mHandler->initialize(mLocCache, static_objects);
 
     mRegion = region;
     Vector3 region_min = region.min();

@@ -71,7 +71,7 @@ public:
     void trackChecks(bool t) { mTrackChecks = t; }
     void shouldRestructure(bool r) { mShouldRestructure = r; }
 
-    virtual void initialize(LocationServiceCacheType* loc_cache) = 0;
+    virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects) = 0;
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
         QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);
