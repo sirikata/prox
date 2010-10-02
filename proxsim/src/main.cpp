@@ -62,6 +62,7 @@ int main(int argc, char** argv) {
     std::string DURATION_ARG("--duration=");
     std::string ITERATIONS_ARG("--iterations=");
     std::string REALTIME_ARG("--realtime=");
+    std::string TIMESTEP_ARG("--timestep="); // in milliseconds
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
     std::string REPORT_HEALTH_ARG("--report-health=");
@@ -76,6 +77,7 @@ int main(int argc, char** argv) {
     int duration = 0; // seconds
     int iterations = 0; // iterations before termination
     bool realtime = true; // realtime or simulated time steps
+    int timestep = 50;
     bool track_checks = false;
     bool restructure = false;
     bool report_health = false;
@@ -127,6 +129,10 @@ int main(int argc, char** argv) {
             std::string realtime_arg = arg.substr(REALTIME_ARG.size());
             realtime = convert_bool(realtime_arg);
         }
+        else if (arg.find(TIMESTEP_ARG) != std::string::npos) {
+            std::string timestep_arg = arg.substr(TIMESTEP_ARG.size());
+            timestep = boost::lexical_cast<int>(timestep_arg);
+        }
         else if (arg.find(TRACK_CHECKS_ARG) != std::string::npos) {
             std::string track_checks_arg = arg.substr(TRACK_CHECKS_ARG.size());
             track_checks = convert_bool(track_checks_arg);
@@ -160,7 +166,7 @@ int main(int argc, char** argv) {
     else
         handler = new Prox::BruteForceQueryHandler<>();
 
-    Simulator* simulator = new Simulator(handler, duration, iterations, realtime);
+    Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
     simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac, nqueries, static_queries, churn_rate);

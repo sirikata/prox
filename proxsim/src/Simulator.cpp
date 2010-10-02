@@ -49,9 +49,10 @@ static uint32 randUInt32(uint32 minval, uint32 maxval) {
     return r;
 }
 
-Simulator::Simulator(QueryHandler* handler, int duration, int iterations, bool realtime)
+Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime)
  : mFinished(false),
    mDuration(duration),
+   mTimestep(timestep),
    mIterations(0),
    mTerminateIterations(iterations),
    mRealtime(realtime),
@@ -216,7 +217,7 @@ void Simulator::tick() {
         mTime = Time::null() + elapsed;
     }
     else {
-        mTime += Duration::milliseconds(static_cast<uint32>(50));
+        mTime += mTimestep;
         if (mDuration > 0 && ((mTime - Time::null()).seconds() > mDuration)) {
             mFinished = true;
             return;
