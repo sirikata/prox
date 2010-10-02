@@ -64,6 +64,7 @@ public:
        mAggregateListener(NULL),
        mTrackChecks(false),
        mShouldRestructure(false),
+       mReportRestructures(false),
        mReportHealth(false)
     {}
     virtual ~QueryHandler() {}
@@ -71,6 +72,8 @@ public:
 
     void trackChecks(bool t) { mTrackChecks = t; }
     void shouldRestructure(bool r) { mShouldRestructure = r; }
+    void reportRestructures(bool r) { mReportRestructures = r; }
+    bool reportRestructures() const { return mReportRestructures; }
     void reportHealth(bool r) { mReportHealth = r; }
 
     virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects) = 0;
@@ -123,6 +126,7 @@ protected:
     // Whether to track constraint checks
     bool mTrackChecks;
     bool mShouldRestructure;
+    bool mReportRestructures;
     bool mReportHealth;
 }; // class QueryHandler
 

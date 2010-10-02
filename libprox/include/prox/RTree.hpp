@@ -1282,10 +1282,10 @@ void RTree_collect_cuts(RTreeNode<SimulationTraits, NodeData, CutNode>* node, st
 
 /** Given a node which has children that are significantly overlapping,
  *  restructures the grandchildren of the node to improve the children's
- *  layout.
+ *  layout.  Returns number of cuts affected by this process.
  */
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
-void RTree_restructure_nodes_children(
+int RTree_restructure_nodes_children(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
@@ -1357,6 +1357,8 @@ void RTree_restructure_nodes_children(
         Cut* cut = *it;
         cut->rebuildCutOrder();
     }
+
+    return affected_cuts.size();
 }
 
 /* Recursively report the bounds tightness of nodes. This is basically a
@@ -1390,10 +1392,34 @@ void RTree_report_bounds(
     fprintf(fout, " ] }");
 }
 
+struct RestructureInfo {
+    RestructureInfo()
+     : restructures(0), cutRebuilds(0)
+    {}
+    RestructureInfo(int res, int rebuilds)
+     : restructures(res), cutRebuilds(rebuilds)
+    {}
+
+    RestructureInfo operator+(const RestructureInfo& rhs) const {
+        return RestructureInfo(
+            restructures + rhs.restructures,
+            cutRebuilds + rhs.cutRebuilds
+        );
+    }
+
+    void operator+=(const RestructureInfo& rhs) {
+        restructures += rhs.restructures;
+        cutRebuilds += rhs.cutRebuilds;
+    }
+
+    int restructures;
+    int cutRebuilds;
+};
+
 /* Recursively restructure the tree by looking for nodes with children that have
  * become inefficient and restructuring them. */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
-bool RTree_restructure_tree(
+RestructureInfo RTree_restructure_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
@@ -1401,19 +1427,20 @@ bool RTree_restructure_tree(
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
+    RestructureInfo result;
+
     // The basic approach is to work bottom up, looking for "inefficient" nodes.
 
     // We can't do anything about root leaves directly
     if (root->leaf())
-        return false;
+        return result;
 
     // Allow children to restructure first
-    bool any_children_restructured = false;
     for(int i = 0; i < root->size(); i++) {
-        bool child_restructured = RTree_restructure_tree(root->node(i), loc, t, cb);
-        any_children_restructured = any_children_restructured || child_restructured;
+        RestructureInfo child_restructured = RTree_restructure_tree(root->node(i), loc, t, cb);
+        result += child_restructured;
     }
-    if (any_children_restructured)
+    if (result.restructures > 0) // some descendent restructured
         root->recomputeData(loc, t, cb);
 
     // A node is considered inefficient if there is a lot of overlap between its
@@ -1425,17 +1452,21 @@ bool RTree_restructure_tree(
         children_volume += root->node(i)->data().volume();
     }
 
-    if (children_volume / this_volume <= 2.f) // FIXME magic #
-        return any_children_restructured;
+    if (children_volume / this_volume <= 2.f)
+        return result;
 
+    int affected_cuts = 0;
     if (root->node(0)->leaf())
-        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb);
+        affected_cuts = RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb);
     else
-        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, loc, t, cb);
+        affected_cuts = RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, loc, t, cb);
+
+    result.restructures += 1;
+    result.cutRebuilds += affected_cuts;
 
     root->recomputeData(loc, t, cb);
 
-    return true;
+    return result;
 }
 
 /* Deletes the object from the given tree.  Returns the new root. */
@@ -1575,7 +1606,9 @@ public:
     }
 
     void restructure(const Time& t) {
-        RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
+        RestructureInfo info = RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
+        if (mCallbacks.handler->reportRestructures())
+            printf("{ \"time\" : %d, \"count\" : %d, \"cuts-rebuilt\" : %d }\n", (int)(t-Time::null()).milliseconds(), info.restructures, info.cutRebuilds);
     }
 
     void erase(const LocCacheIterator& obj, const Time& t) {

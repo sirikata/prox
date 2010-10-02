@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     std::string RESTRUCTURE_ARG("--restructure=");
     std::string REPORT_HEALTH_ARG("--report-health=");
     std::string REPORT_RATE_ARG("--report-rate=");
+    std::string REPORT_RESTRUCTURES_ARG("--report-restructures=");
     std::string CHURN_RATE_ARG("--churn-rate=");
     std::string handler_type = "brute";
     bool display = false;
@@ -82,6 +83,7 @@ int main(int argc, char** argv) {
     bool restructure = false;
     bool report_health = false;
     bool report_rate = false;
+    bool report_restructures = false;
     int churn_rate = 0;
     float moving_frac = 1.0f;
     for(int argi = 0; argi < argc; argi++) {
@@ -149,6 +151,10 @@ int main(int argc, char** argv) {
             std::string report_rate_arg = arg.substr(REPORT_RATE_ARG.size());
             report_rate = convert_bool(report_rate_arg);
         }
+        else if (arg.find(REPORT_RESTRUCTURES_ARG) != std::string::npos) {
+            std::string report_restructures_arg = arg.substr(REPORT_RESTRUCTURES_ARG.size());
+            report_restructures = convert_bool(report_restructures_arg);
+        }
         else if (arg.find(CHURN_RATE_ARG) != std::string::npos) {
             std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
             churn_rate = convert_bool(churn_rate_arg);
@@ -175,6 +181,7 @@ int main(int argc, char** argv) {
     handler->trackChecks(track_checks);
     handler->shouldRestructure(restructure);
     handler->reportHealth(report_health);
+    handler->reportRestructures(report_restructures);
     simulator->printRate(report_rate);
 
     renderer->run();
