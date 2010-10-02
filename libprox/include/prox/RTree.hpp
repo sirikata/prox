@@ -1372,7 +1372,7 @@ void RTree_report_bounds(
 
     // Report this nodes volume
     float this_volume = root->data().volume();
-    fprintf(fout, " \"volume\" : %f, \"children\" : { ", this_volume);
+    fprintf(fout, " \"volume\" : %f, \"children\" : [ ", this_volume);
     // Recurse
     if (root->leaf()) {
         for(int i = 0; i < root->size(); i++) {
@@ -1387,7 +1387,7 @@ void RTree_report_bounds(
         }
     }
 
-    fprintf(fout, " } }");
+    fprintf(fout, " ] }");
 }
 
 /* Recursively restructure the tree by looking for nodes with children that have
