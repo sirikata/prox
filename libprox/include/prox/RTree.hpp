@@ -1549,7 +1549,8 @@ public:
         LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
      : mLocCache(loccache),
-       mStaticObjects(static_objects)
+       mStaticObjects(static_objects),
+       mRestructureMightHaveEffect(false)
     {
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
@@ -1586,6 +1587,8 @@ public:
         mObjectLeaves[objid] = NULL;
 
         mRoot = RTree_insert_object(mRoot, mLocCache, obj, t, mCallbacks);
+
+        mRestructureMightHaveEffect = true;
     }
 
     void update(const LocCacheIterator& obj, const Time& t) {
@@ -1593,6 +1596,8 @@ public:
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
         mRoot = RTree_update_object(mRoot, mLocCache, objid, t, mCallbacks);
+
+        mRestructureMightHaveEffect = true;
     }
 
     void update(const Time& t) {
@@ -1606,9 +1611,16 @@ public:
     }
 
     void restructure(const Time& t) {
-        RestructureInfo info = RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
-        if (mCallbacks.handler->reportRestructures())
-            printf("{ \"time\" : %d, \"count\" : %d, \"cuts-rebuilt\" : %d }\n", (int)(t-Time::null()).milliseconds(), info.restructures, info.cutRebuilds);
+        // Only restructure if we're dealing with dynamic objects or if
+        // something has changed/the last restructure pass did something
+        if (!mStaticObjects || mRestructureMightHaveEffect) {
+            RestructureInfo info = RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
+            if (mCallbacks.handler->reportRestructures())
+                printf("{ \"time\" : %d, \"count\" : %d, \"cuts-rebuilt\" : %d }\n", (int)(t-Time::null()).milliseconds(), info.restructures, info.cutRebuilds);
+            // Without any additions/removals, a restructure pass can only have
+            // an effect if this previous pass actually restructured something.
+            mRestructureMightHaveEffect = (info.restructures > 0);
+        }
     }
 
     void erase(const LocCacheIterator& obj, const Time& t) {
@@ -1617,6 +1629,8 @@ public:
 
         mRoot = RTree_delete_object(mRoot, mLocCache, obj, t, mCallbacks);
         mObjectLeaves.erase(objid);
+
+        mRestructureMightHaveEffect = true;
     }
 
     /** If in debug mode, verify the constraints on the data structure. */
@@ -1645,6 +1659,7 @@ private:
     typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
     ObjectLeafIndex mObjectLeaves;
     bool mStaticObjects;
+    bool mRestructureMightHaveEffect;
 }; // class RTree
 
 } // namespace Prox
