@@ -136,12 +136,25 @@ public:
         return mLocCache;
     }
 
+    void addObject(const ObjectID& obj_id) {
+        mObjects[obj_id] = mLocCache->startTracking(obj_id);
+    }
+
+    void removeObject(const ObjectID& obj_id) {
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
+        LocCacheIterator obj_loc_it = it->second;
+        mObjects.erase(it);
+        mLocCache->stopTracking(obj_loc_it);
+    }
+
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         bool do_track = true;
         if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);
 
         if (do_track)
-            mObjects[obj_id] = mLocCache->startTracking(obj_id);
+            addObject(obj_id);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -157,12 +170,7 @@ public:
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
-        typename ObjectSet::iterator it = mObjects.find(obj_id);
-        if (it == mObjects.end()) return;
-
-        LocCacheIterator obj_loc_it = it->second;
-        mObjects.erase(it);
-        mLocCache->stopTracking(obj_loc_it);
+        removeObject(obj_id);
     }
 
     void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {

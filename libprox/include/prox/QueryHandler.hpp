@@ -94,6 +94,25 @@ public:
      */
     virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
 
+    /** Add an object to be considered in the result set.  This method, along
+     *  with ShouldTrackCallback and removeObject, allows the user to control
+     *  which subset of objects from the location service cache are candidate
+     *  results for this handler.
+     *
+     *  Should only be invoked with ObjectID's of objects completely added to
+     *  the location service cache, i.e. not newly connected objects.  This
+     *  means it should *not* be invoked in
+     *  LocationUpdateListener::locationConnected. Use ShouldTrackCallback for
+     *  that case, and addObject when an object was removed and should now be
+     *  added back again.
+     */
+    virtual void addObject(const ObjectID& obj_id) = 0;
+    /** Remove an object from consideration. If called with an object not in the
+     *  tree, will be ignored. This method, along with addObject and
+     *  ShouldTrackCallback, allows the user to control which subset of objects
+     *  from the location service cache are candidate results for this handler. */
+    virtual void removeObject(const ObjectID& obj_id) = 0;
+
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
         QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);
         registerQuery(q);

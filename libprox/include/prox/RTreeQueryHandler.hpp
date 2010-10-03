@@ -184,16 +184,33 @@ public:
         return mLocCache;
     }
 
+
+    void addObject(const ObjectID& obj_id) {
+        assert(mObjects.find(obj_id) == mObjects.end());
+
+        mObjects[obj_id] = mLocCache->startTracking(obj_id);
+        insertObj(obj_id, mLastTime);
+    }
+
+    void removeObject(const ObjectID& obj_id) {
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
+        LocCacheIterator obj_loc_it = it->second;
+        deleteObj(obj_id, mLastTime);
+        mLocCache->stopTracking(obj_loc_it);
+        mObjects.erase(it);
+    }
+
+
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
         if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);
 
-        if (do_track) {
-            mObjects[obj_id] = mLocCache->startTracking(obj_id);
-            insertObj(obj_id, mLastTime);
-        }
+        if (do_track)
+            addObject(obj_id);
     }
 
     // LocationUpdateListener Implementation
@@ -210,13 +227,7 @@ public:
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
-        typename ObjectSet::iterator it = mObjects.find(obj_id);
-        if (it == mObjects.end()) return;
-
-        LocCacheIterator obj_loc_it = it->second;
-        deleteObj(obj_id, mLastTime);
-        mLocCache->stopTracking(obj_loc_it);
-        mObjects.erase(it);
+        removeObject(obj_id);
     }
 
     // QueryChangeListener Implementation
