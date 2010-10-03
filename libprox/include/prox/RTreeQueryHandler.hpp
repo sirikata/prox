@@ -162,8 +162,13 @@ public:
         }
         mLastTime = t;
 
-        if (QueryHandlerType::mReportHealth)
-            mRTree->reportBounds(t);
+        if (QueryHandlerType::mReportHealth) {
+            QueryHandlerType::mItsSinceReportedHealth++;
+            if (QueryHandlerType::mItsSinceReportedHealth >= QueryHandlerType::mReportHealthFrequency) {
+                mRTree->reportBounds(t);
+                QueryHandlerType::mItsSinceReportedHealth = 0;
+            }
+        }
     }
 
     virtual uint32 numObjects() const {

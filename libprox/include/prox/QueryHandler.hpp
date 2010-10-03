@@ -65,7 +65,9 @@ public:
        mTrackChecks(false),
        mShouldRestructure(false),
        mReportRestructures(false),
-       mReportHealth(false)
+       mReportHealth(false),
+       mReportHealthFrequency(1),
+       mItsSinceReportedHealth(0)
     {}
     virtual ~QueryHandler() {}
 
@@ -75,6 +77,7 @@ public:
     void reportRestructures(bool r) { mReportRestructures = r; }
     bool reportRestructures() const { return mReportRestructures; }
     void reportHealth(bool r) { mReportHealth = r; }
+    void reportHealthFrequency(int its) { mReportHealthFrequency = its; }
 
     virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects) = 0;
 
@@ -128,6 +131,8 @@ protected:
     bool mShouldRestructure;
     bool mReportRestructures;
     bool mReportHealth;
+    int mReportHealthFrequency;
+    int mItsSinceReportedHealth;
 }; // class QueryHandler
 
 } // namespace Prox

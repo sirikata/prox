@@ -66,6 +66,7 @@ int main(int argc, char** argv) {
     std::string TRACK_CHECKS_ARG("--track-checks=");
     std::string RESTRUCTURE_ARG("--restructure=");
     std::string REPORT_HEALTH_ARG("--report-health=");
+    std::string REPORT_HEALTH_FREQUENCY_ARG("--report-health-frequency=");
     std::string REPORT_RATE_ARG("--report-rate=");
     std::string REPORT_RESTRUCTURES_ARG("--report-restructures=");
     std::string CHURN_RATE_ARG("--churn-rate=");
@@ -82,6 +83,7 @@ int main(int argc, char** argv) {
     bool track_checks = false;
     bool restructure = false;
     bool report_health = false;
+    int report_health_frequency = 1;
     bool report_rate = false;
     bool report_restructures = false;
     int churn_rate = 0;
@@ -147,6 +149,10 @@ int main(int argc, char** argv) {
             std::string report_health_arg = arg.substr(REPORT_HEALTH_ARG.size());
             report_health = convert_bool(report_health_arg);
         }
+        else if (arg.find(REPORT_HEALTH_FREQUENCY_ARG) != std::string::npos) {
+            std::string report_health_frequency_arg = arg.substr(REPORT_HEALTH_FREQUENCY_ARG.size());
+            report_health_frequency = boost::lexical_cast<int>(report_health_frequency_arg);
+        }
         else if (arg.find(REPORT_RATE_ARG) != std::string::npos) {
             std::string report_rate_arg = arg.substr(REPORT_RATE_ARG.size());
             report_rate = convert_bool(report_rate_arg);
@@ -181,6 +187,7 @@ int main(int argc, char** argv) {
     handler->trackChecks(track_checks);
     handler->shouldRestructure(restructure);
     handler->reportHealth(report_health);
+    handler->reportHealthFrequency(report_health_frequency);
     handler->reportRestructures(report_restructures);
     simulator->printRate(report_rate);
 
