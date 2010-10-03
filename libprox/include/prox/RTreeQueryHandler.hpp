@@ -66,6 +66,7 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
+    typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
 
     RTreeQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
@@ -90,9 +91,10 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, bool static_objects) {
+    void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
+        mShouldTrackCB = should_track_cb;
 
         mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
     }
@@ -184,8 +186,14 @@ public:
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
-        mObjects[obj_id] = mLocCache->startTracking(obj_id);
-        insertObj(obj_id, mLastTime);
+
+        bool do_track = true;
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);
+
+        if (do_track) {
+            mObjects[obj_id] = mLocCache->startTracking(obj_id);
+            insertObj(obj_id, mLastTime);
+        }
     }
 
     // LocationUpdateListener Implementation
@@ -202,11 +210,13 @@ public:
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
-        assert( mObjects.find(obj_id) != mObjects.end() );
-        LocCacheIterator obj_loc_it = mObjects[obj_id];
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
+        LocCacheIterator obj_loc_it = it->second;
         deleteObj(obj_id, mLastTime);
         mLocCache->stopTracking(obj_loc_it);
-        mObjects.erase(obj_id);
+        mObjects.erase(it);
     }
 
     // QueryChangeListener Implementation
@@ -247,10 +257,14 @@ private:
     }
 
     void updateObj(const ObjectID& obj_id, const Time& t) {
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
         mRTree->update(mObjects[obj_id], t);
     }
 
     void deleteObj(const ObjectID& obj_id, const Time& t) {
+        assert(mObjects.find(obj_id) != mObjects.end());
         mRTree->erase(mObjects[obj_id], t);
     }
 
@@ -279,6 +293,7 @@ private:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     LocationServiceCacheType* mLocCache;
+    ShouldTrackCallback mShouldTrackCB;
 
     RTree* mRTree;
     ObjectSet mObjects;

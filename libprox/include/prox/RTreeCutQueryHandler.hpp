@@ -70,6 +70,8 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
+    typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
+
     RTreeCutQueryHandler(uint16 elements_per_node, bool with_aggregates)
      : QueryHandlerType(),
        mLocCache(NULL),
@@ -94,9 +96,10 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, bool static_objects) {
+    void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
+        mShouldTrackCB = should_track_cb;
 
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
@@ -165,11 +168,17 @@ public:
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
-        mObjects[obj_id] = mLocCache->startTracking(obj_id);
-        insertObj(obj_id, mLastTime);
 
-        mRTree->verifyConstraints(mLastTime);
-        validateCuts();
+        bool do_track = true;
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);
+
+        if (do_track) {
+            mObjects[obj_id] = mLocCache->startTracking(obj_id);
+            insertObj(obj_id, mLastTime);
+
+            mRTree->verifyConstraints(mLastTime);
+            validateCuts();
+        }
     }
 
     // LocationUpdateListener Implementation
@@ -195,14 +204,16 @@ public:
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
         mRTree->verifyConstraints(mLastTime);
         validateCuts();
 
-        assert( mObjects.find(obj_id) != mObjects.end() );
-        LocCacheIterator obj_loc_it = mObjects[obj_id];
+        LocCacheIterator obj_loc_it = it->second;
         deleteObj(obj_id, mLastTime);
         mLocCache->stopTracking(obj_loc_it);
-        mObjects.erase(obj_id);
+        mObjects.erase(it);
 
         mRTree->verifyConstraints(mLastTime);
         validateCuts();
@@ -252,10 +263,14 @@ private:
     }
 
     void updateObj(const ObjectID& obj_id, const Time& t) {
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
         mRTree->update(mObjects[obj_id], t);
     }
 
     void deleteObj(const ObjectID& obj_id, const Time& t) {
+        assert(mObjects.find(obj_id) != mObjects.end());
         mRTree->erase(mObjects[obj_id], t);
     }
 
@@ -1329,6 +1344,7 @@ private:
     typedef typename QueryMap::const_iterator QueryMapConstIterator;
 
     LocationServiceCacheType* mLocCache;
+    ShouldTrackCallback mShouldTrackCB;
 
     RTree* mRTree;
     ObjectSet mObjects;

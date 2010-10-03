@@ -66,6 +66,7 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
+    typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
 
     BruteForceQueryHandler()
      : QueryHandlerType(),
@@ -87,9 +88,10 @@ public:
         mLocCache->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, bool static_objects) {
+    void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
         mLocCache->addUpdateListener(this);
+        mShouldTrackCB = should_track_cb;
     }
 
     void tick(const Time& t) {
@@ -135,7 +137,11 @@ public:
     }
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
-        mObjects[obj_id] = mLocCache->startTracking(obj_id);
+        bool do_track = true;
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);
+
+        if (do_track)
+            mObjects[obj_id] = mLocCache->startTracking(obj_id);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -151,9 +157,11 @@ public:
     }
 
     void locationDisconnected(const ObjectID& obj_id) {
-        assert( mObjects.find(obj_id) != mObjects.end() );
-        LocCacheIterator obj_loc_it = mObjects[obj_id];
-        mObjects.erase(obj_id);
+        typename ObjectSet::iterator it = mObjects.find(obj_id);
+        if (it == mObjects.end()) return;
+
+        LocCacheIterator obj_loc_it = it->second;
+        mObjects.erase(it);
         mLocCache->stopTracking(obj_loc_it);
     }
 
@@ -199,6 +207,7 @@ private:
     typedef typename QueryMap::iterator QueryMapIterator;
 
     LocationServiceCacheType* mLocCache;
+    ShouldTrackCallback mShouldTrackCB;
     ObjectSet mObjects;
     QueryMap mQueries;
 }; // class BruteForceQueryHandler

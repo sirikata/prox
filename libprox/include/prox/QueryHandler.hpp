@@ -57,6 +57,10 @@ public:
     typedef Query<SimulationTraits> QueryType;
     typedef typename QueryType::ID QueryID;
 
+    // Signature for callback allowing the user to control whether an object is
+    // actually added or not.
+    typedef std::tr1::function<bool(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
+
     QueryHandler()
      : LocationUpdateListenerType(),
        QueryChangeListenerType(),
@@ -79,7 +83,16 @@ public:
     void reportHealth(bool r) { mReportHealth = r; }
     void reportHealthFrequency(int its) { mReportHealthFrequency = its; }
 
-    virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects) = 0;
+    /** Initialze the query handler.
+     *  \param loc_cache LocationServiceCache to use for learning about object
+     *                   updates
+     *  \param static_objects if true, disables processing necessary for
+     *                        supporting dynamic objects.
+     *  \param should_track_cb if non-NULL, invoked when new objects are
+     *                         discovered to decide whether to track them and
+     *                         return them to queriers.
+     */
+    virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
         QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);
