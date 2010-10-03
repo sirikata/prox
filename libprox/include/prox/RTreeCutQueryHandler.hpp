@@ -1094,27 +1094,11 @@ private:
                             );
                         }
                         else {
-                            // If it is in the result set, we need to decide
-                            // whether to displace it with its children.  If any
-                            // satisfy the constraint, push the cut down and
-                            // remove the original, otherwise, leave the
-                            // original in the results.
-
-                            // Our strategy is to check if *any* children
-                            // satisfy the constraint.  As soon as one does, we
-                            // know we should do the replacement.
-                            bool should_replace_parent = false;
-                            for(int i = 0; i < node->rtnode->size(); i++) {
-                                ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                                bool child_satisfies = node->rtnode->childData(i, loc, t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
-                                if (child_satisfies) {
-                                    should_replace_parent = true;
-                                    break;
-                                }
-                            }
-                            if (should_replace_parent) {
-                                replaceParentWithChildrenResults(node);
-                            }
+                            // If it is in the result set, we need to displace
+                            // it with its children.  With aggregates there's no
+                            // need to check the objects for satisfying the
+                            // query.
+                            replaceParentWithChildrenResults(node);
                         }
                     }
                     else {
