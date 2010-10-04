@@ -90,6 +90,10 @@ float32 ObjectLocationServiceCache::maxSize(const Iterator& id) const {
     return obj->bounds().radius();
 }
 
+bool ObjectLocationServiceCache::isLocal(const Iterator& id) const {
+    return true; // We don't deal with replicas in the simulation
+}
+
 const ObjectID& ObjectLocationServiceCache::iteratorID(const Iterator& id) const {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
@@ -115,7 +119,7 @@ Object* ObjectLocationServiceCache::lookup(const ObjectID& id) const {
 
 void ObjectLocationServiceCache::objectCreated(const Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationConnected(obj->id(), pos, BoundingSphere(bounds.center(), 0), bounds.radius());
+        (*it)->locationConnected(obj->id(), true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -141,7 +145,7 @@ void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
 
 void ObjectLocationServiceCache::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationConnected(obj->id(), pos, BoundingSphere(bounds.center(), 0), bounds.radius());
+        (*it)->locationConnected(obj->id(), true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {

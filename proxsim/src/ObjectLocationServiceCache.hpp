@@ -56,6 +56,7 @@ public:
     virtual const MotionVector3& location(const Iterator& id) const;
     virtual const BoundingSphere& region(const Iterator& id) const;
     virtual float32 maxSize(const Iterator& id) const;
+    virtual bool isLocal(const Iterator& id) const;
 
     virtual const ObjectID& iteratorID(const Iterator& id) const;
 

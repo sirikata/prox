@@ -59,7 +59,7 @@ public:
 
     // Signature for callback allowing the user to control whether an object is
     // actually added or not.
-    typedef std::tr1::function<bool(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
+    typedef std::tr1::function<bool(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
 
     QueryHandler()
      : LocationUpdateListenerType(),
@@ -141,7 +141,7 @@ public:
     virtual LocationServiceCacheType* locationCache() const = 0;
 
     // LocationUpdateListener
-    virtual void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
+    virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
     virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) = 0;

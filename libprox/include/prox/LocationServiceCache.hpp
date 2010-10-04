@@ -114,6 +114,8 @@ public:
         const BoundingSphere& reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );
     }
+    // Returns true if the object is local, false if it is a replica
+    virtual bool isLocal(const Iterator& id) const = 0;
 
     virtual const ObjectID& iteratorID(const Iterator& id) const = 0;
 

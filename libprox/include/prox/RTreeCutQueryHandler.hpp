@@ -198,11 +198,11 @@ public:
     }
 
 
-    void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+    void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
 
         if (do_track)
             addObject(obj_id);
