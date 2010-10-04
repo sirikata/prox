@@ -149,6 +149,10 @@ public:
         mLocCache->stopTracking(obj_loc_it);
     }
 
+    bool containsObject(const ObjectID& obj_id) {
+        return (mObjects.find(obj_id) != mObjects.end());
+    }
+
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         bool do_track = true;
         if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, pos, region, ms);

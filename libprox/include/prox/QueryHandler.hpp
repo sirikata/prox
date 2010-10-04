@@ -112,6 +112,8 @@ public:
      *  ShouldTrackCallback, allows the user to control which subset of objects
      *  from the location service cache are candidate results for this handler. */
     virtual void removeObject(const ObjectID& obj_id) = 0;
+    /** Checks if this handler is currently tracking the given object. */
+    virtual bool containsObject(const ObjectID& obj_id) = 0;
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
         QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);

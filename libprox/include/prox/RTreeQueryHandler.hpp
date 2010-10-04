@@ -202,6 +202,10 @@ public:
         mObjects.erase(it);
     }
 
+    bool containsObject(const ObjectID& obj_id) {
+        return (mObjects.find(obj_id) != mObjects.end());
+    }
+
 
     void locationConnected(const ObjectID& obj_id, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
