@@ -96,9 +96,8 @@ GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
     GLRenderer_sRenderer = this;
 
     int argc = 0;
-    glutInit( &argc, NULL );
-
     if (display) {
+        glutInit( &argc, NULL );
         glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
         glutInitWindowSize( 512, 512 );
 
