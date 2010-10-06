@@ -187,7 +187,7 @@ int main(int argc, char** argv) {
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
     if (!csvfile.empty())
-        simulator->initialize(csvfile, nqueries, static_queries, churn_rate);
+        simulator->initialize(csvfile, nobjects, nqueries, static_queries, churn_rate);
     else
         simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac, nqueries, static_queries, churn_rate);
 

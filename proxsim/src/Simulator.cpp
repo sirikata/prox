@@ -155,7 +155,7 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, float movin
     mTimer.start();
 }
 
-void Simulator::initialize(const std::string csvfile, int nqueries, bool static_queries, int churnrate) {
+void Simulator::initialize(const std::string csvfile, int nobjects, int nqueries, bool static_queries, int churnrate) {
     mChurn = churnrate;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
@@ -166,12 +166,20 @@ void Simulator::initialize(const std::string csvfile, int nqueries, bool static_
 
     mRegion = BoundingBox3();
     std::vector<Object*> objects = loadCSVObjects(csvfile);
-    for (int i = 0; i < objects.size(); i++) {
-        Object* obj = objects[i];
+    nobjects = std::min(nobjects, (int)objects.size()); // just in case we don't have enough
+    // Sample a subset of the objects
+    for (int i = 0; i < nobjects; i++) {
+        int x = rand() % objects.size();
+        Object* obj = objects[x];
+        objects.erase( objects.begin() + x );
         mRegion.mergeIn( BoundingBox3(obj->worldBounds(Time::null())) );
         mAllObjects[obj->id()] = obj;
         mRemovedObjects[obj->id()] = obj;
     }
+    // Get rid of the leftovers
+    for(int i = 0; i < objects.size(); i++)
+        delete objects[i];
+    objects.clear();
 
     addQueriesAndObjects(nqueries, static_queries);
 
