@@ -52,6 +52,7 @@ public:
     ~Simulator();
 
     void initialize(const BoundingBox3& region, int nobjects, float moving_frac, int nqueries, bool static_queries, int churnrate);
+    void initialize(const std::string csvfile, int nqueries, bool static_queries, int churnrate);
     void shutdown();
 
     const BoundingBox3& region() const;
@@ -83,6 +84,9 @@ private:
 
     void addQuery(Query* query);
     void removeQuery(Query* query);
+
+    // Reusable for different object loaders.
+    void addQueriesAndObjects(int nqueries, bool static_queries);
 
     bool mFinished;
 

@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
     std::string REPORT_RATE_ARG("--report-rate=");
     std::string REPORT_RESTRUCTURES_ARG("--report-restructures=");
     std::string CHURN_RATE_ARG("--churn-rate=");
+    std::string CSV_ARG("--csv=");
     std::string handler_type = "brute";
     bool display = false;
     int branching = 16;
@@ -88,6 +89,7 @@ int main(int argc, char** argv) {
     bool report_restructures = false;
     int churn_rate = 0;
     float moving_frac = 1.0f;
+    std::string csvfile = "";
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -165,6 +167,9 @@ int main(int argc, char** argv) {
             std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
             churn_rate = convert_bool(churn_rate_arg);
         }
+        else if (arg.find(CSV_ARG) != std::string::npos) {
+            csvfile = arg.substr(CSV_ARG.size());
+        }
     }
 
     // Setup query handler
@@ -181,7 +186,10 @@ int main(int argc, char** argv) {
     Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac, nqueries, static_queries, churn_rate);
+    if (!csvfile.empty())
+        simulator->initialize(csvfile, nqueries, static_queries, churn_rate);
+    else
+        simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac, nqueries, static_queries, churn_rate);
 
     // Optional logging, triggers
     handler->trackChecks(track_checks);

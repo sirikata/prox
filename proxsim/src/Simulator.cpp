@@ -33,6 +33,7 @@
 #include "Simulator.hpp"
 #include <stdint.h>
 #include <algorithm>
+#include "CSVLoader.hpp"
 
 #define RATE_APPROX_ITERATIONS 100
 
@@ -149,9 +150,38 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, float movin
         mRemovedObjects[obj->id()] = obj;
     }
 
+    addQueriesAndObjects(nqueries, static_queries);
+
+    mTimer.start();
+}
+
+void Simulator::initialize(const std::string csvfile, int nqueries, bool static_queries, int churnrate) {
+    mChurn = churnrate;
+
+    ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
+    addListener(loc_cache);
+    mLocCache = loc_cache;
+
+    mHandler->initialize(mLocCache, true); // FIXME how to load others?
+
+    mRegion = BoundingBox3();
+    std::vector<Object*> objects = loadCSVObjects(csvfile);
+    for (int i = 0; i < objects.size(); i++) {
+        Object* obj = objects[i];
+        mRegion.mergeIn( BoundingBox3(obj->worldBounds(Time::null())) );
+        mAllObjects[obj->id()] = obj;
+        mRemovedObjects[obj->id()] = obj;
+    }
+
+    addQueriesAndObjects(nqueries, static_queries);
+
+    mTimer.start();
+}
+
+void Simulator::addQueriesAndObjects(int nqueries, bool static_queries) {
     // Add some queries (so we get some added before any objects present)
     for(int i = 0; i < nqueries/2; i++) {
-        addQuery( generateQuery(mHandler, region, static_queries) );
+        addQuery( generateQuery(mHandler, mRegion, static_queries) );
     }
 
     // Add objects
@@ -164,10 +194,8 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, float movin
 
     // Add rest of queries (so we get some added after objects present)
     for(int i = 0; i < nqueries/2 + (nqueries % 2); i++) {
-        addQuery( generateQuery(mHandler, region, static_queries) );
+        addQuery( generateQuery(mHandler, mRegion, static_queries) );
     }
-
-    mTimer.start();
 }
 
 void Simulator::shutdown() {
