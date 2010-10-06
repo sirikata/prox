@@ -1285,11 +1285,12 @@ void RTree_collect_cuts(RTreeNode<SimulationTraits, NodeData, CutNode>* node, st
  *  layout.  Returns number of cuts affected by this process.
  */
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
-int RTree_restructure_nodes_children(
+void RTree_restructure_nodes_children(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
+    std::tr1::unordered_set<typename CutNode::CutType*>* affected_cuts)
 {
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
@@ -1300,12 +1301,9 @@ int RTree_restructure_nodes_children(
     // children or descendents of the children.  After reorganization there
     // could be violations in cut nodes, so the more complex rebuilding process,
     // handling gaps and overlaps, must be used.
-    typedef typename CutNode::CutType Cut;
-    typedef std::tr1::unordered_set<Cut*> CutSet;
-    CutSet affected_cuts;
     for(int i = 0; i < node->size(); i++) {
         RTreeNodeType* child_node = node->node(i);
-        RTree_collect_cuts(child_node, &affected_cuts);
+        RTree_collect_cuts(child_node, affected_cuts);
     }
 
 
@@ -1349,16 +1347,6 @@ int RTree_restructure_nodes_children(
             childRangesStack.push(ranges.topHalf());
         }
     }
-
-    // Finally, we take our list of cuts we compiled at the beginning and have
-    // them reorganize their cut node list.  All the *cut nodes* should have
-    // remained valid, we just need to get them sorted back in the right order.
-    for(typename CutSet::iterator it = affected_cuts.begin(); it != affected_cuts.end(); it++) {
-        Cut* cut = *it;
-        cut->rebuildCutOrder();
-    }
-
-    return affected_cuts.size();
 }
 
 /* Recursively report the bounds tightness of nodes. This is basically a
@@ -1419,11 +1407,12 @@ struct RestructureInfo {
 /* Recursively restructure the tree by looking for nodes with children that have
  * become inefficient and restructuring them. */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
-RestructureInfo RTree_restructure_tree(
+RestructureInfo RTree_restructure_tree_work(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
+    std::tr1::unordered_set<typename CutNode::CutType*>* affected_cuts)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
@@ -1437,7 +1426,7 @@ RestructureInfo RTree_restructure_tree(
 
     // Allow children to restructure first
     for(int i = 0; i < root->size(); i++) {
-        RestructureInfo child_restructured = RTree_restructure_tree(root->node(i), loc, t, cb);
+        RestructureInfo child_restructured = RTree_restructure_tree_work(root->node(i), loc, t, cb, affected_cuts);
         result += child_restructured;
     }
     if (result.restructures > 0) // some descendent restructured
@@ -1455,16 +1444,45 @@ RestructureInfo RTree_restructure_tree(
     if (children_volume / this_volume <= 2.f)
         return result;
 
-    int affected_cuts = 0;
     if (root->node(0)->leaf())
-        affected_cuts = RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb);
+        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb, affected_cuts);
     else
-        affected_cuts = RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, loc, t, cb);
+        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, loc, t, cb, affected_cuts);
 
     result.restructures += 1;
-    result.cutRebuilds += affected_cuts;
 
     root->recomputeData(loc, t, cb);
+
+    return result;
+}
+
+/* Recursively restructure the tree by looking for nodes with children that have
+ * become inefficient and restructuring them. */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RestructureInfo RTree_restructure_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    // This is just the driver which runs the process and then takes care of the
+    // last step of cleaning up cuts.
+    RestructureInfo result;
+
+    typedef typename CutNode::CutType Cut;
+    typedef std::tr1::unordered_set<Cut*> CutSet;
+    CutSet affected_cuts;
+    result = RTree_restructure_tree_work(root, loc, t, cb, &affected_cuts);
+
+    // Finally, we take our list of cuts we compiled at the beginning and have
+    // them reorganize their cut node list.  All the *cut nodes* should have
+    // remained valid, we just need to get them sorted back in the right order.
+    for(typename CutSet::iterator it = affected_cuts.begin(); it != affected_cuts.end(); it++) {
+        Cut* cut = *it;
+        cut->rebuildCutOrder();
+    }
+
+    result.cutRebuilds = affected_cuts.size();
 
     return result;
 }
