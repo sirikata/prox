@@ -39,6 +39,7 @@
 #include "SimulatorListener.hpp"
 #include "ObjectLocationServiceCache.hpp"
 #include "Timer.hpp"
+#include "Querier.hpp"
 
 namespace Prox {
 namespace Simulation {
@@ -46,7 +47,7 @@ namespace Simulation {
 class Simulator {
 private:
     typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectList;
-    typedef std::list<Query*> QueryList;
+    typedef std::list<Querier*> QueryList;
 public:
     Simulator(QueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime);
     ~Simulator();
@@ -89,8 +90,8 @@ private:
     void addObject(Object* obj);
     void removeObject(Object* obj);
 
-    void addQuery(Query* query);
-    void removeQuery(Query* query);
+    void addQuery(Querier* query);
+    void removeQuery(Querier* query);
 
     // Reusable for different object loaders.
     void addQueriesAndObjects(int nqueries, bool static_queries);

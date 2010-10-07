@@ -195,6 +195,7 @@ SET(PROXSIM_SOURCES
   ${PROXSIM_SOURCE_DIR}/Simulator.cpp
   ${PROXSIM_SOURCE_DIR}/CSVLoader.cpp
   ${PROXSIM_SOURCE_DIR}/Timer.cpp
+  ${PROXSIM_SOURCE_DIR}/Querier.cpp
   ${PROXSIM_SOURCE_DIR}/main.cpp
 )
 

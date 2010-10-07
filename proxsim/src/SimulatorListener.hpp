@@ -34,6 +34,7 @@
 #define _PROXSIM_SIMULATOR_LISTENER_HPP_
 
 #include "Object.hpp"
+#include "Querier.hpp"
 
 namespace Prox {
 namespace Simulation {
@@ -46,8 +47,8 @@ public:
     virtual void simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) = 0;
     virtual void simulatorRemovedObject(Object* obj) = 0;
 
-    virtual void simulatorAddedQuery(Query* query) = 0;
-    virtual void simulatorRemovedQuery(Query* query) = 0;
+    virtual void simulatorAddedQuery(Querier* query) = 0;
+    virtual void simulatorRemovedQuery(Querier* query) = 0;
 }; // class SimulatorListener
 
 } // namespace Simulation

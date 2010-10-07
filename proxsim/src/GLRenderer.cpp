@@ -167,11 +167,11 @@ void GLRenderer::simulatorRemovedObject(Object* obj) {
     // nothing, we draw directly from the iterators in the simulator
 }
 
-void GLRenderer::simulatorAddedQuery(Query* query) {
+void GLRenderer::simulatorAddedQuery(Querier* query) {
     query->setEventListener(this);
 }
 
-void GLRenderer::simulatorRemovedQuery(Query* query) {
+void GLRenderer::simulatorRemovedQuery(Querier* query) {
     query->setEventListener(NULL);
 }
 
@@ -265,7 +265,7 @@ void GLRenderer::display() {
 
     glColor3f(1.f, 0.f, 0.f);
     for(Simulator::QueryIterator it = mSimulator->queriesBegin(); it != mSimulator->queriesEnd(); it++) {
-        Query* query = *it;
+        Querier* query = *it;
         Vector3 center = query->position(mSimulator->time());
         glPushMatrix();
         glTranslatef(center.x, center.y, center.z);

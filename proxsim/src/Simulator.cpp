@@ -118,17 +118,20 @@ static float generateQueryRadius() {
     return val;
 }
 
-static Query* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries) {
+static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries) {
     Vector3 qpos = generatePosition(region);
     Vector3 qvel = generateDirection(!static_queries);
 
-    Query* query = handler->registerQuery(
-        MotionVector3(Time::null(), qpos, qvel),
+    MotionPath::MotionVectorListPtr mpl(new MotionPath::MotionVectorList());
+    mpl->push_back(MotionVector3(Time::null(), qpos, qvel));
+
+    Querier* querier = new Querier(handler,
+        MotionPath(Vector3(0,0,0), mpl),
         generateQueryBounds(),
         generateQueryRadius(),
         SolidAngle( SolidAngle::Max / 1000 )
     );
-    return query;
+    return querier;
 }
 
 void Simulator::initialize(int churnrate, int nqueries, bool static_queries) {
@@ -230,7 +233,7 @@ void Simulator::shutdown() {
     }
 
     while(!mQueries.empty()) {
-        Query* query = mQueries.front();
+        Querier* query = mQueries.front();
         removeQuery(query);
         delete query;
     }
@@ -286,6 +289,11 @@ void Simulator::tick() {
         addObject(obj);
     }
 
+    // Give all queries a chance to update
+    for(QueryList::iterator it = mQueries.begin(); it != mQueries.end(); it++)
+        (*it)->tick(mTime);
+
+    // Tick the handler
     mHandler->tick(mTime);
 
     mItsSinceRateApprox++;
@@ -320,13 +328,13 @@ void Simulator::removeObject(Object* obj) {
         (*it)->simulatorRemovedObject(obj);
 }
 
-void Simulator::addQuery(Query* query) {
+void Simulator::addQuery(Querier* query) {
     mQueries.push_back(query);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorAddedQuery(query);
 }
 
-void Simulator::removeQuery(Query* query) {
+void Simulator::removeQuery(Querier* query) {
     QueryList::iterator it = std::find(mQueries.begin(), mQueries.end(), query);
     mQueries.erase(it);
 

@@ -1,5 +1,5 @@
 /*  proxsim
- *  MotionPath.hpp
+ *  Querier.cpp
  *
  *  Copyright (c) 2010, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,64 +30,26 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROXSIM_MOTION_PATH_
-#define _PROXSIM_MOTION_PATH_
-
-#include "SimulationTypes.hpp"
+#include "Querier.hpp"
 
 namespace Prox {
 namespace Simulation {
 
-/** A motion path is a sequence of motion updates and tracks the current state
- * of a .  The underlying sequence of updates is shared.
- */
-class MotionPath {
-public:
-    typedef std::vector<MotionVector3> MotionVectorList;
-    typedef std::tr1::shared_ptr<MotionVectorList> MotionVectorListPtr;
+Querier::Querier(QueryHandler* handler, const MotionPath& mp, const BoundingSphere& bounds, float qradius, const SolidAngle& qangle)
+ : mMotion(mp)
+{
+    mQuery = handler->registerQuery(
+        mp.current(),
+        bounds, qradius,
+        qangle
+    );
+}
 
-    /** Create a new MotionPath using the given updates as a template, and
-     *  offset by the specified vector.
-     */
-    MotionPath(const Vector3& offset, const MotionVectorListPtr& updates)
-     : mOffset(offset),
-       mMotionList(updates),
-       mCurPosition(updates->begin()),
-       mCurrent((*mCurPosition + mOffset))
-    {
-    }
-
-    // Process the MotionVector up to the given time and provide the motion
-    // vector for that time. Returns true if the position + velocity setting
-    // changed (i.e. current() is different before and after this call).
-    bool tick(const Time& t) {
-        bool changed = false;
-        while(true) {
-            MotionVectorList::iterator next_ = mCurPosition + 1;
-            if (next_ == mMotionList->end() ||
-                next_->updateTime() > t)
-                break;
-            mCurPosition = next_;
-            changed = true;
-        }
-        mCurrent = (*mCurPosition + mOffset);
-        return changed;
-    }
-
-    const MotionVector3& current() const {
-        return mCurrent;
-    }
-
-private:
-    MotionPath();
-
-    Vector3 mOffset;
-    MotionVectorListPtr mMotionList;
-    MotionVectorList::iterator mCurPosition;
-    MotionVector3 mCurrent;
-};
+void Querier::tick(const Time& t) {
+    bool changed = mMotion.tick(t);
+    if (changed)
+        mQuery->position(mMotion.current());
+}
 
 } // namespace Simulation
 } // namespace Prox
-
-#endif //_PROXSIM_MOTION_PATH_
