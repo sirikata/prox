@@ -155,7 +155,7 @@ void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const So
 
 void Simulator::createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac) {
     // Generate objects
-    mHaveMovingObjects = mHaveMovingObjects || (moving_frac > 0.0);
+    mHaveMovingObjects = mHaveMovingObjects || (moving_frac > 0.0 && nobjects > 0);
     for(int i = 0; i < nobjects; i++) {
         mObjectIDSource++;
         unsigned char oid_data[ObjectID::static_size]={0};
@@ -183,7 +183,7 @@ void Simulator::createStaticCSVObjects(const std::string csvfile, int nobjects) 
 }
 
 void Simulator::createMotionCSVObjects(const std::string csvfile, int nobjects) {
-    mHaveMovingObjects = true;
+    mHaveMovingObjects = mHaveMovingObjects || (nobjects > 0);
     std::vector<Object*> objects =
         loadCSVMotionObjects(
             csvfile,
