@@ -50,9 +50,11 @@ public:
     static Duration seconds(uint32 dt);
     static Duration milliseconds(float dt);
     static Duration milliseconds(uint32 dt);
+    static Duration microseconds(uint64 dt) { return Duration(dt); }
 
     float seconds() const;
     float milliseconds() const;
+    int64 microseconds() const { return mMicrosecs; }
 
     Duration operator+(const Duration& rhs) const;
     Duration& operator+=(const Duration& rhs);
@@ -64,6 +66,10 @@ public:
 
     bool operator<(const Duration& rhs) const;
     bool operator==(const Duration& rhs) const;
+
+    Duration abs() const {
+        return Duration(std::abs(mMicrosecs));
+    }
 private:
     friend class Time;
 

@@ -103,6 +103,18 @@ std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
         std::string name = it->first;
         MotionInfo& mi = it->second;
 
+        // Check that we have things in order
+        assert(mi.times.size() > 1);
+        for(int i = 0; i < mi.times.size()-1; i++)
+            assert(mi.times[i] < mi.times[i+1]);
+
+        // Fix times so they start at 0
+        {
+            Time init_time = mi.times[0];
+            for(int i = 0; i < mi.times.size(); i++)
+                mi.times[i] = Time::null() + (mi.times[i] - init_time);
+        }
+
         MotionPath::MotionVectorListPtr ml(new MotionPath::MotionVectorList());
 
         assert(mi.positions.size() == mi.times.size());
@@ -124,26 +136,27 @@ std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
         // And always use last
         update_indices.push_back(mi.positions.size()-1);
 
-        // Now just use the update indices to generate each way point.
-        // First we add the first position at time 0 with no velocity to ensure
-        // nice behavior from Time::null()
-        ml->push_back(
-            MotionVector3(Time::null(),
-                mi.positions[0] - start_pos,
-                Vector3(0,0,0)
-            )
-        );
-        // Then we generate the rest normally.
+        // To make it loopable, copy in reverse (leaving out the last one so we
+        // don't duplicate a position+velocity)
+        for(int i = update_indices.size()-2; i >= 0; i--)
+            update_indices.push_back( update_indices[i] );
+
+        // Then we generate the actual sequence, using the timing information carefully.
+        assert(update_indices.size() > 2);
+        Time cur_t = Time::null();
         for(unsigned int i = 0; i < update_indices.size()-1; i++) {
             unsigned int idx1 = update_indices[i];
             unsigned int idx2 = update_indices[i+1];
-            Vector3 vel = (mi.positions[idx2]-mi.positions[idx1])/(mi.times[idx2]-mi.times[idx1]).seconds();
+            Duration tdiff = (mi.times[idx2]-mi.times[idx1]).abs();
+            Vector3 vel = (mi.positions[idx2]-mi.positions[idx1])/tdiff.seconds();
             ml->push_back(
-                MotionVector3(mi.times[idx1],
+                MotionVector3(
+                    cur_t,
                     mi.positions[idx1]-start_pos,
-                    (mi.positions[idx2]-mi.positions[idx1])/(mi.times[idx2]-mi.times[idx1]).seconds()
+                    vel
                 )
             );
+            cur_t += tdiff;
         }
 
         MotionAndBounds mab;
@@ -163,7 +176,7 @@ std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::func
         results.push_back(
             new Object(
                 ObjectID::Random()(),
-                MotionPath(gen_loc(), data[i].motion),
+                MotionPath(gen_loc(), data[i].motion, true),
                 BoundingSphere(Vector3(0,0,0), data[i].radius)
             )
         );
@@ -180,7 +193,7 @@ std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nquerier
         int data_idx = rand() % data.size();
         results.push_back(
             new Querier(qh,
-                MotionPath(gen_loc(), data[data_idx].motion),
+                MotionPath(gen_loc(), data[data_idx].motion, true),
                 BoundingSphere(Vector3(0,0,0), data[data_idx].radius),
                 qradius,
                 qangle

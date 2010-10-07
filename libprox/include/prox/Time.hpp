@@ -57,6 +57,8 @@ public:
     bool operator>(const Time& rhs) const;
     bool operator==(const Time& rhs) const;
 
+    int64 microseconds() const { return mSinceEpoch; }
+
     static Time null() { return Time(0); }
     static Time microseconds(int64 micro) { return Time((uint64)micro); }
     static Time microseconds(uint64 micro) { return Time((uint64)micro); }

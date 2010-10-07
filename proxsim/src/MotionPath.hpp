@@ -34,6 +34,7 @@
 #define _PROXSIM_MOTION_PATH_
 
 #include "SimulationTypes.hpp"
+#include <stdio.h>
 
 namespace Prox {
 namespace Simulation {
@@ -49,12 +50,15 @@ public:
     /** Create a new MotionPath using the given updates as a template, and
      *  offset by the specified vector.
      */
-    MotionPath(const Vector3& offset, const MotionVectorListPtr& updates)
+    MotionPath(const Vector3& offset, const MotionVectorListPtr& updates, bool loop = false)
      : mOffset(offset),
+       mLoop(loop),
        mMotionList(updates),
+       mLength( updates->at(updates->size()-1).updateTime() - Time::null() ),
        mCurPosition(updates->begin()),
        mCurrent((*mCurPosition + mOffset))
     {
+        assert(mLoop == false || !(mLength == Duration(0)));
     }
 
     // Process the MotionVector up to the given time and provide the motion
@@ -62,15 +66,34 @@ public:
     // changed (i.e. current() is different before and after this call).
     bool tick(const Time& t) {
         bool changed = false;
+
+        // Figure out where in the loop we are
+        Time t_loop(t);
+        if (mLoop) {
+            int64 microsecs = (t-Time::null()).microseconds() % mLength.microseconds();
+            t_loop = (Time::null() + Duration::microseconds(microsecs));
+
+            if (mCurPosition->updateTime() > t_loop) {
+                mCurPosition = mMotionList->begin();
+                changed = true;
+            }
+        }
+
         while(true) {
             MotionVectorList::iterator next_ = mCurPosition + 1;
             if (next_ == mMotionList->end() ||
-                next_->updateTime() > t)
+                next_->updateTime() > t_loop)
                 break;
             mCurPosition = next_;
             changed = true;
         }
-        mCurrent = (*mCurPosition + mOffset);
+        // Interpolate and build a new MotionVector based on the looped data and
+        // current time
+        mCurrent = MotionVector3(
+            t,
+            mOffset + (mCurPosition->position(t_loop)),
+            mCurPosition->velocity()
+        );
         return changed;
     }
 
@@ -82,7 +105,9 @@ private:
     MotionPath();
 
     Vector3 mOffset;
+    bool mLoop;
     MotionVectorListPtr mMotionList;
+    Duration mLength;
     MotionVectorList::iterator mCurPosition;
     MotionVector3 mCurrent;
 };
