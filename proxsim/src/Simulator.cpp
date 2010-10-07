@@ -189,12 +189,18 @@ void Simulator::createMotionCSVObjects(const std::string csvfile, int nobjects) 
 
 void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
     nobjects = std::min(nobjects, (int)objects.size()); // just in case we don't have enough
+
+    // Update bounding box using full set of data
+    for(int i = 0; i < objects.size(); i++) {
+        Object* obj = objects[i];
+        mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
+    }
+
     // Sample a subset of the objects
     for (int i = 0; i < nobjects; i++) {
         int x = rand() % objects.size();
         Object* obj = objects[x];
         objects.erase( objects.begin() + x );
-        mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
         mAllObjects[obj->id()] = obj;
         mRemovedObjects[obj->id()] = obj;
     }
