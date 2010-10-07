@@ -205,13 +205,17 @@ int main(int argc, char** argv) {
     bool got_moving = false;
 
     // First, get objects from csv files.
-    if (!csvmotionfile.empty()) {
-        simulator->createMotionCSVObjects(csvmotionfile, nobjects_moving);
-        got_moving = true;
-    }
     if (!csvfile.empty()) {
         simulator->createStaticCSVObjects(csvfile, nobjects_static);
         got_static = true;
+    }
+    // note: this should be second so that
+    if (!csvmotionfile.empty()) {
+        assert(!csvfile.empty()); // FIXME we'd like to support this, need to
+                                  // figure out bounding box issues for
+                                  // generating starting positions
+        simulator->createMotionCSVObjects(csvmotionfile, nobjects_moving);
+        got_moving = true;
     }
 
     // Next, take care of leftovers with random objects. Note that we use the

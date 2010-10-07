@@ -179,7 +179,11 @@ void Simulator::createStaticCSVObjects(const std::string csvfile, int nobjects) 
 
 void Simulator::createMotionCSVObjects(const std::string csvfile, int nobjects) {
     mHaveMovingObjects = true;
-    std::vector<Object*> objects = loadCSVMotionObjects(csvfile);
+    std::vector<Object*> objects =
+        loadCSVMotionObjects(
+            csvfile,
+            std::tr1::bind(generatePosition, mRegion)
+        );
     createCSVObjects(objects, nobjects);
 }
 

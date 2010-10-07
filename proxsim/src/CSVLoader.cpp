@@ -155,7 +155,7 @@ std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
     return results;
 }
 
-std::vector<Object*> loadCSVMotionObjects(const String& filename) {
+std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::function<Vector3()> gen_loc) {
     std::vector<MotionAndBounds> data = loadCSVMotions(filename);
     std::vector<Object*> results;
 
@@ -163,7 +163,7 @@ std::vector<Object*> loadCSVMotionObjects(const String& filename) {
         results.push_back(
             new Object(
                 ObjectID::Random()(),
-                MotionPath(data[i].position, data[i].motion),
+                MotionPath(gen_loc(), data[i].motion),
                 BoundingSphere(Vector3(0,0,0), data[i].radius)
             )
         );
