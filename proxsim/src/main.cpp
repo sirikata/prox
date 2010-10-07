@@ -93,6 +93,7 @@ int main(int argc, char** argv) {
     std::string REPORT_HEALTH_FREQUENCY_ARG("--report-health-frequency=");
     std::string REPORT_RATE_ARG("--report-rate=");
     std::string REPORT_RESTRUCTURES_ARG("--report-restructures=");
+    std::string REPORT_QUERY_STATS_ARG("--report-query-stats=");
     std::string CHURN_RATE_ARG("--churn-rate=");
     std::string CSV_ARG("--csv=");
     std::string CSV_MOTION_ARG("--csvmotion=");
@@ -113,6 +114,7 @@ int main(int argc, char** argv) {
     int report_health_frequency = 1;
     bool report_rate = false;
     bool report_restructures = false;
+    bool report_query_stats = false;
     int churn_rate = 0;
     float moving_frac = 1.0f;
     std::string csvfile = "";
@@ -193,6 +195,10 @@ int main(int argc, char** argv) {
         else if (arg.find(REPORT_RESTRUCTURES_ARG) != std::string::npos) {
             std::string report_restructures_arg = arg.substr(REPORT_RESTRUCTURES_ARG.size());
             report_restructures = convert_bool(report_restructures_arg);
+        }
+        else if (arg.find(REPORT_QUERY_STATS_ARG) != std::string::npos) {
+            std::string report_query_stats_arg = arg.substr(REPORT_QUERY_STATS_ARG.size());
+            report_query_stats = convert_bool(report_query_stats_arg);
         }
         else if (arg.find(CHURN_RATE_ARG) != std::string::npos) {
             std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
@@ -275,6 +281,7 @@ int main(int argc, char** argv) {
     handler->reportHealth(report_health);
     handler->reportHealthFrequency(report_health_frequency);
     handler->reportRestructures(report_restructures);
+    handler->reportQueryStats(report_query_stats);
     simulator->printRate(report_rate);
 
     renderer->run();

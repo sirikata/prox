@@ -98,6 +98,9 @@ public:
         mObjects = newcache.mObjects;
     }
 
+    int size() const {
+        return (int)mObjects.size();
+    }
 private:
     typedef std::set<ObjectID> IDSet;
     typedef typename IDSet::iterator IDSetIterator;

@@ -71,7 +71,8 @@ public:
        mReportRestructures(false),
        mReportHealth(false),
        mReportHealthFrequency(1),
-       mItsSinceReportedHealth(0)
+       mItsSinceReportedHealth(0),
+       mReportQueryStats(false)
     {}
     virtual ~QueryHandler() {}
 
@@ -82,6 +83,7 @@ public:
     bool reportRestructures() const { return mReportRestructures; }
     void reportHealth(bool r) { mReportHealth = r; }
     void reportHealthFrequency(int its) { mReportHealthFrequency = its; }
+    void reportQueryStats(bool r) { mReportQueryStats = r; }
 
     /** Initialze the query handler.
      *  \param loc_cache LocationServiceCache to use for learning about object
@@ -167,6 +169,7 @@ protected:
     bool mReportHealth;
     int mReportHealthFrequency;
     int mItsSinceReportedHealth;
+    bool mReportQueryStats;
 }; // class QueryHandler
 
 } // namespace Prox

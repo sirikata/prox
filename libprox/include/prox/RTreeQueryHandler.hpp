@@ -106,10 +106,10 @@ public:
         mRTree->verifyConstraints(t);
 
         uint32 nrtnodes = 0;
-        if (QueryHandlerType::mTrackChecks) {
+        if (QueryHandlerType::mTrackChecks)
             nrtnodes = mRTree->size();
+        if (QueryHandlerType::mTrackChecks || QueryHandlerType::mReportQueryStats)
             printf("tick\n");
-        }
 
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
             int tcount = 0; // total
@@ -161,6 +161,9 @@ public:
 
             if (QueryHandlerType::mTrackChecks)
                 printf("{ \"id\" : %d, \"nodes\" : %d, \"checks\" : { \"positive\" : %d, \"negative\" : %d, \"negativeinternal\" : %d, \"total\" : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
+
+            if (QueryHandlerType::mReportQueryStats)
+                printf("{ \"id\" : %d, \"results\" : %d }\n", query->id(), state->cache.size());
         }
         mLastTime = t;
 

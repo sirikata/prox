@@ -135,11 +135,18 @@ public:
         mRTree->verifyConstraints(t);
         validateCuts();
 
+        if (QueryHandlerType::mReportQueryStats)
+            printf("tick\n");
+
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
 
             state->cut->update(mLocCache, t);
+
+            if (QueryHandlerType::mReportQueryStats) {
+                printf("{ \"id\" : %d, \"cut-length\": %d, \"results\" : %d }\n", query->id(), state->cut->cutSize(), state->cut->resultsSize());
+            }
         }
         mLastTime = t;
 
@@ -894,6 +901,7 @@ private:
 
         void validateCut() {
 #ifdef PROXDEBUG
+            assert(length == nodes.size());
             validateCutNodesInRTreeNodes();
             validateCutNodesInTree();
             // Now covered by validateCutOrdere
@@ -903,6 +911,14 @@ private:
 #endif //PROXDEBUG
         };
 
+        int cutSize() const {
+            assert(length == nodes.size());
+            return length;
+        };
+
+        int resultsSize() const {
+            return results.size();
+        }
     private:
         // Struct which keeps track of how many children do not satisfy the
         // constraint so they can be collapsed.
@@ -1220,6 +1236,7 @@ private:
                 if ( _is_ancestor(node->rtnode, to_node) ) {
                     last_was_ancestor = true;
                     it = nodes.erase(it);
+                    length--;
                     destroyCutNode(node, evt);
                 }
                 else {
@@ -1243,6 +1260,7 @@ private:
                 results.insert(new_cnode->rtnode->aggregateID());
             }
             nodes.insert(it, new_cnode);
+            length++;
 
             if (parent->mWithAggregates)
                 events.push_back(evt);
@@ -1330,6 +1348,7 @@ private:
             CutNodeList in_order;
             rebuildOrderedCutWithViolations(in_order, parent->mRTree->root());
             nodes.swap(in_order);
+            length = nodes.size();
             //validateCut();
         }
     };
