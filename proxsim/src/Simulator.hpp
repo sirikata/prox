@@ -57,7 +57,7 @@ public:
     void createStaticCSVObjects(const std::string csvfile, int nobjects);
     void createMotionCSVObjects(const std::string csvfile, int nobjects);
 
-    void initialize(int churnrate);
+    void initialize(int churnrate, const SolidAngle& min_qangle, const SolidAngle& max_qangle);
 
     // note: call these after initialize
     void createRandomQueries(int nqueries, bool static_queries);
@@ -126,7 +126,11 @@ private:
     bool mHaveMovingObjects;
     ObjectList mAllObjects;
     ObjectList mObjects;
+
+    SolidAngle mQueryAngleMin;
+    SolidAngle mQueryAngleMax;
     QueryList mQueries;
+
     typedef std::list<SimulatorListener*> ListenerList;
     ListenerList mListeners;
 

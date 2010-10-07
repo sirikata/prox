@@ -118,11 +118,14 @@ static float generateQueryRadius() {
     return val;
 }
 
-static SolidAngle generateQueryAngle() {
-    return SolidAngle( SolidAngle::Max / 1000 );
+static SolidAngle generateQueryAngle(const SolidAngle& qmin, const SolidAngle& qmax) {
+    assert(qmax >= qmin);
+    if (qmax == qmin) return qmin;
+
+    return qmin + ((qmax-qmin) * (((float)(rand()))/RAND_MAX));
 }
 
-static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries) {
+static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries, const SolidAngle& qmin, const SolidAngle& qmax) {
     Vector3 qpos = generatePosition(region);
     Vector3 qvel = generateDirection(!static_queries);
 
@@ -133,13 +136,15 @@ static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region,
         MotionPath(Vector3(0,0,0), mpl),
         generateQueryBounds(),
         generateQueryRadius(),
-        generateQueryAngle()
+        generateQueryAngle(qmin, qmax)
     );
     return querier;
 }
 
-void Simulator::initialize(int churnrate) {
+void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const SolidAngle& max_qangle) {
     mChurn = churnrate;
+    mQueryAngleMin = min_qangle;
+    mQueryAngleMax = max_qangle;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
     addListener(loc_cache);
@@ -211,12 +216,12 @@ void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
 
 void Simulator::createRandomQueries(int nqueries, bool static_queries) {
     for(int i = 0; i < nqueries; i++)
-        addQuery( generateQuery(mHandler, mRegion, static_queries) );
+        addQuery( generateQuery(mHandler, mRegion, static_queries, mQueryAngleMin, mQueryAngleMax) );
 }
 
 void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile) {
     float qradius = generateQueryRadius();
-    SolidAngle qangle = generateQueryAngle();
+    SolidAngle qangle = generateQueryAngle(mQueryAngleMin, mQueryAngleMax);
 
     std::vector<Querier*> qs =
         loadCSVMotionQueriers(

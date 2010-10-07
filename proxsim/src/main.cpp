@@ -47,6 +47,29 @@ static bool convert_bool(const std::string& arg) {
     return (arg == "on" || arg == "true" || arg == "yes");
 }
 
+template<typename T>
+void convert_range(const std::string& arg, T* rmin, T* rmax) {
+    if (arg.find("(") != std::string::npos) {
+        // A real range of the format "(x,y)"
+        int lparen = arg.find("(");
+        int comma = arg.find(",");
+        int rparen = arg.find(")");
+        assert(lparen != std::string::npos);
+        assert(comma != std::string::npos);
+        assert(rparen != std::string::npos);
+        std::string first = arg.substr( lparen+1, (comma-(lparen+1)) );
+        std::string second = arg.substr( comma+1, (rparen-(comma+1)) );
+        *rmin = boost::lexical_cast<T>(first);
+        *rmax = boost::lexical_cast<T>(second);
+    }
+    else {
+        // Just a single value
+        T val = boost::lexical_cast<T>(arg);
+        *rmin = val;
+        *rmax = val;
+    }
+}
+
 int main(int argc, char** argv) {
     using namespace Prox::Simulation;
 
@@ -59,6 +82,7 @@ int main(int argc, char** argv) {
     std::string MOVING_FRAC_ARG("--moving-frac=");
     std::string NQUERIES_ARG("--nqueries=");
     std::string STATIC_QUERIES_ARG("--static-queries=");
+    std::string QUERY_ANGLE_ARG("--query-angle=");
     std::string DURATION_ARG("--duration=");
     std::string ITERATIONS_ARG("--iterations=");
     std::string REALTIME_ARG("--realtime=");
@@ -78,6 +102,7 @@ int main(int argc, char** argv) {
     int nobjects = 10000;
     int nqueries = 50;
     bool static_queries = false;
+    float query_angle_min = (SolidAngle::Max / 1000.f).asFloat(), query_angle_max = (SolidAngle::Max / 1000.f).asFloat();
     int duration = 0; // seconds
     int iterations = 0; // iterations before termination
     bool realtime = true; // realtime or simulated time steps
@@ -124,6 +149,10 @@ int main(int argc, char** argv) {
         else if (arg.find(STATIC_QUERIES_ARG) != std::string::npos) {
             std::string static_arg = arg.substr(STATIC_QUERIES_ARG.size());
             static_queries = convert_bool(static_arg);
+        }
+        else if (arg.find(QUERY_ANGLE_ARG) != std::string::npos) {
+            std::string qangle_arg = arg.substr(QUERY_ANGLE_ARG.size());
+            convert_range(qangle_arg, &query_angle_min, &query_angle_max);
         }
         else if (arg.find(DURATION_ARG) != std::string::npos) {
             std::string duration_arg = arg.substr(DURATION_ARG.size());
@@ -231,7 +260,7 @@ int main(int argc, char** argv) {
     // Sometimes we're not perfect, but let's aim for 99% of the target objects.
     assert(simulator->allObjectsSize() >= .99f * nobjects);
 
-    simulator->initialize(churn_rate);
+    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max));
 
     if (!csvmotionfile.empty())
         simulator->createCSVQueries(nqueries, csvmotionfile);
