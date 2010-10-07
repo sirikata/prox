@@ -31,6 +31,7 @@
  */
 
 #include "Object.hpp"
+#include "Querier.hpp"
 #include <boost/lexical_cast.hpp>
 #include <fstream>
 
@@ -39,6 +40,8 @@ namespace Simulation {
 
 std::vector<Object*> loadCSVObjects(const String& filename);
 std::vector<Object*> loadCSVMotionObjects(const String& filename);
+
+std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, float qradius, const SolidAngle& qangle);
 
 } // namespace Simulation
 } // namespace Prox

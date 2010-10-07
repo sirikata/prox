@@ -30,7 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Object.hpp"
+#include "CSVLoader.hpp"
 #include <boost/lexical_cast.hpp>
 #include <fstream>
 
@@ -165,6 +165,25 @@ std::vector<Object*> loadCSVMotionObjects(const String& filename) {
                 ObjectID::Random()(),
                 MotionPath(data[i].position, data[i].motion),
                 BoundingSphere(Vector3(0,0,0), data[i].radius)
+            )
+        );
+    }
+
+    return results;
+}
+
+std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, float qradius, const SolidAngle& qangle) {
+    std::vector<MotionAndBounds> data = loadCSVMotions(filename);
+    std::vector<Querier*> results;
+
+    for(unsigned int i = 0; i < std::min((int)data.size(), nqueriers); i++) {
+        int data_idx = rand() % data.size();
+        results.push_back(
+            new Querier(qh,
+                MotionPath(data[data_idx].position, data[data_idx].motion),
+                BoundingSphere(Vector3(0,0,0), data[data_idx].radius),
+                qradius,
+                qangle
             )
         );
     }

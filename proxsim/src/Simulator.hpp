@@ -57,7 +57,15 @@ public:
     void createStaticCSVObjects(const std::string csvfile, int nobjects);
     void createMotionCSVObjects(const std::string csvfile, int nobjects);
 
-    void initialize(int churnrate, int nqueries, bool static_queries);
+    void initialize(int churnrate);
+
+    // note: call these after initialize
+    void createRandomQueries(int nqueries, bool static_queries);
+    void createCSVQueries(int nqueries, const std::string& csvmotionfile);
+
+    // note: call this after all create and initialize calls
+    void run();
+
     void shutdown();
 
     const BoundingBox3& region() const;
@@ -94,7 +102,7 @@ private:
     void removeQuery(Querier* query);
 
     // Reusable for different object loaders.
-    void addQueriesAndObjects(int nqueries, bool static_queries);
+    void addObjects();
 
     bool mFinished;
 

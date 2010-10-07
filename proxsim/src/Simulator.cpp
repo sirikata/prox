@@ -118,6 +118,10 @@ static float generateQueryRadius() {
     return val;
 }
 
+static SolidAngle generateQueryAngle() {
+    return SolidAngle( SolidAngle::Max / 1000 );
+}
+
 static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries) {
     Vector3 qpos = generatePosition(region);
     Vector3 qvel = generateDirection(!static_queries);
@@ -129,12 +133,12 @@ static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region,
         MotionPath(Vector3(0,0,0), mpl),
         generateQueryBounds(),
         generateQueryRadius(),
-        SolidAngle( SolidAngle::Max / 1000 )
+        generateQueryAngle()
     );
     return querier;
 }
 
-void Simulator::initialize(int churnrate, int nqueries, bool static_queries) {
+void Simulator::initialize(int churnrate) {
     mChurn = churnrate;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
@@ -142,10 +146,6 @@ void Simulator::initialize(int churnrate, int nqueries, bool static_queries) {
     mLocCache = loc_cache;
 
     mHandler->initialize(mLocCache, mHaveMovingObjects);
-
-    addQueriesAndObjects(nqueries, static_queries);
-
-    mTimer.start();
 }
 
 void Simulator::createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac) {
@@ -199,12 +199,21 @@ void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
         delete objects[i];
 }
 
-void Simulator::addQueriesAndObjects(int nqueries, bool static_queries) {
-    // Add some queries (so we get some added before any objects present)
-    for(int i = 0; i < nqueries/2; i++) {
+void Simulator::createRandomQueries(int nqueries, bool static_queries) {
+    for(int i = 0; i < nqueries; i++)
         addQuery( generateQuery(mHandler, mRegion, static_queries) );
-    }
+}
 
+void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile) {
+    float qradius = generateQueryRadius();
+    SolidAngle qangle = generateQueryAngle();
+
+    std::vector<Querier*> qs = loadCSVMotionQueriers(csvmotionfile, nqueries, mHandler, qradius, qangle);
+    for(int i = 0; i < qs.size(); i++)
+        addQuery(qs[i]);
+}
+
+void Simulator::addObjects() {
     // Add objects
     int32 count = 0;
     for(ObjectList::iterator it = mAllObjects.begin(); it != mAllObjects.end(); it++) {
@@ -212,11 +221,12 @@ void Simulator::addQueriesAndObjects(int nqueries, bool static_queries) {
         if (count > mChurn)
             addObject(it->second);
     }
+}
 
-    // Add rest of queries (so we get some added after objects present)
-    for(int i = 0; i < nqueries/2 + (nqueries % 2); i++) {
-        addQuery( generateQuery(mHandler, mRegion, static_queries) );
-    }
+void Simulator::run() {
+    addObjects();
+
+    mTimer.start();
 }
 
 void Simulator::shutdown() {

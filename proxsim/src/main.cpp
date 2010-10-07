@@ -169,6 +169,9 @@ int main(int argc, char** argv) {
             std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
             churn_rate = convert_bool(churn_rate_arg);
         }
+        else if (arg.find(CSV_ARG) != std::string::npos) {
+            csvfile = arg.substr(CSV_ARG.size());
+        }
         else if (arg.find(CSV_MOTION_ARG) != std::string::npos) {
             csvmotionfile = arg.substr(CSV_MOTION_ARG.size());
         }
@@ -196,7 +199,14 @@ int main(int argc, char** argv) {
     if (csvfile.empty() && csvmotionfile.empty())
         simulator->createRandomObjects(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac);
 
-    simulator->initialize(churn_rate, nqueries, static_queries);
+    simulator->initialize(churn_rate);
+
+    if (!csvmotionfile.empty())
+        simulator->createCSVQueries(nqueries, csvmotionfile);
+    else
+        simulator->createRandomQueries(nqueries, static_queries);
+
+    simulator->run();
 
     // Optional logging, triggers
     handler->trackChecks(track_checks);
