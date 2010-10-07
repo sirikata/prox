@@ -86,6 +86,10 @@ public:
     ObjectIterator objectsBegin();
     ObjectIterator objectsEnd();
     ObjectIterator objectsFind(const ObjectID& objid);
+    int objectsSize() const;
+
+    // Not all objects may be active
+    int allObjectsSize() const;
 
     QueryIterator queriesBegin();
     QueryIterator queriesEnd();

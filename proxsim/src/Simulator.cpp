@@ -370,6 +370,14 @@ Simulator::ObjectIterator Simulator::objectsFind(const ObjectID& objid) {
     return mObjects.find(objid);
 }
 
+int Simulator::objectsSize() const {
+    return mObjects.size();
+}
+
+int Simulator::allObjectsSize() const {
+    return mAllObjects.size();
+}
+
 Simulator::QueryIterator Simulator::queriesBegin() {
     return mQueries.begin();
 }

@@ -191,13 +191,41 @@ int main(int argc, char** argv) {
     Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
-    if (!csvfile.empty())
-        simulator->createStaticCSVObjects(csvfile, nobjects);
-    if (!csvmotionfile.empty())
-        simulator->createMotionCSVObjects(csvmotionfile, nobjects);
-    // Only load random objects if we have no other objects to load
-    if (csvfile.empty() && csvmotionfile.empty())
-        simulator->createRandomObjects(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac);
+    BoundingBox3 random_region( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) );
+
+    int nobjects_moving = nobjects * moving_frac;
+    int nobjects_static = nobjects - nobjects_moving;
+
+    // There are various combinations of sources of objects we might need to get
+    // to the target number with the right mix. When we need random objects and
+    // we've loaded some from another source, we need to make sure we get the
+    // region to generate them over correct.
+
+    bool got_static = false;
+    bool got_moving = false;
+
+    // First, get objects from csv files.
+    if (!csvmotionfile.empty()) {
+        simulator->createMotionCSVObjects(csvmotionfile, nobjects_moving);
+        got_moving = true;
+    }
+    if (!csvfile.empty()) {
+        simulator->createStaticCSVObjects(csvfile, nobjects_static);
+        got_static = true;
+    }
+
+    // Next, take care of leftovers with random objects. Note that we use the
+    // existing bounds if some other objects were already loaded.
+    if (!got_static && !got_moving)
+        simulator->createRandomObjects(random_region, nobjects, moving_frac);
+    else if (!got_static && got_moving)
+        simulator->createRandomObjects(simulator->region(), nobjects_static, 0.0);
+    else if (got_static && !got_moving)
+        simulator->createRandomObjects(simulator->region(), nobjects_moving, 1.0);
+    // else we don't need any random objects
+
+    // Sometimes we're not perfect, but let's aim for 99% of the target objects.
+    assert(simulator->allObjectsSize() >= .99f * nobjects);
 
     simulator->initialize(churn_rate);
 
