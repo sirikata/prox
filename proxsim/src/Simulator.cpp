@@ -150,7 +150,7 @@ void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const So
     addListener(loc_cache);
     mLocCache = loc_cache;
 
-    mHandler->initialize(mLocCache, mHaveMovingObjects);
+    mHandler->initialize(mLocCache, !mHaveMovingObjects);
 }
 
 void Simulator::createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac) {
