@@ -73,6 +73,13 @@ public:
         mStart+=offset;
         return *this;
     }
+    MotionVector operator+(const CoordType &offset) {
+        return MotionVector(
+            mTime,
+            mStart + offset,
+            mDirection
+        );
+    }
     void update(const Time& t, const CoordType& pos, const CoordType& vel) {
         assert(t > mTime);
         mTime = t;

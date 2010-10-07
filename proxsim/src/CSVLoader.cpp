@@ -49,6 +49,129 @@ T safeLexicalCast(const String& orig) {
     return safeLexicalCast<T>(orig, (T)0);
 }
 
+namespace {
+struct MotionAndBounds {
+    MotionPath::MotionVectorListPtr motion;
+    Vector3 position;
+    float radius;
+};
+
+struct MotionInfo {
+    std::vector<Vector3> positions;
+    std::vector<Time> times;
+    float rad;
+};
+}
+
+std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
+    std::vector<MotionAndBounds> results;
+
+    std::ifstream fp(filename.c_str());
+    if (!fp) return results;
+
+    typedef std::map<std::string, MotionInfo> MotionInfoMap;
+    MotionInfoMap objects;
+
+    // Read in and sort the data
+    while(fp) {
+        String line;
+        std::getline(fp, line);
+
+        char buf[128];
+        float x, y, z, time_ms, rad;
+        // format note: each line has objid: ..., but %s reads until
+        // whitespace. we just include the : in the id...
+        int matched = sscanf(line.c_str(), "%s %f, %f, %f, %f, %f",
+            buf, &x, &y, &z, &time_ms, &rad
+        );
+        if (matched < 6) continue;
+
+        MotionInfoMap::iterator it = objects.find(std::string(buf));
+        if (it == objects.end()) {
+            objects[std::string(buf)] = MotionInfo();
+            it = objects.find(std::string(buf));
+        }
+        it->second.positions.push_back(
+            Vector3(x, y, 0) // flatten
+        );
+        it->second.times.push_back(Time::null() + Duration::milliseconds(time_ms));
+        it->second.rad = rad;
+    }
+
+    // Reconstruct paths for each object.
+    for(MotionInfoMap::iterator it = objects.begin(); it != objects.end(); it++) {
+        std::string name = it->first;
+        MotionInfo& mi = it->second;
+
+        MotionPath::MotionVectorListPtr ml(new MotionPath::MotionVectorList());
+
+        assert(mi.positions.size() == mi.times.size());
+
+        Vector3 start_pos = mi.positions[0];
+
+        // Get list of updates that we care about
+        std::vector<int> update_indices;
+        // Always use first
+        update_indices.push_back(0);
+        // Get middle updates at most once per second
+        Time last_update_time = Time::null();
+        for(unsigned int i = 1; i < mi.positions.size()-1; i++) {
+            if ( (mi.times[i] - last_update_time).seconds() >= 1.f) {
+                update_indices.push_back(i);
+                last_update_time = mi.times[i];
+            }
+        }
+        // And always use last
+        update_indices.push_back(mi.positions.size()-1);
+
+        // Now just use the update indices to generate each way point.
+        // First we add the first position at time 0 with no velocity to ensure
+        // nice behavior from Time::null()
+        ml->push_back(
+            MotionVector3(Time::null(),
+                mi.positions[0] - start_pos,
+                Vector3(0,0,0)
+            )
+        );
+        // Then we generate the rest normally.
+        for(unsigned int i = 0; i < update_indices.size()-1; i++) {
+            unsigned int idx1 = update_indices[i];
+            unsigned int idx2 = update_indices[i+1];
+            Vector3 vel = (mi.positions[idx2]-mi.positions[idx1])/(mi.times[idx2]-mi.times[idx1]).seconds();
+            ml->push_back(
+                MotionVector3(mi.times[idx1],
+                    mi.positions[idx1]-start_pos,
+                    (mi.positions[idx2]-mi.positions[idx1])/(mi.times[idx2]-mi.times[idx1]).seconds()
+                )
+            );
+        }
+
+        MotionAndBounds mab;
+        mab.motion = ml;
+        mab.position = start_pos;
+        mab.radius = mi.rad;
+        results.push_back(mab);
+    }
+    return results;
+}
+
+std::vector<Object*> loadCSVMotionObjects(const String& filename) {
+    std::vector<MotionAndBounds> data = loadCSVMotions(filename);
+    std::vector<Object*> results;
+
+    for(unsigned int i = 0; i < data.size(); i++) {
+        results.push_back(
+            new Object(
+                ObjectID::Random()(),
+                MotionPath(data[i].position, data[i].motion),
+                BoundingSphere(Vector3(0,0,0), data[i].radius)
+            )
+        );
+    }
+
+    return results;
+}
+
 std::vector<Object*> loadCSVObjects(const String& filename) {
     std::vector<Object*> results;
     typedef std::vector<String> StringList;
@@ -159,10 +282,17 @@ std::vector<Object*> loadCSVObjects(const String& filename) {
                     1.f :
                     safeLexicalCast<float>(line_parts[scale_idx], 1.f);
 
+
+                // Construct a MotionPath
+                MotionPath::MotionVectorListPtr mvl(
+                    new MotionPath::MotionVectorList()
+                );
+                mvl->push_back(MotionVector3(Time::null(), Vector3(0,0,0), vel));
+
                 results.push_back(
                     new Object(
                         ObjectID::Random()(),
-                        MotionVector3(Time::null(), pos, vel),
+                        MotionPath(pos, mvl),
                         BoundingSphere(Vector3(0,0,0), scale)
                     )
                 );

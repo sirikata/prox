@@ -34,6 +34,7 @@
 #define _PROX_OBJECT_HPP_
 
 #include "SimulationTypes.hpp"
+#include "MotionPath.hpp"
 
 namespace Prox {
 namespace Simulation {
@@ -42,24 +43,26 @@ class ObjectUpdateListener;
 
 class Object {
 public:
-    Object(const ObjectID& id, const MotionVector3& c, const BoundingSphere& bs);
+    Object(const ObjectID& id, const MotionPath& c, const BoundingSphere& bs);
     Object(const Object& cpy);
     ~Object();
 
     const ObjectID& id() const;
+
+    // Returns true if this object needs to indicate it's location has updated.
+    bool tick(const Time& t);
+
     const MotionVector3& position() const;
     Vector3 position(const Time& t) const;
     const BoundingSphere& bounds() const;
     BoundingSphere worldBounds(const Time& t) const;
-    void position(const MotionVector3& new_pos);
-    void bounds(const BoundingSphere& new_bounds);
 
     void addUpdateListener(ObjectUpdateListener* listener);
     void removeUpdateListener(ObjectUpdateListener* listener);
 protected:
 
     ObjectID mID;
-    MotionVector3 mPosition;
+    MotionPath mMotion;
     BoundingSphere mBounds;
 
     typedef std::list<ObjectUpdateListener*> UpdateListenerList;

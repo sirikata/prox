@@ -37,9 +37,9 @@
 namespace Prox {
 namespace Simulation {
 
-Object::Object(const ObjectID& id, const MotionVector3& c, const BoundingSphere& bs)
+Object::Object(const ObjectID& id, const MotionPath& c, const BoundingSphere& bs)
  : mID(id),
-   mPosition(c),
+   mMotion(c),
    mBounds(bs)
 
 {
@@ -47,7 +47,7 @@ Object::Object(const ObjectID& id, const MotionVector3& c, const BoundingSphere&
 
 Object::Object(const Object& cpy)
  : mID(cpy.mID),
-   mPosition(cpy.mPosition),
+   mMotion(cpy.mMotion),
    mBounds(cpy.mBounds)
 {
 }
@@ -61,12 +61,16 @@ const ObjectID& Object::id() const {
     return mID;
 }
 
+bool Object::tick(const Time& t) {
+    return mMotion.tick(t);
+}
+
 const MotionVector3& Object::position() const {
-    return mPosition;
+    return mMotion.current();
 }
 
 Vector3 Object::position(const Time& t) const {
-    return mPosition.position(t);
+    return mMotion.current().position(t);
 }
 
 const BoundingSphere& Object::bounds() const {
@@ -74,21 +78,7 @@ const BoundingSphere& Object::bounds() const {
 }
 
 BoundingSphere Object::worldBounds(const Time& t) const {
-    return BoundingSphere( mBounds.center() + mPosition.position(t), mBounds.radius() );
-}
-
-void Object::position(const MotionVector3& new_pos) {
-    MotionVector3 old_pos = mPosition;
-    mPosition = new_pos;
-    for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
-        (*it)->objectPositionUpdated(this, old_pos, new_pos);
-}
-
-void Object::bounds(const BoundingSphere& new_bounds) {
-    BoundingSphere old_bounds = mBounds;
-    mBounds = new_bounds;
-    for(UpdateListenerList::iterator it = mUpdateListeners.begin(); it != mUpdateListeners.end(); it++)
-        (*it)->objectBoundsUpdated(this, old_bounds, new_bounds);
+    return BoundingSphere( mBounds.center() + mMotion.current().position(t), mBounds.radius() );
 }
 
 void Object::addUpdateListener(ObjectUpdateListener* listener) {

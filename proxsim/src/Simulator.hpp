@@ -51,8 +51,12 @@ public:
     Simulator(QueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime);
     ~Simulator();
 
-    void initialize(const BoundingBox3& region, int nobjects, float moving_frac, int nqueries, bool static_queries, int churnrate);
-    void initialize(const std::string csvfile, int nobjects, int nqueries, bool static_queries, int churnrate);
+    // note: call these before initialize
+    void createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac);
+    void createStaticCSVObjects(const std::string csvfile, int nobjects);
+    void createMotionCSVObjects(const std::string csvfile, int nobjects);
+
+    void initialize(int churnrate, int nqueries, bool static_queries);
     void shutdown();
 
     const BoundingBox3& region() const;
@@ -79,6 +83,9 @@ public:
     uint32 queriesSize() const;
 
 private:
+    // Helper, filters the given list of objects to only add the given number of them.
+    void createCSVObjects(std::vector<Object*>& objects, int nobjects);
+
     void addObject(Object* obj);
     void removeObject(Object* obj);
 
@@ -103,6 +110,7 @@ private:
     int64 mObjectIDSource;
     QueryHandler* mHandler;
     ObjectLocationServiceCache* mLocCache;
+    bool mHaveMovingObjects;
     ObjectList mAllObjects;
     ObjectList mObjects;
     QueryList mQueries;

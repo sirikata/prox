@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
     std::string REPORT_RESTRUCTURES_ARG("--report-restructures=");
     std::string CHURN_RATE_ARG("--churn-rate=");
     std::string CSV_ARG("--csv=");
+    std::string CSV_MOTION_ARG("--csvmotion=");
     std::string handler_type = "brute";
     bool display = false;
     int branching = 16;
@@ -90,6 +91,7 @@ int main(int argc, char** argv) {
     int churn_rate = 0;
     float moving_frac = 1.0f;
     std::string csvfile = "";
+    std::string csvmotionfile = "";
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -167,8 +169,8 @@ int main(int argc, char** argv) {
             std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
             churn_rate = convert_bool(churn_rate_arg);
         }
-        else if (arg.find(CSV_ARG) != std::string::npos) {
-            csvfile = arg.substr(CSV_ARG.size());
+        else if (arg.find(CSV_MOTION_ARG) != std::string::npos) {
+            csvmotionfile = arg.substr(CSV_MOTION_ARG.size());
         }
     }
 
@@ -187,9 +189,14 @@ int main(int argc, char** argv) {
     Renderer* renderer = new GLRenderer(simulator, handler, display);
 
     if (!csvfile.empty())
-        simulator->initialize(csvfile, nobjects, nqueries, static_queries, churn_rate);
-    else
-        simulator->initialize(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac, nqueries, static_queries, churn_rate);
+        simulator->createStaticCSVObjects(csvfile, nobjects);
+    if (!csvmotionfile.empty())
+        simulator->createMotionCSVObjects(csvmotionfile, nobjects);
+    // Only load random objects if we have no other objects to load
+    if (csvfile.empty() && csvmotionfile.empty())
+        simulator->createRandomObjects(BoundingBox3( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) ), nobjects, moving_frac);
+
+    simulator->initialize(churn_rate, nqueries, static_queries);
 
     // Optional logging, triggers
     handler->trackChecks(track_checks);

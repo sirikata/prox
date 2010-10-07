@@ -289,7 +289,8 @@ void GLRenderer::reshape(int w, int h) {
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
 
-    glOrtho( sim_bb.min().x, sim_bb.max().x, sim_bb.min().y, sim_bb.max().y, sim_bb.max().z, sim_bb.min().z );
+    float zsize = 2 * std::max(fabs(sim_bb.max().z), fabs(sim_bb.min().z)) + 1;
+    glOrtho( sim_bb.min().x, sim_bb.max().x, sim_bb.min().y, sim_bb.max().y, sim_bb.max().z + zsize, sim_bb.min().z - zsize);
     glViewport( 0, 0, mWinWidth, mWinHeight );
 
     glMatrixMode( GL_MODELVIEW );

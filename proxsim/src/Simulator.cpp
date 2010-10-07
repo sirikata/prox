@@ -61,6 +61,7 @@ Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timest
    mObjectIDSource(0),
    mHandler(handler),
    mLocCache(NULL),
+   mHaveMovingObjects(false),
    mReportRate(false),
    mItsSinceRateApprox(0),
    mRateApproxStart(0)
@@ -84,6 +85,25 @@ static Vector3 generateDirection(bool moving) {
             Vector3(0, 0, 0)
         );
 };
+
+static MotionPath generateMotionPath(const BoundingBox3& region, bool moving) {
+    // Our simple model is ballistic, single update
+
+    Vector3 offset = generatePosition(region);
+    MotionPath::MotionVectorListPtr updates(
+        new MotionPath::MotionVectorList()
+    );
+    Vector3 dir = generateDirection(moving);
+    updates->push_back(
+        MotionVector3(
+            Time::null(),
+            Vector3(0,0,0),
+            dir
+        )
+    );
+
+    return MotionPath(offset, updates);
+}
 
 static BoundingBox3 generateObjectBounds() {
     return BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1));
@@ -111,18 +131,23 @@ static Query* generateQuery(QueryHandler* handler, const BoundingBox3& region, b
     return query;
 }
 
-void Simulator::initialize(const BoundingBox3& region, int nobjects, float moving_frac, int nqueries, bool static_queries, int churnrate) {
+void Simulator::initialize(int churnrate, int nqueries, bool static_queries) {
     mChurn = churnrate;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
     addListener(loc_cache);
     mLocCache = loc_cache;
 
-    mHandler->initialize(mLocCache, (moving_frac == 0.0f));
+    mHandler->initialize(mLocCache, mHaveMovingObjects);
 
-    mRegion = region;
+    addQueriesAndObjects(nqueries, static_queries);
 
+    mTimer.start();
+}
+
+void Simulator::createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac) {
     // Generate objects
+    mHaveMovingObjects = mHaveMovingObjects || (moving_frac > 0.0);
     for(int i = 0; i < nobjects; i++) {
         mObjectIDSource++;
         unsigned char oid_data[ObjectID::static_size]={0};
@@ -133,57 +158,42 @@ void Simulator::initialize(const BoundingBox3& region, int nobjects, float movin
 
         Object* obj = new Object(
             ObjectID(oid_data,ObjectID::static_size),
-            MotionVector3(
-                Time::null(),
-                generatePosition(region),
-                generateDirection(moving)
-            ),
+            generateMotionPath(region, moving),
             generateObjectBounds()
         );
 
+        mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
+
         mAllObjects[obj->id()] = obj;
-        // Split objects into two groups. The first is added immediately,
-        // guaranteeing testing of new queries over existing trees.  The rest
-        // are left for churn, testing updates of queries as objects are added
-        // and removed.
-        // Always insert to mRemovedObjects first.  addObject will remove from mRemovedObjects.
         mRemovedObjects[obj->id()] = obj;
     }
-
-    addQueriesAndObjects(nqueries, static_queries);
-
-    mTimer.start();
 }
 
-void Simulator::initialize(const std::string csvfile, int nobjects, int nqueries, bool static_queries, int churnrate) {
-    mChurn = churnrate;
-
-    ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
-    addListener(loc_cache);
-    mLocCache = loc_cache;
-
-    mHandler->initialize(mLocCache, true); // FIXME how to load others?
-
-    mRegion = BoundingBox3();
+void Simulator::createStaticCSVObjects(const std::string csvfile, int nobjects) {
     std::vector<Object*> objects = loadCSVObjects(csvfile);
+    createCSVObjects(objects, nobjects);
+}
+
+void Simulator::createMotionCSVObjects(const std::string csvfile, int nobjects) {
+    mHaveMovingObjects = true;
+    std::vector<Object*> objects = loadCSVMotionObjects(csvfile);
+    createCSVObjects(objects, nobjects);
+}
+
+void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
     nobjects = std::min(nobjects, (int)objects.size()); // just in case we don't have enough
     // Sample a subset of the objects
     for (int i = 0; i < nobjects; i++) {
         int x = rand() % objects.size();
         Object* obj = objects[x];
         objects.erase( objects.begin() + x );
-        mRegion.mergeIn( BoundingBox3(obj->worldBounds(Time::null())) );
+        mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
         mAllObjects[obj->id()] = obj;
         mRemovedObjects[obj->id()] = obj;
     }
     // Get rid of the leftovers
     for(int i = 0; i < objects.size(); i++)
         delete objects[i];
-    objects.clear();
-
-    addQueriesAndObjects(nqueries, static_queries);
-
-    mTimer.start();
 }
 
 void Simulator::addQueriesAndObjects(int nqueries, bool static_queries) {
@@ -262,6 +272,11 @@ void Simulator::tick() {
 
     //fprintf(stderr, "Tick: %f\n", (mTime - Time::null()).seconds());
 
+    // Give all objects a chance to update their positions
+    for(ObjectList::iterator it = mAllObjects.begin(); it != mObjects.end(); it++)
+        it->second->tick(mTime);
+
+    // Object Churn...
     for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
         Object* obj = mObjects.begin()->second;
         removeObject(obj);
