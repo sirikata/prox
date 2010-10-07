@@ -163,7 +163,7 @@ public:
                 printf("{ \"id\" : %d, \"nodes\" : %d, \"checks\" : { \"positive\" : %d, \"negative\" : %d, \"negativeinternal\" : %d, \"total\" : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
 
             if (QueryHandlerType::mReportQueryStats)
-                printf("{ \"id\" : %d, \"results\" : %d }\n", query->id(), state->cache.size());
+                printf("{ \"id\" : %d, \"checks\" : %d, \"results\" : %d }\n", query->id(), tcount, state->cache.size());
         }
         mLastTime = t;
 
