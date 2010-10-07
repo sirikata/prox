@@ -208,7 +208,13 @@ void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile)
     float qradius = generateQueryRadius();
     SolidAngle qangle = generateQueryAngle();
 
-    std::vector<Querier*> qs = loadCSVMotionQueriers(csvmotionfile, nqueries, mHandler, qradius, qangle);
+    std::vector<Querier*> qs =
+        loadCSVMotionQueriers(
+            csvmotionfile, nqueries,
+            mHandler,
+            std::tr1::bind(generatePosition, mRegion),
+            qradius, qangle
+        );
     for(int i = 0; i < qs.size(); i++)
         addQuery(qs[i]);
 }

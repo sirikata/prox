@@ -172,7 +172,7 @@ std::vector<Object*> loadCSVMotionObjects(const String& filename) {
     return results;
 }
 
-std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, float qradius, const SolidAngle& qangle) {
+std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, std::tr1::function<Vector3()> gen_loc, float qradius, const SolidAngle& qangle) {
     std::vector<MotionAndBounds> data = loadCSVMotions(filename);
     std::vector<Querier*> results;
 
@@ -180,7 +180,7 @@ std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nquerier
         int data_idx = rand() % data.size();
         results.push_back(
             new Querier(qh,
-                MotionPath(data[data_idx].position, data[data_idx].motion),
+                MotionPath(gen_loc(), data[data_idx].motion),
                 BoundingSphere(Vector3(0,0,0), data[data_idx].radius),
                 qradius,
                 qangle

@@ -41,7 +41,7 @@ namespace Simulation {
 std::vector<Object*> loadCSVObjects(const String& filename);
 std::vector<Object*> loadCSVMotionObjects(const String& filename);
 
-std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, float qradius, const SolidAngle& qangle);
+std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, std::tr1::function<Vector3()> gen_loc, float qradius, const SolidAngle& qangle);
 
 } // namespace Simulation
 } // namespace Prox
