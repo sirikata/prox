@@ -285,11 +285,11 @@ int main(int argc, char** argv) {
     simulator->printRate(report_rate);
 
     renderer->run();
-
+/*
     simulator->shutdown();
 
     delete renderer;
     delete simulator;
-
+*/
     return 0;
 }
