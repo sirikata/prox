@@ -33,6 +33,7 @@
 #include "CSVLoader.hpp"
 #include <boost/lexical_cast.hpp>
 #include <fstream>
+#include "BoundingBox.hpp"
 
 namespace Prox {
 namespace Simulation {
@@ -115,6 +116,15 @@ std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
                 mi.times[i] = Time::null() + (mi.times[i] - init_time);
         }
 
+        // Compute the bounding box and possibly filter
+        BoundingBox3 bbox;
+        for(int i = 0; i < mi.positions.size(); i++)
+            bbox.mergeIn( mi.positions[i] );
+        if (bbox.extents().lengthSquared() < 20.f*20.f)
+            continue;
+        //printf("%f\n", (float)bbox.extents().length());
+
+
         MotionPath::MotionVectorListPtr ml(new MotionPath::MotionVectorList());
 
         assert(mi.positions.size() == mi.times.size());
@@ -168,16 +178,17 @@ std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
     return results;
 }
 
-std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::function<Vector3()> gen_loc) {
+std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::function<Vector3()> gen_loc, int nobjects) {
     std::vector<MotionAndBounds> data = loadCSVMotions(filename);
     std::vector<Object*> results;
 
-    for(unsigned int i = 0; i < data.size(); i++) {
+    for(unsigned int i = 0; i < nobjects; i++) {
+        int data_idx = rand() % data.size();
         results.push_back(
             new Object(
                 ObjectID::Random()(),
-                MotionPath(gen_loc(), data[i].motion, true),
-                BoundingSphere(Vector3(0,0,0), data[i].radius)
+                MotionPath(gen_loc(), data[data_idx].motion, true),
+                BoundingSphere(Vector3(0,0,0), data[data_idx].radius)
             )
         );
     }

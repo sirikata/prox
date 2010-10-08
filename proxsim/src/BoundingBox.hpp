@@ -99,8 +99,18 @@ public:
         return *this;
     }
 
+    BoundingBox& mergeIn(const CoordType& rhs) {
+        mMin = mMin.min(rhs);
+        mMax = mMax.max(rhs);
+        return *this;
+    }
+
     BoundingBox merge(const BoundingBox& rhs) const {
         return BoundingBox(mMin.min(rhs.mMin), mMax.max(rhs.mMax));
+    }
+
+    BoundingBox merge(const CoordType& rhs) {
+        return BoundingBox(mMin.min(rhs), mMax.max(rhs));
     }
 
     BoundingBox intersection(const BoundingBox& rhs) const {

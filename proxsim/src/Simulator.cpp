@@ -187,7 +187,8 @@ void Simulator::createMotionCSVObjects(const std::string csvfile, int nobjects) 
     std::vector<Object*> objects =
         loadCSVMotionObjects(
             csvfile,
-            std::tr1::bind(generatePosition, mRegion)
+            std::tr1::bind(generatePosition, mRegion),
+            nobjects
         );
     createCSVObjects(objects, nobjects);
 }
