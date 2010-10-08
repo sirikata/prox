@@ -433,6 +433,32 @@ private:
             return next_it;
         }
 
+        // Replace the children of a leaf node (i.e. objects) with the
+        // node itself.  Just adjusts the result set since
+        void replaceLeafChildrenWithParent(CutNode* cnode, QueryEventType* qevt_out) {
+            RTreeNodeType* node = cnode->rtnode;
+            assert(node->leaf());
+            // At leaves, if the aggregate wasn't in the results (either
+            // because it had been refined or because we're not returning
+            // aggregates), we need to check for children in the result set.
+
+            // FIXME for sanity checking we could track # of removed
+            // children when mWithAggregates is true and validate that
+            // it is the same as the total number of children
+            for(int leafidx = 0; leafidx < node->size(); leafidx++) {
+                ObjectID leaf_id = parent->mLocCache->iteratorID(node->object(leafidx).object);
+                size_t n_leaf_removed = results.erase(leaf_id);
+                if (n_leaf_removed > 0)
+                    qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal) );
+            }
+
+            qevt_out->additions().push_back( typename QueryEventType::Addition(node->aggregateID(), QueryEventType::Imposter) );
+            results.insert(node->aggregateID());
+            // Note: no modification of length because we haven't
+            // actually added or removed anything, only adjusted the
+            // result set.
+        }
+
         // Replaces children with parent in a cut.  Returns an iterator to the
         // new parent node.
         CutNodeListIterator replaceChildrenWithParent(const CutNodeListIterator& last_child_it, QueryEventType* qevt_out) {
@@ -469,7 +495,11 @@ private:
                 }
                 // At leaves, if the aggregate wasn't in the results (either
                 // because it had been refined or because we're not returning
-                // aggregates), we need to check for children in the result set.
+                // aggregates), we need to check for children in the
+                // result set.
+                // This is almost like replaceLeafChildrenWithParent
+                // but doesn't add the parent since we're in the
+                // process of removing it.
                 if (!aggregate_was_in_results && child_rtnode->leaf()) {
                     // FIXME for sanity checking we could track # of removed
                     // children when mWithAggregates is true and validate that
@@ -1086,6 +1116,7 @@ private:
                             // ping-pong back and forth between collapsing the
                             // node and expanding it back again.
                             bool parent_satisfies = this_parent->data().satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                            visited++;
                             if (!parent_satisfies) {
                                 // Note that the iterator returned is the parent
                                 // cut node, so advancing the iterator at the
@@ -1140,19 +1171,37 @@ private:
                         typename ResultSet::iterator result_it = results.find(node->rtnode->aggregateID());
                         bool in_results = (result_it != results.end());
 
-                        if (!in_results) {
-                            // If this node wasn't already in the results, then
-                            // all the children should be.  Just check the first
-                            // one for sanity.
-                            assert(
-                                node->rtnode->size() == 0 ||
-                                results.find( loc->iteratorID(node->rtnode->object(0).object) ) != results.end()
-                            );
+                        // In either case, we're going to need to
+                        // check if any of the children satisfy the
+                        // constraint.
+                        bool any_child_satisfied = false;
+                        for(int i = 0; i < node->rtnode->size(); i++) {
+                            ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
+                            bool child_satisfies = node->rtnode->childData(i,loc,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                            visited++;
+                            if (child_satisfies) {
+                                any_child_satisfied = true;
+                                break;
+                            }
                         }
-                        else {
-                            // If it is in the result set, we need to displace
-                            // it with its children.  With aggregates there's no
-                            // need to check the objects for satisfying the
+
+                        if (!in_results && !any_child_satisfied) {
+                            // If this node wasn't already in the
+                            // results, then all the children should
+                            // be. If no children satisfy anymore,
+                            // lift the cut back up.
+                            QueryEventType evt;
+                            replaceLeafChildrenWithParent(node, &evt);
+                            if (evt.size() > 0)
+                                events.push_back(evt);
+
+                        }
+                        else if (in_results && any_child_satisfied) {
+                            // If it is in the result set and some
+                            // child did satisfy the constraint, we
+                            // need to displace it with its children.
+                            // With aggregates there's no need to
+                            // check the objects for satisfying the
                             // query.
                             replaceParentWithChildrenResults(node);
                         }
