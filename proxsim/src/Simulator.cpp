@@ -251,6 +251,12 @@ void Simulator::run() {
 }
 
 void Simulator::shutdown() {
+    while(!mQueries.empty()) {
+        Querier* query = mQueries.front();
+        removeQuery(query);
+        delete query;
+    }
+
     // Remove all objects
     while(!mObjects.empty()) {
         Object* obj = mObjects.begin()->second;
@@ -261,12 +267,6 @@ void Simulator::shutdown() {
         Object* obj = mRemovedObjects.begin()->second;
         delete obj;
         mRemovedObjects.erase(mRemovedObjects.begin());
-    }
-
-    while(!mQueries.empty()) {
-        Querier* query = mQueries.front();
-        removeQuery(query);
-        delete query;
     }
 
     delete mLocCache;

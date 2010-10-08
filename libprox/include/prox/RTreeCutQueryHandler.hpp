@@ -83,15 +83,16 @@ public:
     }
 
     virtual ~RTreeCutQueryHandler() {
-        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
-            mLocCache->stopTracking(it->second);
-        }
-        mObjects.clear();
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
             QueryState* state = it->second;
             delete state;
         }
         mQueries.clear();
+
+        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
+            mLocCache->stopTracking(it->second);
+        }
+        mObjects.clear();
 
         mLocCache->removeUpdateListener(this);
     }
