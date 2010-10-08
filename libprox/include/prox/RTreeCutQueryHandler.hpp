@@ -142,10 +142,10 @@ public:
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
 
-            state->cut->update(mLocCache, t);
+            int visited = state->cut->update(mLocCache, t);
 
             if (QueryHandlerType::mReportQueryStats) {
-                printf("{ \"id\" : %d, \"cut-length\": %d, \"results\" : %d }\n", query->id(), state->cut->cutSize(), state->cut->resultsSize());
+                printf("{ \"id\" : %d, \"checks\" : %d, \"cut-length\" : %d, \"results\" : %d }\n", query->id(), visited, state->cut->cutSize(), state->cut->resultsSize());
             }
         }
         mLastTime = t;
@@ -929,7 +929,9 @@ private:
 
     public:
 
-        void update(LocationServiceCacheType* loc, const Time& t) {
+        // Returns the number of "nodes" visited, including objects.
+        // In other words, gives the number of solid angle tests performed.
+        int update(LocationServiceCacheType* loc, const Time& t) {
             // Update assumes that the cut is already valid, i.e. that any
             // adjustments to the tree have already caused fixes in the cut
             // itself. The only thing that should have changed at this point is
@@ -966,6 +968,8 @@ private:
             // except pushing the cut back up the tree for now-unsatisfied
             // nodes.
 
+            int visited = 0;
+
             // Keeps track of candidates for collapse and the number of children
             // they have that don't satisfy the constraint. Form a stack since
             // they may get deeper in the tree.
@@ -981,6 +985,7 @@ private:
                 CutNode* node = *it;
                 bool last_satisfies = node->satisfies;
                 bool satisfies = node->updateSatisfies(qpos, qregion, qmaxsize, qangle, qradius);
+                visited++;
 
                 // If we're tracking aggregates and we went from satisfies ->
                 // not satisfies, then we need to clear out any children
@@ -1162,6 +1167,7 @@ private:
                         for(int i = 0; i < node->rtnode->size(); i++) {
                             ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
                             checkMembership(child_id, node->rtnode->childData(i, loc, t), qpos, qregion, qmaxsize, qangle, qradius);
+                            visited++;
                         }
                     }
 
@@ -1172,6 +1178,8 @@ private:
             validateCut();
 
             query->pushEvents(events);
+
+            return visited;
         }
 
         void handleRootReplaced(CutNode* cnode, RTreeNodeType* orig_root, RTreeNodeType* new_root) {
