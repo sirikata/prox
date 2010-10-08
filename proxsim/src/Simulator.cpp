@@ -35,7 +35,7 @@
 #include <algorithm>
 #include "CSVLoader.hpp"
 
-#define RATE_APPROX_ITERATIONS 100
+#define RATE_APPROX_ITERATIONS 25
 
 namespace Prox {
 namespace Simulation {
