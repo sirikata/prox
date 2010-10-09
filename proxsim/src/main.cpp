@@ -98,7 +98,10 @@ int main(int argc, char** argv) {
     std::string FORCE_REBUILD_ARG("--force-rebuild=");
     std::string CSV_ARG("--csv=");
     std::string CSV_MOTION_ARG("--csvmotion=");
+    std::string SEED_ARG("--seed=");
     std::string handler_type = "brute";
+
+    int seed = 0;
     bool display = false;
     int branching = 16;
     int nobjects = 10000;
@@ -121,6 +124,7 @@ int main(int argc, char** argv) {
     float moving_frac = 1.0f;
     std::string csvfile = "";
     std::string csvmotionfile = "";
+
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
         if (arg.find(HANDLER_ARG) != std::string::npos)
@@ -213,10 +217,13 @@ int main(int argc, char** argv) {
         else if (arg.find(CSV_ARG) != std::string::npos) {
             csvfile = arg.substr(CSV_ARG.size());
         }
-        else if (arg.find(CSV_MOTION_ARG) != std::string::npos) {
-            csvmotionfile = arg.substr(CSV_MOTION_ARG.size());
+        else if (arg.find(SEED_ARG) != std::string::npos) {
+            std::string seed_arg = arg.substr(SEED_ARG.size());
+            seed = boost::lexical_cast<int>(seed_arg);
         }
     }
+
+    srand(seed);
 
     // Setup query handler
     QueryHandler* handler = NULL;
