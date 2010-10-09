@@ -57,6 +57,8 @@ public:
     const BoundingSphere& bounds() const;
     BoundingSphere worldBounds(const Time& t) const;
 
+    bool dynamic() const;
+
     void addUpdateListener(ObjectUpdateListener* listener);
     void removeUpdateListener(ObjectUpdateListener* listener);
 protected:

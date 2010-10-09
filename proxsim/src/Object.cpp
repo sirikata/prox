@@ -81,6 +81,10 @@ BoundingSphere Object::worldBounds(const Time& t) const {
     return BoundingSphere( mBounds.center() + mMotion.current().position(t), mBounds.radius() );
 }
 
+bool Object::dynamic() const {
+    return mMotion.current().velocity().lengthSquared() > 0.f;
+}
+
 void Object::addUpdateListener(ObjectUpdateListener* listener) {
     assert(listener != NULL);
     assert(std::find(mUpdateListeners.begin(), mUpdateListeners.end(), listener) == mUpdateListeners.end());

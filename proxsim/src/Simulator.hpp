@@ -46,6 +46,7 @@ namespace Simulation {
 
 class Simulator {
 private:
+    typedef std::map<ObjectID, Object*> OrderedObjectList;
     typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectList;
     typedef std::list<Querier*> QueryList;
 public:
@@ -139,7 +140,8 @@ private:
     typedef std::list<SimulatorListener*> ListenerList;
     ListenerList mListeners;
 
-    ObjectList mRemovedObjects;
+    OrderedObjectList mRemovedStaticObjects;
+    OrderedObjectList mRemovedDynamicObjects;
     int32 mChurn; // Rate at which objects are added and removed
     bool mForceRebuild; // Force rebuild every frame by removing all objects and
                         // adding them back in again.

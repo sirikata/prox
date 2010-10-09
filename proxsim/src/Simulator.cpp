@@ -174,7 +174,10 @@ void Simulator::createRandomObjects(const BoundingBox3& region, int nobjects, fl
         mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
 
         mAllObjects[obj->id()] = obj;
-        mRemovedObjects[obj->id()] = obj;
+        if (obj->dynamic())
+            mRemovedDynamicObjects[obj->id()] = obj;
+        else
+            mRemovedStaticObjects[obj->id()] = obj;
     }
 }
 
@@ -209,7 +212,10 @@ void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
         Object* obj = objects[x];
         objects.erase( objects.begin() + x );
         mAllObjects[obj->id()] = obj;
-        mRemovedObjects[obj->id()] = obj;
+        if (obj->dynamic())
+            mRemovedDynamicObjects[obj->id()] = obj;
+        else
+            mRemovedStaticObjects[obj->id()] = obj;
     }
     // Get rid of the leftovers
     for(int i = 0; i < objects.size(); i++)
@@ -265,10 +271,15 @@ void Simulator::shutdown() {
         removeObject(obj);
     }
     // And delete them all
-    while(!mRemovedObjects.empty()) {
-        Object* obj = mRemovedObjects.begin()->second;
+    while(!mRemovedDynamicObjects.empty()) {
+        Object* obj = mRemovedDynamicObjects.begin()->second;
         delete obj;
-        mRemovedObjects.erase(mRemovedObjects.begin());
+        mRemovedDynamicObjects.erase(mRemovedDynamicObjects.begin());
+    }
+    while(!mRemovedStaticObjects.empty()) {
+        Object* obj = mRemovedStaticObjects.begin()->second;
+        delete obj;
+        mRemovedStaticObjects.erase(mRemovedStaticObjects.begin());
     }
 
     delete mLocCache;
@@ -316,6 +327,7 @@ void Simulator::tick() {
         rebuild();
     }
     else {
+/*
         // Object Churn...
         for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
             Object* obj = mObjects.begin()->second;
@@ -325,6 +337,7 @@ void Simulator::tick() {
             Object* obj = mRemovedObjects.begin()->second;
             addObject(obj);
         }
+*/
     }
 
     // Give all queries a chance to update
@@ -357,14 +370,27 @@ void Simulator::rebuild() {
     }
 
     // Replace all objects
-    while(!mRemovedObjects.empty()) {
-        Object* obj = mRemovedObjects.begin()->second;
+    // All static, then all dynamic to get consistency across experiments that
+    // compare mixed and unmixed trees.
+    while(!mRemovedStaticObjects.empty()) {
+        Object* obj = mRemovedStaticObjects.begin()->second;
+        addObject(obj);
+    }
+    while(!mRemovedDynamicObjects.empty()) {
+        Object* obj = mRemovedDynamicObjects.begin()->second;
         addObject(obj);
     }
 }
 
 void Simulator::addObject(Object* obj) {
-    mRemovedObjects.erase( mRemovedObjects.find(obj->id()) );
+    // Should find it in one of the two removed objects sets
+    // Static
+    OrderedObjectList::iterator oit = mRemovedStaticObjects.find(obj->id());
+    if (oit != mRemovedStaticObjects.end()) mRemovedStaticObjects.erase(oit);
+    // Dynamic
+    oit = mRemovedDynamicObjects.find(obj->id());
+    if (oit != mRemovedDynamicObjects.end()) mRemovedDynamicObjects.erase(oit);
+
     mObjects[obj->id()] = obj;
     mLocCache->addObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
@@ -374,7 +400,10 @@ void Simulator::addObject(Object* obj) {
 void Simulator::removeObject(Object* obj) {
     ObjectList::iterator it = mObjects.find(obj->id());
     mObjects.erase(it);
-    mRemovedObjects[obj->id()] = obj;
+    if (obj->dynamic())
+        mRemovedDynamicObjects[obj->id()] = obj;
+    else
+        mRemovedStaticObjects[obj->id()] = obj;
     mLocCache->removeObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorRemovedObject(obj);
