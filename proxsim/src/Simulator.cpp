@@ -243,12 +243,15 @@ void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile)
 }
 
 void Simulator::addObjects() {
-    // Add objects
-    int32 count = 0;
-    for(ObjectList::iterator it = mAllObjects.begin(); it != mAllObjects.end(); it++) {
-        count++;
-        if (count > mChurn)
-            addObject(it->second);
+    // All static, then all dynamic to get consistency across experiments that
+    // compare mixed and unmixed trees.
+    while(!mRemovedStaticObjects.empty()) {
+        Object* obj = mRemovedStaticObjects.begin()->second;
+        addObject(obj);
+    }
+    while(!mRemovedDynamicObjects.empty()) {
+        Object* obj = mRemovedDynamicObjects.begin()->second;
+        addObject(obj);
     }
 }
 
@@ -370,16 +373,7 @@ void Simulator::rebuild() {
     }
 
     // Replace all objects
-    // All static, then all dynamic to get consistency across experiments that
-    // compare mixed and unmixed trees.
-    while(!mRemovedStaticObjects.empty()) {
-        Object* obj = mRemovedStaticObjects.begin()->second;
-        addObject(obj);
-    }
-    while(!mRemovedDynamicObjects.empty()) {
-        Object* obj = mRemovedDynamicObjects.begin()->second;
-        addObject(obj);
-    }
+    addObjects();
 }
 
 void Simulator::addObject(Object* obj) {
