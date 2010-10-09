@@ -128,7 +128,7 @@ public:
 #endif
     }
 
-    void tick(const Time& t) {
+    void tick(const Time& t, bool report) {
         mRTree->update(t);
         if (QueryHandlerType::mShouldRestructure)
             mRTree->restructure(t);
@@ -136,7 +136,7 @@ public:
         mRTree->verifyConstraints(t);
         validateCuts();
 
-        if (QueryHandlerType::mReportQueryStats)
+        if (QueryHandlerType::mReportQueryStats && report)
             printf("tick\n");
 
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
@@ -145,7 +145,7 @@ public:
 
             int visited = state->cut->update(mLocCache, t);
 
-            if (QueryHandlerType::mReportQueryStats) {
+            if (QueryHandlerType::mReportQueryStats && report) {
                 printf("{ \"id\" : %d, \"checks\" : %d, \"cut-length\" : %d, \"results\" : %d }\n", query->id(), visited, state->cut->cutSize(), state->cut->resultsSize());
             }
         }
@@ -154,7 +154,7 @@ public:
         mRTree->verifyConstraints(t);
         validateCuts();
 
-        if (QueryHandlerType::mReportHealth) {
+        if (QueryHandlerType::mReportHealth && report) {
             QueryHandlerType::mItsSinceReportedHealth++;
             if (QueryHandlerType::mItsSinceReportedHealth >= QueryHandlerType::mReportHealthFrequency) {
                 mRTree->reportBounds(t);

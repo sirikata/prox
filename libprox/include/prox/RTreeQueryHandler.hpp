@@ -99,7 +99,7 @@ public:
         mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
     }
 
-    void tick(const Time& t) {
+    void tick(const Time& t, bool report) {
         mRTree->update(t);
         if (QueryHandlerType::mShouldRestructure)
             mRTree->restructure(t);
@@ -108,7 +108,7 @@ public:
         uint32 nrtnodes = 0;
         if (QueryHandlerType::mTrackChecks)
             nrtnodes = mRTree->size();
-        if (QueryHandlerType::mTrackChecks || QueryHandlerType::mReportQueryStats)
+        if ((QueryHandlerType::mTrackChecks || QueryHandlerType::mReportQueryStats) && report)
             printf("tick\n");
 
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
@@ -159,15 +159,15 @@ public:
 
             query->pushEvents(events);
 
-            if (QueryHandlerType::mTrackChecks)
+            if (QueryHandlerType::mTrackChecks && report)
                 printf("{ \"id\" : %d, \"nodes\" : %d, \"checks\" : { \"positive\" : %d, \"negative\" : %d, \"negativeinternal\" : %d, \"total\" : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
 
-            if (QueryHandlerType::mReportQueryStats)
+            if (QueryHandlerType::mReportQueryStats && report)
                 printf("{ \"id\" : %d, \"checks\" : %d, \"results\" : %d }\n", query->id(), tcount, state->cache.size());
         }
         mLastTime = t;
 
-        if (QueryHandlerType::mReportHealth) {
+        if (QueryHandlerType::mReportHealth && report) {
             QueryHandlerType::mItsSinceReportedHealth++;
             if (QueryHandlerType::mItsSinceReportedHealth >= QueryHandlerType::mReportHealthFrequency) {
                 mRTree->reportBounds(t);

@@ -94,7 +94,7 @@ public:
         mShouldTrackCB = should_track_cb;
     }
 
-    void tick(const Time& t) {
+    void tick(const Time& t, bool report) {
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;

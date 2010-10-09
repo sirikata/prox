@@ -348,7 +348,17 @@ void Simulator::tick() {
         (*it)->tick(mTime);
 
     // Tick the handler
-    mHandler->tick(mTime);
+    if (mForceRebuild) {
+        // To simplify stats collection with rebuilds, we allow for
+        // double-ticking.  We use the same timestep and just.  This just lets
+        // us get valid "checks" counts when we're
+        mHandler->tick(mTime, false);
+        mHandler->tick(mTime, true);
+    }
+    else {
+        // normal ticking
+        mHandler->tick(mTime);
+    }
 
     mItsSinceRateApprox++;
     if (mItsSinceRateApprox >= RATE_APPROX_ITERATIONS) {
