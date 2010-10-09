@@ -62,6 +62,7 @@ Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timest
    mHandler(handler),
    mLocCache(NULL),
    mHaveMovingObjects(false),
+   mForceRebuild(false),
    mReportRate(false),
    mItsSinceRateApprox(0),
    mRateApproxStart(0)
@@ -311,14 +312,19 @@ void Simulator::tick() {
     for(ObjectList::iterator it = mAllObjects.begin(); it != mObjects.end(); it++)
         it->second->tick(mTime);
 
-    // Object Churn...
-    for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
-        Object* obj = mObjects.begin()->second;
-        removeObject(obj);
+    if (mForceRebuild) {
+        rebuild();
     }
-    for(int i = 0; !mRemovedObjects.empty() && i < mChurn; i++) {
-        Object* obj = mRemovedObjects.begin()->second;
-        addObject(obj);
+    else {
+        // Object Churn...
+        for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
+            Object* obj = mObjects.begin()->second;
+            removeObject(obj);
+        }
+        for(int i = 0; !mRemovedObjects.empty() && i < mChurn; i++) {
+            Object* obj = mRemovedObjects.begin()->second;
+            addObject(obj);
+        }
     }
 
     // Give all queries a chance to update
@@ -341,6 +347,20 @@ void Simulator::tick() {
     mIterations++;
     if (mTerminateIterations > 0 && mIterations >= mTerminateIterations)
         mFinished = true;
+}
+
+void Simulator::rebuild() {
+    // Remove all objects
+    while(!mObjects.empty()) {
+        Object* obj = mObjects.begin()->second;
+        removeObject(obj);
+    }
+
+    // Replace all objects
+    while(!mRemovedObjects.empty()) {
+        Object* obj = mRemovedObjects.begin()->second;
+        addObject(obj);
+    }
 }
 
 void Simulator::addObject(Object* obj) {

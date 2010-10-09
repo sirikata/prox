@@ -77,6 +77,7 @@ public:
     bool finished() const { return mFinished; }
 
     void printRate(bool p) { mReportRate = p; }
+    void forceRebuild(bool p) { mForceRebuild = p; }
 
     void tick();
 
@@ -108,6 +109,10 @@ private:
     // Reusable for different object loaders.
     void addObjects();
 
+    // Force a full rebuild -- removing all queries and objects and
+    // then re-adding them.
+    void rebuild();
+
     bool mFinished;
 
     int mDuration;
@@ -136,7 +141,8 @@ private:
 
     ObjectList mRemovedObjects;
     int32 mChurn; // Rate at which objects are added and removed
-
+    bool mForceRebuild; // Force rebuild every frame by removing all objects and
+                        // adding them back in again.
     bool mReportRate;
     int32 mItsSinceRateApprox;
     Duration mRateApproxStart;
