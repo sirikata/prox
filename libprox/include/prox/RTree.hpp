@@ -212,7 +212,11 @@ public:
 
     // We have a destroy method and hide the destructor in private in order to
     // ensure the aggregate callbacks get invoked properly.
-    void destroy(const Callbacks& callbacks) {
+    void destroy(const LocationServiceCacheType* loc, const Callbacks& callbacks) {
+        // Make sure we get all the destructors right by just clearing the
+        // entire node
+        clear(loc, callbacks);
+
         if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateDestroyed(callbacks.handler, aggregate);
         delete this;
     }
@@ -317,6 +321,9 @@ public:
             for(int i = 0; i < old_count; i++) {
                 count = old_count-i-1;
                 notifyRemoved(loc, this->elements.objects[old_count-i-1].object, cb);
+                // Explicitly call destructor, necessary since we use placement
+                // new to handle constructing objects in place (see insert())
+                this->elements.objects[old_count-i-1].~LeafNode();
             }
         }
         else {
@@ -338,7 +345,11 @@ public:
         assert (leaf() == true);
 
         int idx = count;
-        elements.objects[idx] = LeafNode(obj);
+        // Use placement new to get the constructor called without using
+        // assignment (which would result in a destructor on existing (likely
+        // bogus or leftover) data being called. Careful destruction handled in
+        // erase() and clear.
+        new (&(elements.objects[idx])) LeafNode(obj);
         cb.objectLeafChanged(obj, this);
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
@@ -371,9 +382,16 @@ public:
         Index obj_idx;
         for(obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx].object == obj) break;
-        // push all the other objects back one
+        // push all the other objects back one. NOTE: Unlike clear, we don't
+        // need to to call the destructor on the removed element because all
+        // these = operators will destroy the objects that were in their place.
         for(Index rem_idx = obj_idx; rem_idx < count-1; rem_idx++)
             elements.objects[rem_idx] = elements.objects[rem_idx+1];
+        // Instead, we need to call it on the *last* element, because we shifted
+        // everything down and would otherwise leave the last one in its place.
+        // So we explicitly call destructor. See placement new in insert.
+        this->elements.objects[count-1].~LeafNode();
+        // Finally, reduce the count
         count--;
 
         notifyRemoved(loc, obj, cb);
@@ -1051,7 +1069,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
                     removed->erase(child_removed, cb);
                 }
             }
-            removed->destroy(cb);
+            removed->destroy(loc, cb);
         }
     }
 
@@ -1523,8 +1541,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
             }
         }
         new_root->parent(NULL);
-        root->clear(loc, cb);
-        root->destroy(cb);
+        root->destroy(loc, cb);
     }
     return new_root;
 }
