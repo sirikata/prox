@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
 
     simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max));
 
-    if (!csvmotionfile.empty())
+    if (!csvmotionfile.empty() && !static_queries)
         simulator->createCSVQueries(nqueries, csvmotionfile);
     else
         simulator->createRandomQueries(nqueries, static_queries);
