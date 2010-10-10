@@ -304,6 +304,7 @@ void Simulator::removeListener(SimulatorListener* listener) {
 }
 
 void Simulator::tick() {
+    Time last_time(mTime);
     Duration elapsed = mTimer.elapsed();
     if (mRealtime) {
         if (mDuration > 0 && elapsed.seconds() > mDuration) {
@@ -348,10 +349,12 @@ void Simulator::tick() {
         (*it)->tick(mTime);
 
     // Tick the handler
-    if (mForceRebuild) {
+    if (mForceRebuild || last_time == Time::null()) {
         // To simplify stats collection with rebuilds, we allow for
         // double-ticking.  We use the same timestep and just.  This just lets
-        // us get valid "checks" counts when we're
+        // us get valid "checks" counts when we're rebuilding every frame.
+        // We also do this always on the first tick to avoid reporting the
+        // initial cost of pushing down a cut.
         mHandler->tick(mTime, false);
         mHandler->tick(mTime, true);
     }
