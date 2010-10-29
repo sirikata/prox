@@ -84,6 +84,7 @@ void glut_timer(int val) {
 
 GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
  : Renderer(sim),
+   mHandler(handler),
    mDisplay(display),
    mWinWidth(0), mWinHeight(0),
    mMaxObservers(1),
@@ -317,6 +318,8 @@ void GLRenderer::keyboard(unsigned char key, int x, int y) {
         exit(0);
     if (key == 'd')
         mDisplayMode = (DisplayMode) ( (mDisplayMode+1) % NumDisplayModes );
+    if (key == 'r')
+        mHandler->rebuild();
 }
 
 void GLRenderer::drawbb(const BoundingBox3& bb) {

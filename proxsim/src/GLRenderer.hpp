@@ -81,6 +81,8 @@ protected:
 
     void validateSeenObjects();
 
+    QueryHandler* mHandler;
+
     bool mDisplay;
 
     typedef std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> ObjectRefCountMap;

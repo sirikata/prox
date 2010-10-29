@@ -103,6 +103,7 @@ public:
         mRTree->update(t);
         if (QueryHandlerType::mShouldRestructure)
             mRTree->restructure(t);
+
         mRTree->verifyConstraints(t);
 
         uint32 nrtnodes = 0;
@@ -174,6 +175,10 @@ public:
                 QueryHandlerType::mItsSinceReportedHealth = 0;
             }
         }
+    }
+
+    virtual void rebuild() {
+        mRTree->rebuild(mLastTime);
     }
 
     virtual uint32 numObjects() const {

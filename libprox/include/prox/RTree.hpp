@@ -41,6 +41,7 @@
 
 #include "RTreeCore.hpp"
 #include "RTreeRestructure.hpp"
+#include "RTreeBulk.hpp"
 
 namespace Prox {
 
@@ -167,7 +168,56 @@ public:
         RTree_verify_constraints(mRoot, mLocCache, t);
     }
 
+    /** Perform a full rebuild of the tree. */
+    void rebuild(const Time& t) {
+        RTreeNodeType* newRoot = RTree_rebuild(
+            mRoot, mLocCache, t,
+            objectsBegin(), objectsEnd(), objectsSize(),
+            mCallbacks
+        );
+        RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
+        mRoot = newRoot;
+        mRestructureMightHaveEffect = true;
+    }
+
 private:
+    typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
+
+    template<class InternalIterator>
+    class IteratorWrapper {
+    public:
+        IteratorWrapper(InternalIterator _it)
+         :it(_it)
+        {}
+
+        IteratorWrapper& operator++() {
+            it++;
+            return *this;
+        }
+        IteratorWrapper& operator++(int) {
+            it++;
+            return *this;
+        }
+
+        const ObjectID& id() const { return it->first; }
+        const ObjectID& operator*() const { return it->first; }
+
+        bool operator==(const IteratorWrapper& rhs) {
+            return it == rhs.it;
+        }
+        bool operator!=(const IteratorWrapper& rhs) {
+            return it != rhs.it;
+        }
+    private:
+        InternalIterator it;
+    };
+    typedef IteratorWrapper<typename ObjectLeafIndex::iterator> ObjectIDIterator;
+    typedef IteratorWrapper<typename ObjectLeafIndex::const_iterator> ConstObjectIDIterator;
+
+    ObjectIDIterator objectsBegin() { return ObjectIDIterator(mObjectLeaves.begin()); }
+    ObjectIDIterator objectsEnd() { return ObjectIDIterator(mObjectLeaves.end()); }
+    int objectsSize() { return mObjectLeaves.size(); }
+
     void onObjectLeafChanged(const LocCacheIterator& obj, RTreeNodeType* node) {
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
@@ -184,8 +234,6 @@ private:
     LocationServiceCacheType* mLocCache;
     RTreeNodeType* mRoot;
     typename RTreeNodeType::Callbacks mCallbacks;
-    // Index for object's leaf nodes
-    typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
     ObjectLeafIndex mObjectLeaves;
     bool mStaticObjects;
     bool mRestructureMightHaveEffect;

@@ -33,6 +33,8 @@
 #ifndef _PROX_RTREE_RESTRUCTURE_HPP_
 #define _PROX_RTREE_RESTRUCTURE_HPP_
 
+#include "Range.hpp"
+
 namespace Prox {
 
 template<typename ChildType, typename NodeData>
@@ -108,66 +110,6 @@ void RTree_restructure_split_children(
         std::sort(children.begin() + child_begin, children.begin() + child_end + 1, typename ChildInfoType::ZComparator());
 }
 
-struct RestructureRangeMapping {
-    // To get all the range right, even with subdivisions, we track to
-    // total number of children and grandchildren, as well as the
-    // start and end of the current child range, in integral
-    // divisions.  From these, we can split correctly as well as
-    // compute the exact ranges we for children and grandchildren.
-    uint32 childCount;
-    uint32 grandchildCount;
-
-    uint32 divStart;
-    uint32 divEnd;
-
-public:
-    RestructureRangeMapping(
-        uint32 cc, uint32 gcc,
-        uint32 ds, uint32 de
-    )
-     : childCount(cc), grandchildCount(gcc),
-       divStart(ds), divEnd(de)
-    {
-        assert(ds < cc);
-        assert(de < cc);
-        assert(ds <= de);
-    }
-
-    uint32 child() const {
-        assert(singleDiv());
-        return divStart;
-    }
-
-    uint32 grandchildStart() const {
-        uint32 retval = (divStart*grandchildCount)/childCount;
-        assert(retval >= 0);
-        assert(retval < grandchildCount);
-        return retval;
-    }
-    uint32 grandchildEnd() const {
-        uint32 retval = ((divEnd+1)*grandchildCount)/childCount - 1;
-        assert(retval >= 0);
-        assert(retval < grandchildCount);
-        return retval;
-    }
-
-    bool singleDiv() const { return divStart == divEnd; }
-
-    RestructureRangeMapping bottomHalf() const {
-        return RestructureRangeMapping(
-            childCount, grandchildCount,
-            divStart, (divStart+divEnd)/2
-        );
-    }
-
-    RestructureRangeMapping topHalf() const {
-        return RestructureRangeMapping(
-            childCount, grandchildCount,
-            (divStart+divEnd)/2+1, divEnd
-        );
-    }
-};
-
 /** Given a node which has children that are significantly overlapping,
  *  restructures the grandchildren of the node to improve the children's
  *  layout.  Returns number of cuts affected by this process.
@@ -212,13 +154,13 @@ void RTree_restructure_nodes_children(
     //printf("Restructuring %d %d\n", (int)node->size(), (int)split_children.size());
 
     // "Recursively" split subgroups of children.
-    std::stack<RestructureRangeMapping> childRangesStack;
+    std::stack<RangeMapping> childRangesStack;
     // Start with the full range for both children and grandchildren
     childRangesStack.push(
-        RestructureRangeMapping(node->size(), split_children.size(), 0, node->size()-1)
+        RangeMapping(node->size(), split_children.size(), 0, node->size()-1)
     );
     while(!childRangesStack.empty()) {
-        RestructureRangeMapping ranges = childRangesStack.top();
+        RangeMapping ranges = childRangesStack.top();
         childRangesStack.pop();
 
         // Base case - we've reached a single child

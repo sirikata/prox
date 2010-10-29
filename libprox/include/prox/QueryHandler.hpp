@@ -130,6 +130,8 @@ public:
 
     virtual void tick(const Time& t, bool report = true) = 0;
 
+    virtual void rebuild() = 0;
+
     virtual uint32 numObjects() const = 0;
     virtual uint32 numQueries() const = 0;
 

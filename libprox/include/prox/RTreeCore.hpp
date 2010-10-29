@@ -420,6 +420,17 @@ public:
         if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, node->aggregate, mData.getBounds());
     }
 
+    // Removes the last child in the node and returns the pointer to it.
+    // NOTE: does not recalculate the bounding sphere.
+    RTreeNode* erasePop(const Callbacks& cb) {
+        assert(count > 0);
+        assert(leaf() == false);
+        int idx = size() - 1;
+        RTreeNode* retval = node(idx);
+        erase(idx);
+        return retval;
+    }
+
     bool contains(const LocCacheIterator& obj) const {
         for(Index obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx] == obj) return true;
@@ -570,6 +581,14 @@ public:
     /** Gets the volume of this bounds of this region. */
     float volume() const {
         return getBounds().volume();
+    }
+
+    float surfaceArea() const {
+        return getBounds().surfaceArea();
+    }
+
+    static float hitProbability(const NodeData& parent, const NodeData& child) {
+        return ( child.surfaceArea() / parent.surfaceArea() );
     }
 
 protected:
@@ -1236,6 +1255,26 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     return new_root;
 }
 
+
+/* Destroys an entire subtree. */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_destroy_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    const LocationServiceCache<SimulationTraits>* loc,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename SimulationTraits::ObjectIDType ObjectIDType;
+
+    if (!root->leaf()) {
+        while(root->size()) {
+            RTreeNodeType* child = root->erasePop(cb);
+            RTree_destroy_tree(child, loc, cb);
+        }
+    }
+
+    root->destroy(loc, cb);
+}
 
 } // namespace Prox
 

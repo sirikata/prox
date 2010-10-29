@@ -131,6 +131,11 @@ public:
         return 4.0 / 3.0 * Pi * mRadius * mRadius * mRadius;
     }
 
+    real surfaceArea() const {
+        if (degenerate()) return 0.0;
+        return 4.0 * Pi * mRadius * mRadius;
+    }
+
     bool operator==(const BoundingSphere& rhs) {
         return (mCenter == rhs.mCenter && mRadius == rhs.mRadius);
     }

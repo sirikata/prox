@@ -125,6 +125,9 @@ public:
         }
     }
 
+    virtual void rebuild() {
+    }
+
     virtual uint32 numObjects() const {
         return (uint32)mObjects.size();
     }

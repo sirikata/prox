@@ -79,9 +79,15 @@ public:
 private:
     static BoundingSphere sNullBoundingSphere;
 
-    Object* lookup(const ObjectID& id) const;
+    struct ObjectInfo {
+        Object* object;
+        int refcount;
 
-    typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectMap;
+        ObjectInfo() : object(NULL), refcount(0) {}
+        ObjectInfo(Object* obj) : object(obj), refcount(0) {}
+    };
+
+    typedef std::tr1::unordered_map<ObjectID, ObjectInfo, ObjectID::Hasher> ObjectMap;
     typedef std::tr1::unordered_set<LocationUpdateListenerType*> ListenerSet;
 
     ObjectMap mObjects;

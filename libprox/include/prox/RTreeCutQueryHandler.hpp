@@ -163,6 +163,10 @@ public:
         }
     }
 
+    virtual void rebuild() {
+        mRTree->rebuild(mLastTime);
+    }
+
     virtual uint32 numObjects() const {
         return (uint32)mObjects.size();
     }

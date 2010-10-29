@@ -46,28 +46,37 @@ ObjectLocationServiceCache::~ObjectLocationServiceCache() {
 
 void ObjectLocationServiceCache::addObject(Object* obj) {
     assert( mObjects.find(obj->id()) == mObjects.end() );
-    mObjects[obj->id()] = obj;
+    mObjects[obj->id()] = ObjectInfo(obj);
 }
 
 void ObjectLocationServiceCache::removeObject(const Object* obj) {
     ObjectMap::iterator it = mObjects.find(obj->id());
     assert( it != mObjects.end() );
+    assert( it->second.refcount == 0 );
     mObjects.erase(it);
 }
 
 
 LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const ObjectID& id) {
-    Object* obj = lookup(id);
-    assert(obj != NULL);
-    obj->addUpdateListener(this);
-    assert(obj != NULL);
-    return Iterator((void*)obj);
+    ObjectMap::iterator it = mObjects.find(id);
+    assert(it != mObjects.end());
+
+    it->second.refcount++;
+    if (it->second.refcount == 1)
+        it->second.object->addUpdateListener(this);
+    return Iterator((void*)it->second.object);
 }
 
 void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
-    obj->removeUpdateListener(this);
+
+    ObjectMap::iterator it = mObjects.find(obj->id());
+    assert(it != mObjects.end());
+    it->second.refcount--;
+
+    if (it->second.refcount == 0)
+        obj->removeUpdateListener(this);
 }
 
 
@@ -109,12 +118,6 @@ void ObjectLocationServiceCache::removeUpdateListener(LocationUpdateListenerType
     ListenerSet::iterator it = mListeners.find(listener);
     assert( it != mListeners.end() );
     mListeners.erase(it);
-}
-
-Object* ObjectLocationServiceCache::lookup(const ObjectID& id) const {
-    ObjectMap::const_iterator it = mObjects.find(id);
-    if (it == mObjects.end()) return NULL;
-    return it->second;
 }
 
 void ObjectLocationServiceCache::objectCreated(const Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
