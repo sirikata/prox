@@ -411,9 +411,9 @@ void Simulator::removeObject(Object* obj) {
         mRemovedDynamicObjects[obj->id()] = obj;
     else
         mRemovedStaticObjects[obj->id()] = obj;
-    mLocCache->removeObject(obj);
     for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->simulatorRemovedObject(obj);
+    mLocCache->removeObject(obj);
 }
 
 void Simulator::addQuery(Querier* query) {
