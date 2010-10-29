@@ -83,6 +83,8 @@ public:
     }
 
     virtual ~RTreeCutQueryHandler() {
+        delete mRTree;
+
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
             QueryState* state = it->second;
             delete state;

@@ -268,6 +268,9 @@ void Simulator::shutdown() {
         delete query;
     }
 
+    delete mHandler;
+    mHandler = NULL;
+
     // Remove all objects
     while(!mObjects.empty()) {
         Object* obj = mObjects.begin()->second;

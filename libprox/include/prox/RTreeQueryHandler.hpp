@@ -78,6 +78,8 @@ public:
     }
 
     virtual ~RTreeQueryHandler() {
+        delete mRTree;
+
         for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
             mLocCache->stopTracking(it->second);
         }

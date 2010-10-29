@@ -45,6 +45,10 @@ Querier::Querier(QueryHandler* handler, const MotionPath& mp, const BoundingSphe
     );
 }
 
+Querier::~Querier() {
+    delete mQuery;
+}
+
 void Querier::tick(const Time& t) {
     bool changed = mMotion.tick(t);
     if (changed)

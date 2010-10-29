@@ -99,6 +99,7 @@ public:
     }
 
     ~RTree() {
+        RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
     }
 
 

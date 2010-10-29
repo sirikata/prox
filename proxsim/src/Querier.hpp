@@ -42,6 +42,7 @@ namespace Simulation {
 class Querier {
 public:
     Querier(QueryHandler* handler, const MotionPath& mp, const BoundingSphere& bounds, float qradius, const SolidAngle& qangle);
+    ~Querier();
 
     void tick(const Time& t);
 
