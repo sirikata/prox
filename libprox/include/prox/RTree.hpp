@@ -171,13 +171,25 @@ public:
 
     /** Perform a full rebuild of the tree. */
     void rebuild(const Time& t) {
-        RTreeNodeType* newRoot = RTree_rebuild(
+        // Disable addition/removal callbacks since they are not valid during
+        // this period
+        ObjectInsertedCallback obj_ins_cb = mCallbacks.objectInserted;
+        ObjectRemovedCallback obj_rem_cb = mCallbacks.objectRemoved;
+        mCallbacks.objectInserted = 0;
+        mCallbacks.objectRemoved = 0;
+
+        // Destroy the old tree and rebuild
+        RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
+        mRoot = RTree_rebuild(
             mRoot, mLocCache, t,
             objectsBegin(), objectsEnd(), objectsSize(),
             mCallbacks
         );
-        RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
-        mRoot = newRoot;
+
+        // Re-enable the addition/removal callbacks
+        mCallbacks.objectInserted = obj_ins_cb;
+        mCallbacks.objectRemoved = obj_rem_cb;
+
         mRestructureMightHaveEffect = true;
     }
 

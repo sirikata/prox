@@ -111,6 +111,7 @@ public:
     const RemovalList& removals() const { return mRemovals; }
 
     uint32 size() const { return mAdditions.size() + mRemovals.size(); }
+    bool empty() const { return (mAdditions.empty() && mRemovals.empty()); }
 
 private:
     AdditionList mAdditions;

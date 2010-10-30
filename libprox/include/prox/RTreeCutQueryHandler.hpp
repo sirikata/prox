@@ -166,7 +166,16 @@ public:
     }
 
     virtual void rebuild() {
+        // First, get all cuts out of the original tree
+        for(typename QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++)
+            it->second->cut->startSwapTrees();
+
+        // Then rebuild
         mRTree->rebuild(mLastTime);
+
+        // Then reinsert into the new tree
+        for(typename QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++)
+            it->second->cut->finishSwapTrees(mRTree->root());
     }
 
     virtual uint32 numObjects() const {
@@ -388,6 +397,8 @@ private:
 
         typedef std::deque<QueryEventType> EventQueue;
         EventQueue events;
+
+        QueryEventType swapEvent;
 
         // Checks for child_id's membership in the result set.  This version
         // should be used for non-aggregate queries.
@@ -1415,6 +1426,61 @@ private:
             length = nodes.size();
             //validateCut();
         }
+
+
+        // In order to swap trees, we need to get cuts out of the way and
+        // replace them with the root of the new tree.  In order to not have
+        // both trees in memory at the same time, we split this into two
+        // phases. The first removes the cut from the original tree, the second
+        // finishes the process by adding it to the new tree and adding the
+        // updates to the result set.
+
+        void startSwapTrees() {
+            // First, remove all the
+            // Run through the cut, adding removals to the result event
+            for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {
+                CutNode* cnode = *it;
+                RTreeNodeType* node = cnode->rtnode;
+
+                // Try to remove the node itself
+                size_t node_removed = results.erase(node->aggregateID());
+                if (node_removed > 0)
+                    swapEvent.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Imposter) );
+
+                // And, if its a leaf, try to remove its children
+                if (node->leaf() && node_removed == 0) {
+                    for(int leaf_idx = 0; leaf_idx < node->size(); leaf_idx++) {
+                        ObjectID leaf_id = parent->mLocCache->iteratorID(node->object(leaf_idx).object);
+                        size_t leaf_removed = results.erase(leaf_id);
+                        if (leaf_removed > 0)
+                            swapEvent.removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal) );
+                    }
+                }
+
+                // And remove the cut node
+                cnode->destroy(parent, parent->aggregateListener());
+            }
+            nodes.clear();
+            length = 0;
+        }
+
+        void finishSwapTrees(RTreeNodeType* new_root) {
+            // Add in the root CutNode
+            if (parent->mWithAggregates) {
+                swapEvent.additions().push_back( typename QueryEventType::Addition(new_root->aggregateID(), QueryEventType::Imposter) );
+                results.insert(new_root->aggregateID());
+            }
+            nodes.push_back(new CutNode(parent, this, new_root, parent->aggregateListener()));
+            length = 1;
+            validateCut();
+
+            // And finally, we can push the event onto the queue.
+            if (!swapEvent.empty()) {
+                events.push_back(swapEvent);
+                swapEvent = QueryEventType();
+            }
+        }
+
     };
 
 
