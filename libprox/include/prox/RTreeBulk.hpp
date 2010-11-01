@@ -71,12 +71,69 @@ struct SweepData {
     NodeData right;
 };
 
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+class BulkLoadSubTreeInfo {
+public:
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    struct SubTreeInfo {
+        RTreeNodeType* node;
+        float cost;
+    };
+
+    std::vector<SubTreeInfo> children;
+
+    BulkLoadSubTreeInfo()
+    {}
+
+    void append(RTreeNodeType* node, float cost) {
+        SubTreeInfo info;
+        info.node = node;
+        info.cost = cost;
+        children.push_back(info);
+    }
+    size_t size() const { return children.size(); }
+};
+
+
 #define COST_NODE_TEST 1.f
 #define COST_LEAF_TEST 1.f
 
-// Take a range of objects and build a subtree out of them
+// Utility method for RTree_rebuild_build_subtree which takes a list of nodes
+// and converts them into a subtree.
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree_from_list(
+    const BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode>& subtree_list,
+    int branching,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb
+)
+{
+    assert((int)subtree_list.children.size() <= branching);
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    RTreeNodeType* parent = new RTreeNodeType(branching, cb);
+    parent->leaf(false);
+
+    for(int i = 0; i < (int)subtree_list.children.size(); i++)
+        parent->insert(subtree_list.children[i].node, cb);
+
+    return parent;
+}
+
+// Take a range of objects and build a subtree out of them. The returned
+// collection is the set of nodes that should be grouped together.  The caller
+// should either generate a node for them or continue to aggregate with other
+// nodes if that is more efficient.
+//
+// This essentially breaks our process into two stages. The top down split
+// creates a binary tree, although it is only implicit by subdividing the
+// objects, reordering, and splitting them.  The second pass takes this binary
+// tree and decides how to compress it, combining multiple levels of the binary
+// tree into a single RTree node.  This "compression" stops either when we hit
+// the branching factor or if the compression would be more expensive than the
+// binary tree.
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ObjectIDIterator>
-RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree(
+BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_subtree(
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     std::vector< BulkLoadElement<SimulationTraits, NodeData> >& objects,
@@ -124,7 +181,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree(
                 p_left = NodeData::hitProbability(parent_data, sweep[i].left),
                 p_right = NodeData::hitProbability(parent_data, sweep[i].right);
             int n_left = i, n_right = (range.size()-i);
-                float cost = (2 * COST_NODE_TEST) + (p_left * n_left * COST_LEAF_TEST) + (p_right * n_right * COST_LEAF_TEST);
+            float cost = (2 * COST_NODE_TEST) + (p_left * n_left * COST_LEAF_TEST) + (p_right * n_right * COST_LEAF_TEST);
             if (cost < bestCost || bestCost < 0.f) {
                 bestCost = cost;
                 bestDim = dim;
@@ -143,7 +200,9 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree(
         node->leaf(true);
         for(typename ObjectVector::iterator it = objects.begin() + range.start; it != objects.begin() + range.end + 1; it++)
             node->insert(loc, it->iterator, t, cb);
-        return node;
+        BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;
+        retval.append(node, no_split_cost);
+        return retval;
     }
     else {
         // Otherwise, we generate children for each side of the split and create
@@ -153,21 +212,63 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree(
         // We need to get back into the state of the best
         std::sort(objects.begin() + range.start, objects.begin() + range.end + 1, typename BulkLoadElementType::DimComparator(bestDim));
 
-        RTreeNodeType* left_tree =
+        BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> left_nodes =
             RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(
                 loc, t, objects, branching, Range(range.start, range.start + bestEvent), bestLeftData, cb
             );
-        RTreeNodeType* right_tree =
+        BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> right_nodes =
             RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(
                 loc, t, objects, branching, Range(range.start + bestEvent + 1, range.end), bestRightData, cb
             );
 
-        RTreeNodeType* parent = new RTreeNodeType(branching, cb);
-        parent->leaf(false);
-        parent->insert(left_tree, cb);
-        parent->insert(right_tree, cb);
 
-        return parent;
+        // Compute the cost if we handle the elements when split up (i.e.,
+        // maintain the binary tree at this level) and if we handle them
+        // together (i.e. we merge the two groups into one group handled by this
+        // parent). Note that it is still safe to use bestLeftData and
+        // bestRightData since the split there is still valid.
+
+        // Direct (merged) test cost: visiting this node results in immediately
+        // testing all the given nodes
+        float merged_cost = (float)(left_nodes.size() + right_nodes.size()) * COST_NODE_TEST;
+        // Indirect (split, keeping hierarchy) test cost: visiting this node
+        // results in immediately visiting two children and, depending on the
+        // outcome there, possibly visiting the left and/or right children nodes
+        float split_cost = 2.f * COST_NODE_TEST;
+        float p_split_left = NodeData::hitProbability(parent_data, bestLeftData),
+            p_split_right = NodeData::hitProbability(parent_data, bestRightData);
+        float left_split_cost = 0.f;
+        for(int i = 0; i < (int)left_nodes.size(); i++) {
+            merged_cost += NodeData::hitProbability(parent_data, left_nodes.children[i].node->data()) * left_nodes.children[i].cost;
+            left_split_cost += NodeData::hitProbability(bestLeftData, left_nodes.children[i].node->data()) * left_nodes.children[i].cost;
+        }
+        split_cost += p_split_left * left_split_cost;
+        float right_split_cost = 0.f;
+        for(int i = 0; i < (int)right_nodes.size(); i++) {
+            merged_cost += NodeData::hitProbability(parent_data, right_nodes.children[i].node->data()) * right_nodes.children[i].cost;
+            right_split_cost += NodeData::hitProbability(bestRightData, right_nodes.children[i].node->data()) * right_nodes.children[i].cost;
+        }
+        split_cost += p_split_right * right_split_cost;
+
+        // If we can do better by handling the nodes we got back directly, then
+        // do it
+        if (
+            (int)(left_nodes.size() + right_nodes.size()) <= branching &&
+            merged_cost < split_cost
+        ) {
+            BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;
+            for(int i = 0; i < (int)right_nodes.size(); i++)
+                retval.append(right_nodes.children[i].node, right_nodes.children[i].cost);
+            for(int i = 0; i < (int)left_nodes.size(); i++)
+                retval.append(left_nodes.children[i].node, left_nodes.children[i].cost);
+            return retval;
+        }
+        else { // Otherwise, build nodes out of them and continue
+            BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;
+            retval.append( RTree_rebuild_build_subtree_from_list(left_nodes, branching, cb), left_split_cost );
+            retval.append( RTree_rebuild_build_subtree_from_list(right_nodes, branching, cb), right_split_cost );
+            return retval;
+        }
     }
 }
 
@@ -214,7 +315,9 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
         idx++;
     }
 
-    return RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(loc, t, objects, branching, Range(nobjects), root_data, cb);
+    BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> root_children =
+        RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(loc, t, objects, branching, Range(nobjects), root_data, cb);
+    return RTree_rebuild_build_subtree_from_list(root_children, branching, cb);
 }
 
 } // namespace Prox
