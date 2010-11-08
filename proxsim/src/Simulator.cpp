@@ -62,6 +62,7 @@ Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timest
    mHandler(handler),
    mLocCache(NULL),
    mHaveMovingObjects(false),
+   mForceInitialRebuild(false),
    mForceRebuild(false),
    mReportRate(false),
    mItsSinceRateApprox(0),
@@ -330,8 +331,8 @@ void Simulator::tick() {
     for(ObjectList::iterator it = mAllObjects.begin(); it != mObjects.end(); it++)
         it->second->tick(mTime);
 
-    if (mForceRebuild) {
-        rebuild();
+    if (mForceRebuild || (mForceInitialRebuild && last_time == Time::null())) {
+        mHandler->rebuild();
     }
     else {
 /*
@@ -379,17 +380,6 @@ void Simulator::tick() {
     mIterations++;
     if (mTerminateIterations > 0 && mIterations >= mTerminateIterations)
         mFinished = true;
-}
-
-void Simulator::rebuild() {
-    // Remove all objects
-    while(!mObjects.empty()) {
-        Object* obj = mObjects.begin()->second;
-        removeObject(obj);
-    }
-
-    // Replace all objects
-    addObjects();
 }
 
 void Simulator::addObject(Object* obj) {

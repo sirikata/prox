@@ -96,6 +96,7 @@ int main(int argc, char** argv) {
     std::string REPORT_QUERY_STATS_ARG("--report-query-stats=");
     std::string CHURN_RATE_ARG("--churn-rate=");
     std::string FORCE_REBUILD_ARG("--force-rebuild=");
+    std::string FORCE_INITIAL_REBUILD_ARG("--force-initial-rebuild=");
     std::string CSV_ARG("--csv=");
     std::string CSV_MOTION_ARG("--csvmotion=");
     std::string SEED_ARG("--seed=");
@@ -121,6 +122,7 @@ int main(int argc, char** argv) {
     bool report_query_stats = false;
     int churn_rate = 0;
     bool force_rebuild = false;
+    bool force_initial_rebuild = false;
     float moving_frac = 1.0f;
     std::string csvfile = "";
     std::string csvmotionfile = "";
@@ -214,6 +216,10 @@ int main(int argc, char** argv) {
             std::string force_rebuild_arg = arg.substr(FORCE_REBUILD_ARG.size());
             force_rebuild = convert_bool(force_rebuild_arg);
         }
+        else if (arg.find(FORCE_INITIAL_REBUILD_ARG) != std::string::npos) {
+            std::string force_initial_rebuild_arg = arg.substr(FORCE_INITIAL_REBUILD_ARG.size());
+            force_initial_rebuild = convert_bool(force_initial_rebuild_arg);
+        }
         else if (arg.find(CSV_ARG) != std::string::npos) {
             csvfile = arg.substr(CSV_ARG.size());
         }
@@ -297,6 +303,7 @@ int main(int argc, char** argv) {
     handler->reportQueryStats(report_query_stats);
     simulator->printRate(report_rate);
     simulator->forceRebuild(force_rebuild);
+    simulator->forceInitialRebuild(force_initial_rebuild);
 
     renderer->run();
     simulator->shutdown();

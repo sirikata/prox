@@ -78,6 +78,7 @@ public:
     bool finished() const { return mFinished; }
 
     void printRate(bool p) { mReportRate = p; }
+    void forceInitialRebuild(bool p) { mForceInitialRebuild = p; }
     void forceRebuild(bool p) { mForceRebuild = p; }
 
     void tick();
@@ -110,10 +111,6 @@ private:
     // Reusable for different object loaders.
     void addObjects();
 
-    // Force a full rebuild -- removing all queries and objects and
-    // then re-adding them.
-    void rebuild();
-
     bool mFinished;
 
     int mDuration;
@@ -143,6 +140,7 @@ private:
     OrderedObjectList mRemovedStaticObjects;
     OrderedObjectList mRemovedDynamicObjects;
     int32 mChurn; // Rate at which objects are added and removed
+    bool mForceInitialRebuild; // Force rebuild on initial tick
     bool mForceRebuild; // Force rebuild every frame by removing all objects and
                         // adding them back in again.
     bool mReportRate;
