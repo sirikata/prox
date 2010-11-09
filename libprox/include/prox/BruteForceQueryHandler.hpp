@@ -128,6 +128,10 @@ public:
     virtual void rebuild() {
     }
 
+    virtual float cost() {
+        return numObjects();
+    }
+
     virtual uint32 numObjects() const {
         return (uint32)mObjects.size();
     }

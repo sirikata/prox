@@ -40,6 +40,7 @@
 #include <float.h>
 
 #include "RTreeCore.hpp"
+#include "RTreeCost.hpp"
 #include "RTreeRestructure.hpp"
 #include "RTreeBulk.hpp"
 
@@ -191,6 +192,10 @@ public:
         mCallbacks.objectRemoved = obj_rem_cb;
 
         mRestructureMightHaveEffect = true;
+    }
+
+    float cost(const Time& t) {
+        return RTree_cost(mRoot, mLocCache, t);
     }
 
 private:

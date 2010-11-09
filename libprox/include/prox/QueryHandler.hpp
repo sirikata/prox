@@ -132,6 +132,11 @@ public:
 
     virtual void rebuild() = 0;
 
+    /** Get an estimation of the cost of evaluating a query on this query
+     *  handler.
+     */
+    virtual float cost() = 0;
+
     virtual uint32 numObjects() const = 0;
     virtual uint32 numQueries() const = 0;
 

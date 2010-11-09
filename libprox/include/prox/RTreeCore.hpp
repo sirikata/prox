@@ -588,7 +588,9 @@ public:
     }
 
     static float hitProbability(const NodeData& parent, const NodeData& child) {
-        return ( child.surfaceArea() / parent.surfaceArea() );
+        float parent_sa = parent.surfaceArea();
+        if (parent_sa == 0.f) return 1.f;
+        return ( child.surfaceArea() / parent_sa );
     }
 
 protected:

@@ -163,9 +163,13 @@ public:
                 QueryHandlerType::mItsSinceReportedHealth = 0;
             }
         }
+
+        std::cout << "Cost: " << cost() << std::endl;
     }
 
     virtual void rebuild() {
+        validateCuts();
+
         // First, get all cuts out of the original tree
         for(typename QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++)
             it->second->cut->startSwapTrees();
@@ -176,6 +180,12 @@ public:
         // Then reinsert into the new tree
         for(typename QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++)
             it->second->cut->finishSwapTrees(mRTree->root());
+
+        validateCuts();
+    }
+
+    virtual float cost() {
+        return mRTree->cost(mLastTime);
     }
 
     virtual uint32 numObjects() const {

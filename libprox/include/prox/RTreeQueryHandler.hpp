@@ -177,10 +177,16 @@ public:
                 QueryHandlerType::mItsSinceReportedHealth = 0;
             }
         }
+
+        std::cout << "Cost: " << cost() << std::endl;
     }
 
     virtual void rebuild() {
         mRTree->rebuild(mLastTime);
+    }
+
+    virtual float cost() {
+        return mRTree->cost(mLastTime);
     }
 
     virtual uint32 numObjects() const {

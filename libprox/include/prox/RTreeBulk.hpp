@@ -96,9 +96,6 @@ public:
 };
 
 
-#define COST_NODE_TEST 1.f
-#define COST_LEAF_TEST 1.f
-
 // Utility method for RTree_rebuild_build_subtree which takes a list of nodes
 // and converts them into a subtree.
 template<typename SimulationTraits, typename NodeData, typename CutNode>
