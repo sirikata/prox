@@ -163,8 +163,6 @@ public:
                 QueryHandlerType::mItsSinceReportedHealth = 0;
             }
         }
-
-        std::cout << "Cost: " << cost() << std::endl;
     }
 
     virtual void rebuild() {
