@@ -52,6 +52,10 @@ public:
     /// Get the solid angle represented by the circular area with the given vector to its center and radius
     static SolidAngle fromCenterRadius(const Vector3f& to_center, float radius);
 
+    /// Get the maximum distance from an object of the given radius that could
+    /// result in this solid angle.  Effectively the inverse of fromCenterRadius.
+    float maxDistance(float obj_radius) const;
+
     SolidAngle operator+(const SolidAngle& rhs) const;
     SolidAngle& operator+=(const SolidAngle& rhs);
     SolidAngle operator-(const SolidAngle& rhs) const;

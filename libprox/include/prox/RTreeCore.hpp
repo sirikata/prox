@@ -587,10 +587,24 @@ public:
         return getBounds().surfaceArea();
     }
 
+    /** Get the radius within which a querier asking for the given minimum solid
+     *  angle will get this data as a result, i.e. the radius within which this
+     *  node will satisfy the given query.
+     */
+    float getValidRadius(const SolidAngle& min_sa) const {
+        // There's a minimum value based on when we end up *inside* the volume
+        float bounds_max = getBounds().radius();
+        // Otherwise, we just invert the solid angle formula
+        float sa_max = min_sa.maxDistance(getBounds().radius());
+        return std::max( bounds_max, sa_max );
+    }
+
     static float hitProbability(const NodeData& parent, const NodeData& child) {
-        float parent_sa = parent.surfaceArea();
-        if (parent_sa == 0.f) return 1.f;
-        return ( child.surfaceArea() / parent_sa );
+        static SolidAngle rep_sa(.01); // FIXME
+        float parent_max_rad = parent.getValidRadius(rep_sa);
+        float child_max_rad = child.getValidRadius(rep_sa);
+        float ratio = child_max_rad / parent_max_rad;
+        return ratio*ratio;
     }
 
 protected:
@@ -731,6 +745,27 @@ public:
     float volume() const {
         return getBounds().volume();
     }
+
+    /** Get the radius within which a querier asking for the given minimum solid
+     *  angle will get this data as a result, i.e. the radius within which this
+     *  node will satisfy the given query.
+     */
+    float getValidRadius(const SolidAngle& min_sa) const {
+        // There's a minimum value based on when we end up *inside* the volume
+        float bounds_max = getBounds().radius() + mMaxRadius;
+        // Otherwise, we just invert the solid angle formula
+        float sa_max = min_sa.maxDistance(mMaxRadius) + getBounds().radius();
+        return std::max( bounds_max, sa_max );
+    }
+
+    static float hitProbability(const NodeData& parent, const NodeData& child) {
+        static SolidAngle rep_sa(.01); // FIXME
+        float parent_max_rad = parent.getValidRadius(rep_sa);
+        float child_max_rad = child.getValidRadius(rep_sa);
+        float ratio = child_max_rad / parent_max_rad;
+        return ratio*ratio;
+    }
+
 private:
     float mMaxRadius;
 };
