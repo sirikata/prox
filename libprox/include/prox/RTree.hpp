@@ -180,10 +180,12 @@ public:
         mCallbacks.objectRemoved = 0;
 
         // Destroy the old tree and rebuild
+        std::vector<LocCacheIterator> object_iterators;
+        RTree_collect_objects(mRoot, &object_iterators);
         RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
         mRoot = RTree_rebuild(
             mRoot, mLocCache, t,
-            objectsBegin(), objectsEnd(), objectsSize(),
+            object_iterators,
             mCallbacks
         );
 

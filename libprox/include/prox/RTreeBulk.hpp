@@ -129,7 +129,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree_from
 // tree into a single RTree node.  This "compression" stops either when we hit
 // the branching factor or if the compression would be more expensive than the
 // binary tree.
-template<typename SimulationTraits, typename NodeData, typename CutNode, typename ObjectIDIterator>
+template<typename SimulationTraits, typename NodeData, typename CutNode>
 BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_subtree(
     const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
@@ -210,11 +210,11 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
         std::sort(objects.begin() + range.start, objects.begin() + range.end + 1, typename BulkLoadElementType::DimComparator(bestDim));
 
         BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> left_nodes =
-            RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(
+            RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(
                 loc, t, objects, branching, Range(range.start, range.start + bestEvent), bestLeftData, cb
             );
         BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> right_nodes =
-            RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(
+            RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(
                 loc, t, objects, branching, Range(range.start + bestEvent + 1, range.end), bestRightData, cb
             );
 
@@ -272,12 +272,12 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
 
 // The full rebuild process, just a driver for helper methods that do the actual
 // splitting and generation of nodes.
-template<typename SimulationTraits, typename NodeData, typename CutNode, typename ObjectIDIterator>
+template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    ObjectIDIterator objects_begin, ObjectIDIterator objects_end, int nobjects,
+    const std::vector<typename LocationServiceCache<SimulationTraits>::Iterator>& object_iterators,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb
 )
 {
@@ -300,12 +300,12 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     // Collect all the information we need about the objects, specifying that we
     // are now tracking them and getting our own iterators to them. This will
     // ensure they don't get released in the transition.
-    ObjectVector objects(nobjects);
+    ObjectVector objects(object_iterators.size());
     NodeData root_data;
     int idx = 0;
-    for(ObjectIDIterator objit = objects_begin; objit != objects_end; objit++) {
-        ObjectID objid = *objit;
-        LocCacheIterator loc_it = loc->startTracking(objid);
+    for(int i = 0;  i < object_iterators.size(); i++) {
+        LocCacheIterator loc_it = object_iterators[i];
+        ObjectID objid = loc->iteratorID(loc_it);
         objects[idx] = BulkLoadElementType(loc_it, NodeData(loc, loc_it, t));
         root_data.mergeIn(objects[idx].data);
         assert(objects[idx].data.getBounds().center().x > -2.65716055e+37);
@@ -313,7 +313,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     }
 
     BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> root_children =
-        RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode, ObjectIDIterator>(loc, t, objects, branching, Range(nobjects), root_data, cb);
+        RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(loc, t, objects, branching, Range(object_iterators.size()), root_data, cb);
     return RTree_rebuild_build_subtree_from_list(root_children, branching, cb);
 }
 

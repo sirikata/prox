@@ -1258,6 +1258,28 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
 }
 
 
+/* Collect a list of objects (in the form of location cache iterators) from
+ * this tree. Useful when you need to restructure the entire tree.
+ */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_collect_objects(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    std::vector<typename LocationServiceCache<SimulationTraits>::Iterator>* objects
+)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename SimulationTraits::ObjectIDType ObjectIDType;
+
+    if (root->leaf()) {
+        for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+            objects->push_back(root->object(i).object);
+    }
+    else {
+        for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+            RTree_collect_objects(root->node(i), objects);
+    }
+}
+
 /* Destroys an entire subtree. */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_destroy_tree(
