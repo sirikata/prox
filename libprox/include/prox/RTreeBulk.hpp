@@ -161,7 +161,7 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
 
         // Sweep from left to generate left areas
         NodeData leftCurrent;
-        for(int i = 0; i < (int)range.size(); i++) {
+        for(int i = 0; i < (int)range.size()-1; i++) {
             assert(objects[i].data.getBounds().center().x > -2.65716055e+37);
             leftCurrent.mergeIn(objects[ range.start + i ].data);
             sweep[i].left = leftCurrent;
@@ -170,7 +170,7 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
         // Sweep from right to generate right areas. Then using the two areas
         // decide whether we have a better split.
         NodeData rightCurrent;
-        for(int i = range.size()-1; i > 0; i--) {
+        for(int i = range.size()-2; i > 0; i--) {
             rightCurrent.mergeIn(objects[ range.start + i ].data);
             sweep[i].right = rightCurrent;
 
