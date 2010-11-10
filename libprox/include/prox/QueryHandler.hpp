@@ -71,6 +71,7 @@ public:
        mReportRestructures(false),
        mReportHealth(false),
        mReportHealthFrequency(1),
+       mReportCost(false),
        mItsSinceReportedHealth(0),
        mReportQueryStats(false)
     {}
@@ -83,6 +84,7 @@ public:
     bool reportRestructures() const { return mReportRestructures; }
     void reportHealth(bool r) { mReportHealth = r; }
     void reportHealthFrequency(int its) { mReportHealthFrequency = its; }
+    void reportCost(bool r) { mReportCost = r; }
     void reportQueryStats(bool r) { mReportQueryStats = r; }
 
     /** Initialze the query handler.
@@ -175,6 +177,7 @@ protected:
     bool mReportRestructures;
     bool mReportHealth;
     int mReportHealthFrequency;
+    bool mReportCost;
     int mItsSinceReportedHealth;
     bool mReportQueryStats;
 }; // class QueryHandler

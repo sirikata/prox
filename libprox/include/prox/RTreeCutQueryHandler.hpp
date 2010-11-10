@@ -163,6 +163,8 @@ public:
                 QueryHandlerType::mItsSinceReportedHealth = 0;
             }
         }
+        if (QueryHandlerType::mReportCost && report)
+            printf("{ cost : %f }\n", cost());
     }
 
     virtual void rebuild() {
