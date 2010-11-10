@@ -178,7 +178,7 @@ public:
             }
         }
         if (QueryHandlerType::mReportCost && report)
-            printf("{ cost : %f }\n", cost());
+            printf("{ \"cost\" : %f }\n", cost());
     }
 
     virtual void rebuild() {
