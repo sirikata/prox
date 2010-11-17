@@ -72,7 +72,6 @@ float RTree_traverse_cost(
         float p = NodeData::hitProbability(this_data, child_data);
         float child_cost = (node->leaf() ? COST_LEAF_TEST : RTree_traverse_cost(node->node(i), loc, t));
         cost += COST_NODE_TEST + p * child_cost;
-        assert(!isnan(cost));
     }
 
     return cost;
