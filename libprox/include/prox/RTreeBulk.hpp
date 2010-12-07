@@ -303,7 +303,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     ObjectVector objects(object_iterators.size());
     NodeData root_data;
     int idx = 0;
-    for(int i = 0;  i < object_iterators.size(); i++) {
+    for(int i = 0;  i < (int)object_iterators.size(); i++) {
         LocCacheIterator loc_it = object_iterators[i];
         ObjectID objid = loc->iteratorID(loc_it);
         objects[idx] = BulkLoadElementType(loc_it, NodeData(loc, loc_it, t));

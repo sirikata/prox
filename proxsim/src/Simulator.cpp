@@ -202,7 +202,7 @@ void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
     nobjects = std::min(nobjects, (int)objects.size()); // just in case we don't have enough
 
     // Update bounding box using full set of data
-    for(int i = 0; i < objects.size(); i++) {
+    for(int i = 0; i < (int)objects.size(); i++) {
         Object* obj = objects[i];
         mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
     }
@@ -219,7 +219,7 @@ void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
             mRemovedStaticObjects[obj->id()] = obj;
     }
     // Get rid of the leftovers
-    for(int i = 0; i < objects.size(); i++)
+    for(int i = 0; i < (int)objects.size(); i++)
         delete objects[i];
 }
 
@@ -239,7 +239,7 @@ void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile)
             std::tr1::bind(generatePosition, mRegion),
             qradius, qangle
         );
-    for(int i = 0; i < qs.size(); i++)
+    for(int i = 0; i < (int)qs.size(); i++)
         addQuery(qs[i]);
 }
 

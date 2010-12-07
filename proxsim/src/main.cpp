@@ -54,9 +54,9 @@ void convert_range(const std::string& arg, T* rmin, T* rmax) {
         int lparen = arg.find("(");
         int comma = arg.find(",");
         int rparen = arg.find(")");
-        assert(lparen != std::string::npos);
-        assert(comma != std::string::npos);
-        assert(rparen != std::string::npos);
+        assert((std::size_t)lparen != std::string::npos);
+        assert((std::size_t)comma != std::string::npos);
+        assert((std::size_t)rparen != std::string::npos);
         std::string first = arg.substr( lparen+1, (comma-(lparen+1)) );
         std::string second = arg.substr( comma+1, (rparen-(comma+1)) );
         *rmin = boost::lexical_cast<T>(first);

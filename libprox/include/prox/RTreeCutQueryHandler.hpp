@@ -1018,7 +1018,7 @@ private:
         };
 
         int cutSize() const {
-            assert(length == nodes.size());
+            assert(length == (int)nodes.size());
             return length;
         };
 

@@ -262,6 +262,9 @@ void GLRenderer::display() {
               }
           }
           break;
+      case NumDisplayModes:
+        assert(false);
+        break;
     }
 
     glColor3f(1.f, 0.f, 0.f);

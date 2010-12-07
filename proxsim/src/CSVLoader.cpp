@@ -106,19 +106,19 @@ std::vector<MotionAndBounds> loadCSVMotions(const String& filename) {
 
         // Check that we have things in order
         assert(mi.times.size() > 1);
-        for(int i = 0; i < mi.times.size()-1; i++)
+        for(int i = 0; i < (int)mi.times.size()-1; i++)
             assert(mi.times[i] < mi.times[i+1]);
 
         // Fix times so they start at 0
         {
             Time init_time = mi.times[0];
-            for(int i = 0; i < mi.times.size(); i++)
+            for(int i = 0; i < (int)mi.times.size(); i++)
                 mi.times[i] = Time::null() + (mi.times[i] - init_time);
         }
 
         // Compute the bounding box and possibly filter
         BoundingBox3 bbox;
-        for(int i = 0; i < mi.positions.size(); i++)
+        for(int i = 0; i < (int)mi.positions.size(); i++)
             bbox.mergeIn( mi.positions[i] );
         if (bbox.extents().lengthSquared() < 20.f*20.f)
             continue;
@@ -182,7 +182,7 @@ std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::func
     std::vector<MotionAndBounds> data = loadCSVMotions(filename);
     std::vector<Object*> results;
 
-    for(unsigned int i = 0; i < nobjects; i++) {
+    for(unsigned int i = 0; i < (unsigned int)nobjects; i++) {
         int data_idx = rand() % data.size();
         results.push_back(
             new Object(
@@ -200,7 +200,7 @@ std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nquerier
     std::vector<MotionAndBounds> data = loadCSVMotions(filename);
     std::vector<Querier*> results;
 
-    for(unsigned int i = 0; i < std::min((int)data.size(), nqueriers); i++) {
+    for(unsigned int i = 0; i < (unsigned int)std::min((int)data.size(), nqueriers); i++) {
         int data_idx = rand() % data.size();
         results.push_back(
             new Querier(qh,
