@@ -47,6 +47,8 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class BruteForceQueryHandler : public QueryHandler<SimulationTraits> {
 public:
+    typedef SimulationTraits SimulationTraitsType;
+
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
@@ -68,6 +70,15 @@ public:
 
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
     typedef typename QueryHandlerType::ObjectList ObjectList;
+
+    typedef typename std::tr1::function<BruteForceQueryHandler*()> QueryHandlerCreator;
+
+    static BruteForceQueryHandler* construct() {
+        return new BruteForceQueryHandler();
+    }
+    static QueryHandlerCreator Constructor() {
+        return std::tr1::bind(&BruteForceQueryHandler::construct);
+    }
 
     BruteForceQueryHandler()
      : QueryHandlerType(),

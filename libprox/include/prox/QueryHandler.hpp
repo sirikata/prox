@@ -43,6 +43,8 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryHandler : public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
 public:
+    typedef SimulationTraits SimulationTraitsType;
+
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;

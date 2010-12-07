@@ -50,6 +50,8 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class RTreeCutQueryHandler : public QueryHandler<SimulationTraits> {
 public:
+    typedef SimulationTraits SimulationTraitsType;
+
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
@@ -72,6 +74,15 @@ public:
 
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
     typedef typename QueryHandlerType::ObjectList ObjectList;
+
+    typedef typename std::tr1::function<RTreeCutQueryHandler*()> QueryHandlerCreator;
+
+    static RTreeCutQueryHandler* construct(uint16 elements_per_node, bool with_aggregates) {
+        return new RTreeCutQueryHandler(elements_per_node, with_aggregates);
+    }
+    static QueryHandlerCreator Constructor(uint16 elements_per_node, bool with_aggregates) {
+        return std::tr1::bind(&RTreeCutQueryHandler::construct, elements_per_node, with_aggregates);
+    }
 
     RTreeCutQueryHandler(uint16 elements_per_node, bool with_aggregates)
      : QueryHandlerType(),

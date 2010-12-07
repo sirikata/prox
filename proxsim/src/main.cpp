@@ -35,6 +35,7 @@
 #include <prox/BruteForceQueryHandler.hpp>
 #include <prox/RTreeQueryHandler.hpp>
 #include <prox/RTreeCutQueryHandler.hpp>
+#include <prox/RebuildingQueryHandler.hpp>
 #include "ObjectLocationServiceCache.hpp"
 
 #include <iostream>
@@ -239,14 +240,26 @@ int main(int argc, char** argv) {
 
     // Setup query handler
     QueryHandler* handler = NULL;
-    if (handler_type == "rtree")
-        handler = new Prox::RTreeQueryHandler<>(branching);
-    else if (handler_type == "rtreecut")
-        handler = new Prox::RTreeCutQueryHandler<>(branching, false);
-    else if (handler_type == "rtreecutagg")
-        handler = new Prox::RTreeCutQueryHandler<>(branching, true);
-    else
-        handler = new Prox::BruteForceQueryHandler<>();
+    if (handler_type == "rtree") {
+        handler = new Prox::RebuildingQueryHandler<Prox::RTreeQueryHandler<> >(
+            Prox::RTreeQueryHandler<>::Constructor(branching)
+        );
+    }
+    else if (handler_type == "rtreecut") {
+        handler = new Prox::RebuildingQueryHandler<Prox::RTreeCutQueryHandler<> >(
+            Prox::RTreeCutQueryHandler<>::Constructor(branching, false)
+        );
+    }
+    else if (handler_type == "rtreecutagg") {
+        handler = new Prox::RebuildingQueryHandler<Prox::RTreeCutQueryHandler<> >(
+            Prox::RTreeCutQueryHandler<>::Constructor(branching, true)
+        );
+    }
+    else {
+        handler = new Prox::RebuildingQueryHandler<Prox::BruteForceQueryHandler<> >(
+            Prox::BruteForceQueryHandler<>::Constructor()
+        );
+    }
 
     Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
     Renderer* renderer = new GLRenderer(simulator, handler, display);
