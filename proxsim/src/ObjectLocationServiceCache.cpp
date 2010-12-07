@@ -52,10 +52,16 @@ void ObjectLocationServiceCache::addObject(Object* obj) {
 void ObjectLocationServiceCache::removeObject(const Object* obj) {
     ObjectMap::iterator it = mObjects.find(obj->id());
     assert( it != mObjects.end() );
-    assert( it->second.refcount == 0 );
-    mObjects.erase(it);
+    it->second.exists = false;
+
+    tryClearObject(obj);
 }
 
+void ObjectLocationServiceCache::tryClearObject(const Object* obj) {
+    ObjectMap::iterator it = mObjects.find(obj->id());
+    if (it->second.refcount == 0 && !it->second.exists)
+        mObjects.erase(it);
+}
 
 LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const ObjectID& id) {
     ObjectMap::iterator it = mObjects.find(id);
@@ -77,6 +83,8 @@ void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
 
     if (it->second.refcount == 0)
         obj->removeUpdateListener(this);
+
+    tryClearObject(obj);
 }
 
 

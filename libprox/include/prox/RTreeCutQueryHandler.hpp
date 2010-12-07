@@ -71,6 +71,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
+    typedef typename QueryHandlerType::ObjectList ObjectList;
 
     RTreeCutQueryHandler(uint16 elements_per_node, bool with_aggregates)
      : QueryHandlerType(),
@@ -78,23 +79,19 @@ public:
        mRTree(NULL),
        mLastTime(Time::null()),
        mElementsPerNode(elements_per_node),
-       mWithAggregates(with_aggregates)
+       mWithAggregates(with_aggregates),
+       mRebuilding(false)
     {
     }
 
     virtual ~RTreeCutQueryHandler() {
-        delete mRTree;
-
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
             QueryState* state = it->second;
             delete state;
         }
         mQueries.clear();
 
-        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
-            mLocCache->stopTracking(it->second);
-        }
-        mObjects.clear();
+        destroyCurrentTree();
 
         mLocCache->removeUpdateListener(this);
     }
@@ -175,7 +172,41 @@ public:
             it->second->cut->startSwapTrees();
 
         // Then rebuild
-        mRTree->rebuild(mLastTime);
+        mRebuilding = true;
+
+        ObjectList objects = allObjects();
+        bool static_objects = mRTree->staticObjects();
+
+        // Destroy current tree
+        destroyCurrentTree();
+
+        // Start tracking all objects for second tree
+        std::vector<LocCacheIterator> object_iterators;
+        object_iterators.reserve( objects.size() );
+        for(typename ObjectList::iterator it = objects.begin(); it != objects.end(); it++) {
+            LocCacheIterator loc_it = mLocCache->startTracking(*it);
+            object_iterators.push_back(loc_it);
+            mObjects[*it] = loc_it;
+        }
+
+        // Build new tree
+        using std::tr1::placeholders::_1;
+        using std::tr1::placeholders::_2;
+        using std::tr1::placeholders::_3;
+        mRTree = new RTree(
+            this,
+            mElementsPerNode, mLocCache,
+            static_objects,
+            aggregateListener(),
+            std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
+            std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
+            std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
+            std::tr1::bind(&CutNode::handleObjectInserted, _1, _2, _3),
+            std::tr1::bind(&CutNode::handleObjectRemoved, _1, _2)
+        );
+        mRTree->bulkLoad(object_iterators, mLastTime);
+
+        mRebuilding = false;
 
         // Then reinsert into the new tree
         for(typename QueryMap::iterator it = mQueries.begin(); it != mQueries.end(); it++)
@@ -228,6 +259,14 @@ public:
 
     bool containsObject(const ObjectID& obj_id) {
         return (mObjects.find(obj_id) != mObjects.end());
+    }
+
+    ObjectList allObjects() {
+        ObjectList retval;
+        retval.reserve(mObjects.size());
+        for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
+            retval.push_back(it->first);
+        return retval;
     }
 
 
@@ -306,6 +345,15 @@ protected:
     }
 
 private:
+    void destroyCurrentTree() {
+        delete mRTree;
+
+        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
+            mLocCache->stopTracking(it->second);
+        }
+        mObjects.clear();
+    }
+
     void insertObj(const ObjectID& obj_id, const Time& t) {
         mRTree->insert(mObjects[obj_id], t);
     }
@@ -1354,6 +1402,9 @@ private:
         }
 
         void handleObjectInserted(CutNode* cnode, const LocCacheIterator& objit, int objidx) {
+            // Ignore insertions/deletions during rebuild
+            if (parent->mRebuilding) return;
+
             RTreeNodeType* node = cnode->rtnode;
             assert(node->leaf());
 
@@ -1414,6 +1465,9 @@ private:
         }
 
         void handleObjectRemoved(CutNode* cnode, const LocCacheIterator& objit) {
+            // Ignore insertions/deletions during rebuild
+            if (parent->mRebuilding) return;
+
             // We just need to remove the object from the result set if we have
             // it.
             ObjectID child_id = parent->mLocCache->iteratorID(objit);
@@ -1526,6 +1580,7 @@ private:
     Time mLastTime;
     uint16 mElementsPerNode;
     bool mWithAggregates;
+    bool mRebuilding;
 }; // class RTreeCutQueryHandler
 
 } // namespace Prox

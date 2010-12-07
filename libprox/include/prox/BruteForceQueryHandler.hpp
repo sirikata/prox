@@ -67,6 +67,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
+    typedef typename QueryHandlerType::ObjectList ObjectList;
 
     BruteForceQueryHandler()
      : QueryHandlerType(),
@@ -158,6 +159,14 @@ public:
 
     bool containsObject(const ObjectID& obj_id) {
         return (mObjects.find(obj_id) != mObjects.end());
+    }
+
+    ObjectList allObjects() {
+        ObjectList retval;
+        retval.reserve(mObjects.size());
+        for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
+            retval.push_back(it->first);
+        return retval;
     }
 
     void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {

@@ -67,6 +67,7 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
+    typedef typename QueryHandlerType::ObjectList ObjectList;
 
     RTreeQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
@@ -78,12 +79,8 @@ public:
     }
 
     virtual ~RTreeQueryHandler() {
-        delete mRTree;
+        destroyCurrentTree();
 
-        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
-            mLocCache->stopTracking(it->second);
-        }
-        mObjects.clear();
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++) {
             QueryState* state = it->second;
             delete state;
@@ -182,7 +179,24 @@ public:
     }
 
     virtual void rebuild() {
-        mRTree->rebuild(mLastTime);
+        ObjectList objects = allObjects();
+        bool static_objects = mRTree->staticObjects();
+
+        // Destroy current tree
+        destroyCurrentTree();
+
+        // Start tracking all objects for second tree
+        std::vector<LocCacheIterator> object_iterators;
+        object_iterators.reserve( objects.size() );
+        for(typename ObjectList::iterator it = objects.begin(); it != objects.end(); it++) {
+            LocCacheIterator loc_it = mLocCache->startTracking(*it);
+            object_iterators.push_back(loc_it);
+            mObjects[*it] = loc_it;
+        }
+
+        // Build new tree
+        mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
+        mRTree->bulkLoad(object_iterators, mLastTime);
     }
 
     virtual float cost() {
@@ -222,6 +236,13 @@ public:
         return (mObjects.find(obj_id) != mObjects.end());
     }
 
+    ObjectList allObjects() {
+        ObjectList retval;
+        retval.reserve(mObjects.size());
+        for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
+            retval.push_back(it->first);
+        return retval;
+    }
 
     void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
@@ -283,6 +304,15 @@ protected:
     }
 
 private:
+    void destroyCurrentTree() {
+        delete mRTree;
+
+        for(ObjectSetIterator it = mObjects.begin(); it != mObjects.end(); it++) {
+            mLocCache->stopTracking(it->second);
+        }
+        mObjects.clear();
+    }
+
     void insertObj(const ObjectID& obj_id, const Time& t) {
         mRTree->insert(mObjects[obj_id], t);
     }

@@ -104,6 +104,9 @@ public:
     }
 
 
+    bool staticObjects() const { return mStaticObjects; }
+
+
     RTreeNodeType* root() {
         return mRoot;
     }
@@ -170,29 +173,17 @@ public:
         RTree_verify_constraints(mRoot, mLocCache, t);
     }
 
-    /** Perform a full rebuild of the tree. */
-    void rebuild(const Time& t) {
-        // Disable addition/removal callbacks since they are not valid during
-        // this period
-        ObjectInsertedCallback obj_ins_cb = mCallbacks.objectInserted;
-        ObjectRemovedCallback obj_rem_cb = mCallbacks.objectRemoved;
-        mCallbacks.objectInserted = 0;
-        mCallbacks.objectRemoved = 0;
+    void bulkLoad(std::vector<LocCacheIterator>& object_iterators, const Time& t) {
+        // Bulk loading requires we initialize as with inserting
+        for(typename std::vector<LocCacheIterator>::iterator objit = object_iterators.begin(); objit != object_iterators.end(); objit++)
+            mObjectLeaves[mLocCache->iteratorID(*objit)] = NULL;
 
-        // Destroy the old tree and rebuild
-        std::vector<LocCacheIterator> object_iterators;
-        RTree_collect_objects(mRoot, &object_iterators);
-        RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
+        // Then do the actual computation
         mRoot = RTree_rebuild(
             mRoot, mLocCache, t,
             object_iterators,
             mCallbacks
         );
-
-        // Re-enable the addition/removal callbacks
-        mCallbacks.objectInserted = obj_ins_cb;
-        mCallbacks.objectRemoved = obj_rem_cb;
-
         mRestructureMightHaveEffect = true;
     }
 

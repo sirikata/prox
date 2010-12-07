@@ -121,6 +121,7 @@ public:
 
     typedef std::tr1::function<void(const LocCacheIterator&, RTreeNode*)> ObjectLeafChangedCallback;
     typedef std::tr1::function<RTreeNode*(const ObjectID&)> GetObjectLeafCallback;
+
     // The root was left with only one child node, cuts on the old root need to
     // "refine" themselves to the new node by simple replacement.  Parameters
     // are the old root followed by the new root.

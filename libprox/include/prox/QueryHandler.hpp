@@ -61,6 +61,8 @@ public:
     // actually added or not.
     typedef std::tr1::function<bool(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
 
+    typedef std::vector<ObjectID> ObjectList;
+
     QueryHandler()
      : LocationUpdateListenerType(),
        QueryChangeListenerType(),
@@ -118,6 +120,25 @@ public:
     virtual void removeObject(const ObjectID& obj_id) = 0;
     /** Checks if this handler is currently tracking the given object. */
     virtual bool containsObject(const ObjectID& obj_id) = 0;
+    /** Get a list of the current objects tracked. Used for collecting the
+     * information necessary to rebuild a data structur.
+     */
+    virtual ObjectList allObjects() = 0;
+
+    /** Bulk add objects. Defaults to the naive wrapper around addObject,
+     *  but may be overridden with a more efficient implementation.
+     */
+    virtual void bulkAdd(const ObjectList& objs) {
+        for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
+            addObject(*it);
+    }
+    /** Bulk remove objects. Defaults to the naive wrapper around removeObject,
+     *  but may be overridden with a more efficient implementation.
+     */
+    virtual void bulkRemove(const ObjectList& objs) {
+        for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
+            removeObject(*it);
+    }
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
         QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);

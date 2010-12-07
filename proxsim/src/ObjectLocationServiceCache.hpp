@@ -77,14 +77,17 @@ public:
     virtual void simulatorAddedQuery(Querier* query);
     virtual void simulatorRemovedQuery(Querier* query);
 private:
+    void tryClearObject(const Object* obj);
+
     static BoundingSphere sNullBoundingSphere;
 
     struct ObjectInfo {
         Object* object;
+        bool exists;
         int refcount;
 
-        ObjectInfo() : object(NULL), refcount(0) {}
-        ObjectInfo(Object* obj) : object(obj), refcount(0) {}
+        ObjectInfo() : object(NULL), exists(false), refcount(0) {}
+        ObjectInfo(Object* obj) : object(obj), exists(true), refcount(0) {}
     };
 
     typedef std::tr1::unordered_map<ObjectID, ObjectInfo, ObjectID::Hasher> ObjectMap;
