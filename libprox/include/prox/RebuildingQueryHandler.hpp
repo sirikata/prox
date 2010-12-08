@@ -84,7 +84,7 @@ public:
 
     typedef std::tr1::function<QueryHandlerType*()> ImplConstructor;
 
-    RebuildingQueryHandler(ImplConstructor impl_cons)
+    RebuildingQueryHandler(ImplConstructor impl_cons, int batch_size)
      : QueryHandlerType(),
        mImplConstructor(impl_cons),
        mLocCache(NULL),
@@ -98,7 +98,7 @@ public:
        mRebuildingMutex(),
        mRebuildRequest(),
        mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this),
-       mMaxQueriesTransitionedPerIteration(10)
+       mMaxQueriesTransitionedPerIteration(batch_size)
     {}
 
     virtual ~RebuildingQueryHandler() {

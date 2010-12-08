@@ -242,22 +242,22 @@ int main(int argc, char** argv) {
     QueryHandler* handler = NULL;
     if (handler_type == "rtree") {
         handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeQueryHandler<>::Constructor(branching)
+            Prox::RTreeQueryHandler<>::Constructor(branching), 10
         );
     }
     else if (handler_type == "rtreecut") {
         handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeCutQueryHandler<>::Constructor(branching, false)
+            Prox::RTreeCutQueryHandler<>::Constructor(branching, false), 10
         );
     }
     else if (handler_type == "rtreecutagg") {
         handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeCutQueryHandler<>::Constructor(branching, true)
+            Prox::RTreeCutQueryHandler<>::Constructor(branching, true), 10
         );
     }
     else {
         handler = new Prox::RebuildingQueryHandler<>(
-            Prox::BruteForceQueryHandler<>::Constructor()
+            Prox::BruteForceQueryHandler<>::Constructor(), 10
         );
     }
 
