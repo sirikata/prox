@@ -47,15 +47,14 @@ namespace Prox {
  *  to continue, including addition and removal of objects and queries, while
  *  the rebuilding is in progress.
  */
-template<typename ImplQueryHandler>
+template<typename SimulationTraits = DefaultSimulationTraits>
 class RebuildingQueryHandler :
-        public QueryHandler<typename ImplQueryHandler::SimulationTraitsType>,
-        protected QueryEventListener<typename ImplQueryHandler::SimulationTraitsType>,
+        public QueryHandler<SimulationTraits>,
+        protected QueryEventListener<SimulationTraits>,
         // For children to subscribe, but we just ignore their subscriptions,
         // always passing data on ourselves anyway.
-        protected LocationUpdateProvider<typename ImplQueryHandler::SimulationTraitsType>
+        protected LocationUpdateProvider<SimulationTraits>
 {
-    typedef typename ImplQueryHandler::SimulationTraitsType SimulationTraits;
 public:
     typedef SimulationTraits SimulationTraitsType;
 
@@ -83,7 +82,7 @@ public:
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
     typedef typename QueryHandlerType::ObjectList ObjectList;
 
-    typedef std::tr1::function<ImplQueryHandler*()> ImplConstructor;
+    typedef std::tr1::function<QueryHandlerType*()> ImplConstructor;
 
     RebuildingQueryHandler(ImplConstructor impl_cons)
      : QueryHandlerType(),
@@ -132,13 +131,13 @@ public:
     virtual void addObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::addObject, _1, obj_id));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObject, _1, obj_id));
         return mPrimaryHandler->addObject(obj_id);
     }
     virtual void removeObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::removeObject, _1, obj_id));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::removeObject, _1, obj_id));
         return mPrimaryHandler->removeObject(obj_id);
     }
     virtual bool containsObject(const ObjectID& obj_id) {
@@ -181,31 +180,31 @@ public:
     virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::locationConnected, _1, obj_id, local, pos, region, maxSize));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnected, _1, obj_id, local, pos, region, maxSize));
         mPrimaryHandler->locationConnected(obj_id, local, pos, region, maxSize);
     }
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::locationPositionUpdated, _1, obj_id, old_pos, new_pos));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationPositionUpdated, _1, obj_id, old_pos, new_pos));
         mPrimaryHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
     }
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::locationRegionUpdated, _1, obj_id, old_region, new_region));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationRegionUpdated, _1, obj_id, old_region, new_region));
         mPrimaryHandler->locationRegionUpdated(obj_id, old_region, new_region);
     }
     virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::locationMaxSizeUpdated, _1, obj_id, old_maxSize, new_maxSize));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationMaxSizeUpdated, _1, obj_id, old_maxSize, new_maxSize));
         mPrimaryHandler->locationMaxSizeUpdated(obj_id, old_maxSize, new_maxSize);
     }
     virtual void locationDisconnected(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
         if (mRebuilding)
-            mDeferredOperations.push(std::tr1::bind(&ImplQueryHandler::locationDisconnected, _1, obj_id));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationDisconnected, _1, obj_id));
         mPrimaryHandler->locationDisconnected(obj_id);
     }
 
@@ -363,8 +362,8 @@ protected:
     bool mStaticObjects;
     ShouldTrackCallback mShouldTrackCB;
 
-    ImplQueryHandler* mPrimaryHandler;
-    ImplQueryHandler* mRebuildingHandler;
+    QueryHandlerType* mPrimaryHandler;
+    QueryHandlerType* mRebuildingHandler;
 
     // We need to wrap queries, so we need to maintain a mapping between the
     // query presented externally and the ones from the underlying query
@@ -387,7 +386,7 @@ protected:
     // Note that this is last to ensure initialization order
     Thread mRebuildThread;
 
-    typedef std::tr1::function<void(ImplQueryHandler*)> DeferredOperation;
+    typedef std::tr1::function<void(QueryHandlerType*)> DeferredOperation;
     std::queue<DeferredOperation> mDeferredOperations;
 }; // class RebuildingQueryHandler
 
