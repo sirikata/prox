@@ -94,11 +94,21 @@ public:
        mShouldTrackCB(0),
        mPrimaryHandler(NULL),
        mRebuildingHandler(NULL),
+       mExiting(false),
        mRebuilding(false),
-       mRebuildingThreadFinished(false)
+       mRebuildObjectList(),
+       mRebuildingMutex(),
+       mRebuildRequest(),
+       mRebuildingThreadFinished(false),
+       mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this)
     {}
 
     virtual ~RebuildingQueryHandler() {
+        // Allow other thread to exit
+        mExiting = true;
+        mRebuildRequest.notify_one();
+        mRebuildThread.join();
+
         delete mPrimaryHandler;
         delete mRebuildingHandler;
 
@@ -236,18 +246,27 @@ protected:
         mRebuilding = true;
         mRebuildingThreadFinished = false;
 
-        ObjectList objects = mPrimaryHandler->allObjects();
-        boost::thread th(&RebuildingQueryHandler::asyncRebuildThread, this, objects);
+        mRebuildObjectList = mPrimaryHandler->allObjects();
+        mRebuildRequest.notify_one();
     }
 
     // Handles the actual rebuilding.
-    void asyncRebuildThread(ObjectList objects) {
-        mRebuildingHandler = mImplConstructor();
-        mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
-        mRebuildingHandler->bulkLoad(objects);
+    void asyncRebuildThread() {
+        while(true) {
+            Lock lck(mRebuildingMutex);
+            mRebuildRequest.wait(lck);
 
-        // Process continues when main thread picks up that this flag was triggered
-        mRebuildingThreadFinished = true;
+            if (mExiting) return;
+
+            mRebuildingHandler = mImplConstructor();
+            mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
+            mRebuildingHandler->bulkLoad(mRebuildObjectList);
+            mRebuildObjectList.clear();
+
+            // Process continues when main thread picks up that this flag was
+            // triggered
+            mRebuildingThreadFinished = true;
+        }
     }
 
     void finishAsyncRebuild() {
@@ -294,8 +313,20 @@ protected:
     QueryToQueryMap mImplQueryMap; // Our query -> Impl query
     QueryToQueryMap mInvertedQueryMap; // Impl query -> our query
 
+    typedef boost::thread Thread;
+    typedef boost::mutex Mutex;
+    typedef boost::unique_lock<Mutex> Lock;
+    typedef boost::condition_variable CondVar;
+
+    bool mExiting;
     bool mRebuilding;
+    ObjectList mRebuildObjectList;
+    Mutex mRebuildingMutex;
+    CondVar mRebuildRequest;
     bool mRebuildingThreadFinished;
+    // Note that this is last to ensure initialization order
+    Thread mRebuildThread;
+
 }; // class RebuildingQueryHandler
 
 } // namespace Prox
