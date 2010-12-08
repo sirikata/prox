@@ -258,6 +258,23 @@ public:
         return retval;
     }
 
+    virtual void bulkLoad(const ObjectList& objects) {
+        bool static_objects = mRTree->staticObjects();
+        assert(mObjects.size() == 0);
+
+        // Start tracking all objects
+        std::vector<LocCacheIterator> object_iterators;
+        object_iterators.reserve( objects.size() );
+        for(typename ObjectList::const_iterator it = objects.begin(); it != objects.end(); it++) {
+            LocCacheIterator loc_it = mLocCache->startTracking(*it);
+            object_iterators.push_back(loc_it);
+            mObjects[*it] = loc_it;
+        }
+
+        mRTree->bulkLoad(object_iterators, mLastTime);
+    }
+
+
     void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 

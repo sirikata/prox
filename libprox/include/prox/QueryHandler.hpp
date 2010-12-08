@@ -135,6 +135,14 @@ public:
         for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
             addObject(*it);
     }
+    /** Bulk load objects. Defaults to the naive wrapper around addObject,
+     *  but may be overridden with a more efficient implementation.
+     *  There must be no existing objects in the QueryHandler.
+     */
+    virtual void bulkLoad(const ObjectList& objs) {
+        for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
+            addObject(*it);
+    }
     /** Bulk remove objects. Defaults to the naive wrapper around removeObject,
      *  but may be overridden with a more efficient implementation.
      */

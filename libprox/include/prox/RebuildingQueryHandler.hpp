@@ -37,6 +37,7 @@
 #include <prox/LocationServiceCache.hpp>
 #include <prox/DefaultSimulationTraits.hpp>
 #include <prox/AggregateListener.hpp>
+#include <boost/thread.hpp>
 
 namespace Prox {
 
@@ -92,7 +93,9 @@ public:
        mStaticObjects(false),
        mShouldTrackCB(0),
        mPrimaryHandler(NULL),
-       mRebuildingHandler(NULL)
+       mRebuildingHandler(NULL),
+       mRebuilding(false),
+       mRebuildingThreadFinished(false)
     {}
 
     virtual ~RebuildingQueryHandler() {
@@ -130,10 +133,17 @@ public:
     }
 
     virtual void tick(const Time& t, bool report = true) {
+        if (mRebuilding && mRebuildingThreadFinished) {
+            finishAsyncRebuild();
+        }
+
         mPrimaryHandler->tick(t, report);
     }
 
     virtual void rebuild() {
+        if (mRebuilding) return;
+
+        beginAsyncRebuild();
     }
 
     virtual float cost() {
@@ -182,9 +192,11 @@ public:
         mImplQueryMap[query]->angle(new_val);
     }
     virtual void queryDeleted(const QueryType* query) {
-        QueryType* inner_query = mImplQueryMap[query];
+        typename QueryToQueryMap::iterator it = mImplQueryMap.find(const_cast<QueryType*>(query));
+        assert( it != mImplQueryMap.end() );
+        QueryType* inner_query = it->second;
         delete inner_query;
-        mImplQueryMap.erase(query);
+        mImplQueryMap.erase(it);
         mInvertedQueryMap.erase(inner_query);
     }
 
@@ -216,6 +228,56 @@ protected:
         parent_query->pushEvents(evts);
     }
 
+
+    // The following methods implement the core of the async
+    // rebuilding algorithm.
+
+    void beginAsyncRebuild() {
+        mRebuilding = true;
+        mRebuildingThreadFinished = false;
+
+        ObjectList objects = mPrimaryHandler->allObjects();
+        boost::thread th(&RebuildingQueryHandler::asyncRebuildThread, this, objects);
+    }
+
+    // Handles the actual rebuilding.
+    void asyncRebuildThread(ObjectList objects) {
+        mRebuildingHandler = mImplConstructor();
+        mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
+        mRebuildingHandler->bulkLoad(objects);
+
+        // Process continues when main thread picks up that this flag was triggered
+        mRebuildingThreadFinished = true;
+    }
+
+    void finishAsyncRebuild() {
+        // At this stage we have both trees built, but the queries are all on
+        // the old one. We need to transition the queries over, swap the trees,
+        // and handle any outstanding object additions, updates, and removals.
+
+        QueryToQueryMap queries = mImplQueryMap;
+        mImplQueryMap.clear();
+        mInvertedQueryMap.clear();
+
+        // Swap the query handlers. This allows us to use registerQuery to get
+        // new queries into the right query handler
+        std::swap(mPrimaryHandler, mRebuildingHandler);
+
+        for(typename QueryToQueryMap::iterator qit = queries.begin(); qit != queries.end(); qit++) {
+            QueryType* real_query = qit->first;
+            QueryType* slave_query = qit->second;
+
+            delete slave_query;
+            registerQuery(real_query);
+        }
+
+        // Clear out the old handler, now in the rebuilding handler pointer
+        delete mRebuildingHandler;
+        mRebuildingHandler = NULL;
+
+        mRebuilding = false;
+    }
+
     ImplConstructor mImplConstructor;
     LocationServiceCacheType* mLocCache;
     LocationUpdateProviderType* mLocUpdateProvider;
@@ -228,10 +290,12 @@ protected:
     // We need to wrap queries, so we need to maintain a mapping between the
     // query presented externally and the ones from the underlying query
     // handlers.
-    typedef std::tr1::unordered_map<const QueryType*, QueryType*> QueryToQueryMap;
+    typedef std::tr1::unordered_map<QueryType*, QueryType*> QueryToQueryMap;
     QueryToQueryMap mImplQueryMap; // Our query -> Impl query
     QueryToQueryMap mInvertedQueryMap; // Impl query -> our query
 
+    bool mRebuilding;
+    bool mRebuildingThreadFinished;
 }; // class RebuildingQueryHandler
 
 } // namespace Prox

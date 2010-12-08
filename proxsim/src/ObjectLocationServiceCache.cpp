@@ -45,11 +45,15 @@ ObjectLocationServiceCache::~ObjectLocationServiceCache() {
 }
 
 void ObjectLocationServiceCache::addObject(Object* obj) {
+    Lock lck(mMutex);
+
     assert( mObjects.find(obj->id()) == mObjects.end() );
     mObjects[obj->id()] = ObjectInfo(obj);
 }
 
 void ObjectLocationServiceCache::removeObject(const Object* obj) {
+    Lock lck(mMutex);
+
     ObjectMap::iterator it = mObjects.find(obj->id());
     assert( it != mObjects.end() );
     it->second.exists = false;
@@ -64,6 +68,8 @@ void ObjectLocationServiceCache::tryClearObject(const Object* obj) {
 }
 
 LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const ObjectID& id) {
+    Lock lck(mMutex);
+
     ObjectMap::iterator it = mObjects.find(id);
     assert(it != mObjects.end());
 
@@ -74,6 +80,8 @@ LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const O
 }
 
 void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
+    Lock lck(mMutex);
+
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
 
@@ -118,27 +126,37 @@ const ObjectID& ObjectLocationServiceCache::iteratorID(const Iterator& id) const
 }
 
 void ObjectLocationServiceCache::addUpdateListener(LocationUpdateListenerType* listener) {
+    Lock lck(mMutex);
+
     assert( mListeners.find(listener) == mListeners.end() );
     mListeners.insert(listener);
 }
 
 void ObjectLocationServiceCache::removeUpdateListener(LocationUpdateListenerType* listener) {
+    Lock lck(mMutex);
+
     ListenerSet::iterator it = mListeners.find(listener);
     assert( it != mListeners.end() );
     mListeners.erase(it);
 }
 
 void ObjectLocationServiceCache::objectCreated(const Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
+    Lock lck(mMutex);
+
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationConnected(obj->id(), true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) {
+    Lock lck(mMutex);
+
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationPositionUpdated(obj->id(), old_pos, new_pos);
 }
 
 void ObjectLocationServiceCache::objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds) {
+    Lock lck(mMutex);
+
     BoundingSphere old_region(old_bounds.center(), 0);
     BoundingSphere new_region(new_bounds.center(), 0);
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++) {
@@ -148,6 +166,8 @@ void ObjectLocationServiceCache::objectBoundsUpdated(Object* obj, const Bounding
 }
 
 void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
+    Lock lck(mMutex);
+
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationDisconnected(obj->id());
 
@@ -155,11 +175,15 @@ void ObjectLocationServiceCache::objectDeleted(const Object* obj) {
 }
 
 void ObjectLocationServiceCache::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
+    Lock lck(mMutex);
+
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationConnected(obj->id(), true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {
+    Lock lck(mMutex);
+
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationDisconnected(obj->id());
 }

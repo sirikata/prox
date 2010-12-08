@@ -35,6 +35,7 @@
 
 #include "Object.hpp"
 #include "SimulatorListener.hpp"
+#include <boost/thread.hpp>
 
 namespace Prox {
 namespace Simulation {
@@ -92,6 +93,10 @@ private:
 
     typedef std::tr1::unordered_map<ObjectID, ObjectInfo, ObjectID::Hasher> ObjectMap;
     typedef std::tr1::unordered_set<LocationUpdateListenerType*> ListenerSet;
+
+    typedef boost::recursive_mutex Mutex;
+    typedef boost::lock_guard<Mutex> Lock;
+    Mutex mMutex;
 
     ObjectMap mObjects;
     ListenerSet mListeners;
