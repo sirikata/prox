@@ -289,6 +289,7 @@ protected:
     // Handles the actual rebuilding.
     void asyncRebuildThread() {
         while(true) {
+            // Wait for rebuild request
             Lock lck(mRebuildingMutex);
             mRebuildRequest.wait(lck);
 
@@ -302,6 +303,18 @@ protected:
             // Process continues when main thread picks up that this flag was
             // triggered
             mRebuildingThreadFinished = true;
+
+            // Wait until main thread says its done with deferred handler and we
+            // can clear it out
+            mRebuildRequest.wait(lck);
+
+            if (mExiting) return;
+
+            // Clear out the old handler, now in the rebuilding handler pointer
+            delete mRebuildingHandler;
+            mRebuildingHandler = NULL;
+
+            mRebuilding = false;
         }
     }
 
@@ -340,11 +353,8 @@ protected:
             registerQuery(real_query);
         }
 
-        // Clear out the old handler, now in the rebuilding handler pointer
-        delete mRebuildingHandler;
-        mRebuildingHandler = NULL;
-
-        mRebuilding = false;
+        // Signal other thread to clean out old handler and mark transition as finished
+        mRebuildRequest.notify_one();
     }
 
     ImplConstructor mImplConstructor;
