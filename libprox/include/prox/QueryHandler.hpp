@@ -46,6 +46,7 @@ public:
     typedef SimulationTraits SimulationTraitsType;
 
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
@@ -100,7 +101,7 @@ public:
      *                         discovered to decide whether to track them and
      *                         return them to queriers.
      */
-    virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
+    virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
 
     /** Add an object to be considered in the result set.  This method, along
      *  with ShouldTrackCallback and removeObject, allows the user to control

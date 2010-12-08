@@ -54,6 +54,15 @@ public:
 
 }; // class LocationUpdateListener
 
+template<typename SimulationTraits>
+class LocationUpdateProvider {
+public:
+    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+
+    virtual void addUpdateListener(LocationUpdateListenerType* listener) = 0;
+    virtual void removeUpdateListener(LocationUpdateListenerType* listener) = 0;
+};
+
 } // namespace Prox
 
 #endif //_PROX_OBJECT_CHANGE_LISTENER_HPP_

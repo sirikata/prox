@@ -54,6 +54,7 @@ public:
 
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
@@ -87,6 +88,7 @@ public:
     RTreeCutQueryHandler(uint16 elements_per_node, bool with_aggregates)
      : QueryHandlerType(),
        mLocCache(NULL),
+       mLocUpdateProvider(NULL),
        mRTree(NULL),
        mLastTime(Time::null()),
        mElementsPerNode(elements_per_node),
@@ -104,12 +106,13 @@ public:
 
         destroyCurrentTree();
 
-        mLocCache->removeUpdateListener(this);
+        mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb) {
+    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
-        mLocCache->addUpdateListener(this);
+        mLocUpdateProvider = loc_up_provider;
+        mLocUpdateProvider->addUpdateListener(this);
         mShouldTrackCB = should_track_cb;
 
         using std::tr1::placeholders::_1;
@@ -1583,6 +1586,7 @@ private:
     typedef typename QueryMap::const_iterator QueryMapConstIterator;
 
     LocationServiceCacheType* mLocCache;
+    LocationUpdateProviderType* mLocUpdateProvider;
     ShouldTrackCallback mShouldTrackCB;
 
     RTree* mRTree;

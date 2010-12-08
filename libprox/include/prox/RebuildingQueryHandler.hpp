@@ -49,7 +49,10 @@ namespace Prox {
 template<typename ImplQueryHandler>
 class RebuildingQueryHandler :
         public QueryHandler<typename ImplQueryHandler::SimulationTraitsType>,
-        protected QueryEventListener<typename ImplQueryHandler::SimulationTraitsType>
+        protected QueryEventListener<typename ImplQueryHandler::SimulationTraitsType>,
+        // For children to subscribe, but we just ignore their subscriptions,
+        // always passing data on ourselves anyway.
+        protected LocationUpdateProvider<typename ImplQueryHandler::SimulationTraitsType>
 {
     typedef typename ImplQueryHandler::SimulationTraitsType SimulationTraits;
 public:
@@ -57,6 +60,7 @@ public:
 
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
@@ -84,6 +88,7 @@ public:
      : QueryHandlerType(),
        mImplConstructor(impl_cons),
        mLocCache(NULL),
+       mLocUpdateProvider(NULL),
        mStaticObjects(false),
        mShouldTrackCB(0),
        mPrimaryHandler(NULL),
@@ -93,18 +98,22 @@ public:
     virtual ~RebuildingQueryHandler() {
         delete mPrimaryHandler;
         delete mRebuildingHandler;
+
+        mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    virtual void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb = 0) {
+    virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb = 0) {
         // Save for rebuilding
         mLocCache = loc_cache;
+        mLocUpdateProvider = loc_up_provider;
+        mLocUpdateProvider->addUpdateListener(this);
         mStaticObjects = static_objects;
         mShouldTrackCB = should_track_cb;
 
         // Construct
         mPrimaryHandler = mImplConstructor();
         // And pass along
-        mPrimaryHandler->initialize(mLocCache, mStaticObjects, mShouldTrackCB);
+        mPrimaryHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
     }
 
     virtual void addObject(const ObjectID& obj_id) {
@@ -180,6 +189,11 @@ public:
     }
 
 protected:
+    // LocationUpdateProvider interface. We could track these, but it is easier
+    // to just ignore them and always pass the calls on to our children.
+    virtual void addUpdateListener(LocationUpdateListenerType* listener) {}
+    virtual void removeUpdateListener(LocationUpdateListenerType* listener) {}
+
     virtual void registerQuery(QueryType* query) {
         QueryType* impl_query = mPrimaryHandler->QueryHandlerType::registerQuery(
             query->position(), query->region(), query->maxSize(), query->angle(), query->radius()
@@ -204,6 +218,7 @@ protected:
 
     ImplConstructor mImplConstructor;
     LocationServiceCacheType* mLocCache;
+    LocationUpdateProviderType* mLocUpdateProvider;
     bool mStaticObjects;
     ShouldTrackCallback mShouldTrackCB;
 

@@ -51,6 +51,7 @@ public:
 
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef Query<SimulationTraits> QueryType;
@@ -82,7 +83,8 @@ public:
 
     BruteForceQueryHandler()
      : QueryHandlerType(),
-       mLocCache(NULL)
+       mLocCache(NULL),
+       mLocUpdateProvider(NULL)
     {
     }
 
@@ -97,12 +99,13 @@ public:
         }
         mQueries.clear();
 
-        mLocCache->removeUpdateListener(this);
+        mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb) {
+    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
-        mLocCache->addUpdateListener(this);
+        mLocUpdateProvider = loc_up_provider;
+        mLocUpdateProvider->addUpdateListener(this);
         mShouldTrackCB = should_track_cb;
     }
 
@@ -246,6 +249,7 @@ private:
     typedef typename QueryMap::iterator QueryMapIterator;
 
     LocationServiceCacheType* mLocCache;
+    LocationUpdateProviderType* mLocUpdateProvider;
     ShouldTrackCallback mShouldTrackCB;
     ObjectSet mObjects;
     QueryMap mQueries;

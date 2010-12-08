@@ -51,6 +51,7 @@ public:
 
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
+    typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef Query<SimulationTraits> QueryType;
@@ -83,6 +84,7 @@ public:
     RTreeQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
+       mLocUpdateProvider(NULL),
        mRTree(NULL),
        mLastTime(Time::null()),
        mElementsPerNode(elements_per_node)
@@ -98,12 +100,13 @@ public:
         }
         mQueries.clear();
 
-        mLocCache->removeUpdateListener(this);
+        mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, bool static_objects, ShouldTrackCallback should_track_cb) {
+    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
-        mLocCache->addUpdateListener(this);
+        mLocUpdateProvider = loc_up_provider;
+        mLocUpdateProvider->addUpdateListener(this);
         mShouldTrackCB = should_track_cb;
 
         mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
@@ -365,6 +368,7 @@ private:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     LocationServiceCacheType* mLocCache;
+    LocationUpdateProviderType* mLocUpdateProvider;
     ShouldTrackCallback mShouldTrackCB;
 
     RTree* mRTree;

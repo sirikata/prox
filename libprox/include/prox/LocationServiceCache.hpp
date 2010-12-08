@@ -43,15 +43,15 @@ namespace Prox {
  * answered immediately for objects for which caching is requested.  This
  * guarantees that clients of the LocationService will always be able to get
  * the necessary information out of it, even if it is somewhat out of date.
+ * Note that LocationServiceCaches must be thread-safe.
  */
 template<typename SimulationTraits>
-class LocationServiceCache {
+class LocationServiceCache : public LocationUpdateProvider<SimulationTraits> {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
-    typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
 
     /** An Iterator is an opaque reference to an entry in the cache. Starting
      *  tracking returns an iterator which is used to efficiently access data
@@ -119,8 +119,6 @@ public:
 
     virtual const ObjectID& iteratorID(const Iterator& id) const = 0;
 
-    virtual void addUpdateListener(LocationUpdateListenerType* listener) = 0;
-    virtual void removeUpdateListener(LocationUpdateListenerType* listener) = 0;
 };
 
 } // namespace Prox
