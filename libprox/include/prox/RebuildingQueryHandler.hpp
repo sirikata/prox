@@ -93,18 +93,16 @@ public:
        mShouldTrackCB(0),
        mPrimaryHandler(NULL),
        mRebuildingHandler(NULL),
-       mExiting(false),
-       mRebuilding(false),
+       mState(IDLE),
        mRebuildObjectList(),
        mRebuildingMutex(),
        mRebuildRequest(),
-       mRebuildingThreadFinished(false),
        mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this)
     {}
 
     virtual ~RebuildingQueryHandler() {
         // Allow other thread to exit
-        mExiting = true;
+        setRebuildingState(EXITING);
         mRebuildRequest.notify_one();
         mRebuildThread.join();
 
@@ -130,13 +128,13 @@ public:
 
     virtual void addObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObject, _1, obj_id));
         return mPrimaryHandler->addObject(obj_id);
     }
     virtual void removeObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::removeObject, _1, obj_id));
         return mPrimaryHandler->removeObject(obj_id);
     }
@@ -148,7 +146,7 @@ public:
     }
 
     virtual void tick(const Time& t, bool report = true) {
-        if (mRebuilding && mRebuildingThreadFinished) {
+        if (mState == MOVING_QUERIES) {
             finishAsyncRebuild();
         }
 
@@ -156,7 +154,7 @@ public:
     }
 
     virtual void rebuild() {
-        if (mRebuilding) return;
+        if (mustDefer()) return;
 
         beginAsyncRebuild();
     }
@@ -179,31 +177,31 @@ public:
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnected, _1, obj_id, local, pos, region, maxSize));
         mPrimaryHandler->locationConnected(obj_id, local, pos, region, maxSize);
     }
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationPositionUpdated, _1, obj_id, old_pos, new_pos));
         mPrimaryHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
     }
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationRegionUpdated, _1, obj_id, old_region, new_region));
         mPrimaryHandler->locationRegionUpdated(obj_id, old_region, new_region);
     }
     virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationMaxSizeUpdated, _1, obj_id, old_maxSize, new_maxSize));
         mPrimaryHandler->locationMaxSizeUpdated(obj_id, old_maxSize, new_maxSize);
     }
     virtual void locationDisconnected(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
-        if (mRebuilding)
+        if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationDisconnected, _1, obj_id));
         mPrimaryHandler->locationDisconnected(obj_id);
     }
@@ -278,8 +276,7 @@ protected:
     // rebuilding algorithm.
 
     void beginAsyncRebuild() {
-        mRebuilding = true;
-        mRebuildingThreadFinished = false;
+        setRebuildingState(REBUILDING);
 
         mRebuildObjectList = mPrimaryHandler->allObjects();
         mRebuildRequest.notify_one();
@@ -292,7 +289,7 @@ protected:
             Lock lck(mRebuildingMutex);
             mRebuildRequest.wait(lck);
 
-            if (mExiting) return;
+            if (exiting()) return;
 
             mRebuildingHandler = mImplConstructor();
             mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
@@ -301,19 +298,19 @@ protected:
 
             // Process continues when main thread picks up that this flag was
             // triggered
-            mRebuildingThreadFinished = true;
+            setRebuildingState(MOVING_QUERIES);
 
             // Wait until main thread says its done with deferred handler and we
             // can clear it out
             mRebuildRequest.wait(lck);
 
-            if (mExiting) return;
+            if (exiting()) return;
 
             // Clear out the old handler, now in the rebuilding handler pointer
             delete mRebuildingHandler;
             mRebuildingHandler = NULL;
 
-            mRebuilding = false;
+            setRebuildingState(IDLE);
         }
     }
 
@@ -377,12 +374,29 @@ protected:
     typedef boost::unique_lock<Mutex> Lock;
     typedef boost::condition_variable CondVar;
 
-    bool mExiting;
-    bool mRebuilding;
+    enum RebuildingState {
+        IDLE,
+        REBUILDING,
+        MOVING_QUERIES,
+        EXITING
+    };
+
+    void setRebuildingState(RebuildingState s) {
+        if (mState == EXITING) return;
+        mState = s;
+    }
+
+    bool mustDefer() const {
+        return (mState == REBUILDING || mState == MOVING_QUERIES);
+    }
+    bool exiting() const {
+        return (mState == EXITING);
+    }
+
+    RebuildingState mState;
     ObjectList mRebuildObjectList;
     Mutex mRebuildingMutex;
     CondVar mRebuildRequest;
-    bool mRebuildingThreadFinished;
     // Note that this is last to ensure initialization order
     Thread mRebuildThread;
 
