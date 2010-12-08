@@ -97,7 +97,8 @@ public:
        mRebuildObjectList(),
        mRebuildingMutex(),
        mRebuildRequest(),
-       mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this)
+       mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this),
+       mMaxQueriesTransitionedPerIteration(10)
     {}
 
     virtual ~RebuildingQueryHandler() {
@@ -128,46 +129,67 @@ public:
 
     virtual void addObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->addObject(obj_id);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObject, _1, obj_id));
-        return mPrimaryHandler->addObject(obj_id);
+        else if (mustDuplicate())
+            mRebuildingHandler->addObject(obj_id);
     }
     virtual void removeObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->removeObject(obj_id);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::removeObject, _1, obj_id));
-        return mPrimaryHandler->removeObject(obj_id);
+        else if (mustDuplicate())
+            mRebuildingHandler->removeObject(obj_id);
     }
     virtual bool containsObject(const ObjectID& obj_id) {
-        return mPrimaryHandler->containsObject(obj_id);
+        if (mPrimaryHandler->containsObject(obj_id))
+            return true;
+        if (mustDuplicate() && mRebuildingHandler->containsObject(obj_id))
+            return true;
+        return false;
     }
+
     virtual ObjectList allObjects() {
-        return mPrimaryHandler->allObjects();
+        ObjectList results = mPrimaryHandler->allObjects();
+        if (mustDuplicate()) {
+            ObjectList second_results = mRebuildingHandler->allObjects();
+            results.insert(results.begin(), second_results.begin(), second_results.end());
+        }
+        return results;
     }
 
     virtual void tick(const Time& t, bool report = true) {
-        if (mState == MOVING_QUERIES) {
-            finishAsyncRebuild();
-        }
+        if (mState == BEGIN_MOVING_QUERIES)
+            startSwappingQueries();
+
+        if (mState == MOVING_QUERIES)
+            swapSomeQueries();
 
         mPrimaryHandler->tick(t, report);
+        if (mustDuplicate())
+            mRebuildingHandler->tick(t, report);
     }
 
     virtual void rebuild() {
-        if (mustDefer()) return;
+        if (mState != IDLE) return;
 
         beginAsyncRebuild();
     }
 
     virtual float cost() {
+        // Cost always considers the primary handler -- its not
+        // obvious how to combine the costs and we're targetting the
+        // primary handler anyway.
         return mPrimaryHandler->cost();
     }
 
     virtual uint32 numObjects() const {
-        return mPrimaryHandler->numObjects();
+        return mPrimaryHandler->numObjects() + (mustDuplicate() ? mRebuildingHandler->numObjects() : 0);
     }
     virtual uint32 numQueries() const {
-        return mPrimaryHandler->numQueries();
+        return mPrimaryHandler->numQueries() + (mustDuplicate() ? mRebuildingHandler->numQueries() : 0);
     }
 
     virtual LocationServiceCacheType* locationCache() const {
@@ -177,33 +199,44 @@ public:
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationConnected(obj_id, local, pos, region, maxSize);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnected, _1, obj_id, local, pos, region, maxSize));
-        mPrimaryHandler->locationConnected(obj_id, local, pos, region, maxSize);
+        else if (mustDuplicate())
+            mRebuildingHandler->locationConnected(obj_id, local, pos, region, maxSize);
     }
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationPositionUpdated, _1, obj_id, old_pos, new_pos));
-        mPrimaryHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
+        else if (mustDuplicate())
+            mRebuildingHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
+
     }
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationRegionUpdated(obj_id, old_region, new_region);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationRegionUpdated, _1, obj_id, old_region, new_region));
-        mPrimaryHandler->locationRegionUpdated(obj_id, old_region, new_region);
+        else if (mustDuplicate())
+            mRebuildingHandler->locationRegionUpdated(obj_id, old_region, new_region);
     }
     virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationMaxSizeUpdated(obj_id, old_maxSize, new_maxSize);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationMaxSizeUpdated, _1, obj_id, old_maxSize, new_maxSize));
-        mPrimaryHandler->locationMaxSizeUpdated(obj_id, old_maxSize, new_maxSize);
+        else if (mustDuplicate())
+            mRebuildingHandler->locationMaxSizeUpdated(obj_id, old_maxSize, new_maxSize);
     }
     virtual void locationDisconnected(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationDisconnected(obj_id);
         if (mustDefer())
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationDisconnected, _1, obj_id));
-        mPrimaryHandler->locationDisconnected(obj_id);
+        else if (mustDuplicate())
+            mRebuildingHandler->locationDisconnected(obj_id);
     }
 
     // QueryChangeListener
@@ -246,7 +279,6 @@ protected:
     }
 
 
-
     // LocationUpdateProvider interface. We could track these, but it is easier
     // to just ignore them and always pass the calls on to our children.
     virtual void addUpdateListener(LocationUpdateListenerType* listener) {}
@@ -267,6 +299,8 @@ protected:
 
     virtual void queryHasEvents(QueryType* query) {
         // Lookup the parent and forward the events
+        assert(mInvertedQueryMap.find(query) != mInvertedQueryMap.end());
+
         QueryType* parent_query = mInvertedQueryMap[query];
         moveQueryEvents(query, parent_query);
     }
@@ -298,13 +332,15 @@ protected:
 
             // Process continues when main thread picks up that this flag was
             // triggered
-            setRebuildingState(MOVING_QUERIES);
+            setRebuildingState(BEGIN_MOVING_QUERIES);
 
             // Wait until main thread says its done with deferred handler and we
             // can clear it out
             mRebuildRequest.wait(lck);
 
             if (exiting()) return;
+
+            assert(mState == DELETING_OLD_HANDLER);
 
             // Clear out the old handler, now in the rebuilding handler pointer
             delete mRebuildingHandler;
@@ -314,29 +350,39 @@ protected:
         }
     }
 
-    void finishAsyncRebuild() {
+    void startSwappingQueries() {
         // At this stage we have both trees built, but the queries are all on
         // the old one. We need to transition the queries over, swap the trees,
         // and handle any outstanding object additions, updates, and removals.
 
-        QueryToQueryMap queries = mImplQueryMap;
-        mImplQueryMap.clear();
-        mInvertedQueryMap.clear();
+        setRebuildingState(MOVING_QUERIES);
+
+        // Run deferred operations on the new tree
+        while(!mDeferredOperations.empty()) {
+            mDeferredOperations.front()(mRebuildingHandler);
+            mDeferredOperations.pop();
+        }
+
+        mUntransitionedQueries = mImplQueryMap;
+        mQueryTransitionIt = mUntransitionedQueries.begin();
 
         // Swap the query handlers. This allows us to use registerQuery to get
         // new queries into the right query handler
         std::swap(mPrimaryHandler, mRebuildingHandler);
+    }
 
-        // Run deferred operations
-        while(!mDeferredOperations.empty()) {
-            mDeferredOperations.front()(mPrimaryHandler);
-            mDeferredOperations.pop();
-        }
-
+    void swapSomeQueries() {
         // Move queries to new handler
-        for(typename QueryToQueryMap::iterator qit = queries.begin(); qit != queries.end(); qit++) {
-            QueryType* real_query = qit->first;
-            QueryType* slave_query = qit->second;
+        int count = 0;
+        while (mQueryTransitionIt != mUntransitionedQueries.end() && count < mMaxQueriesTransitionedPerIteration) {
+            QueryType* real_query = mQueryTransitionIt->first;
+            QueryType* slave_query = mQueryTransitionIt->second;
+
+            // Remove old maps for this query
+            assert(mImplQueryMap.find(real_query) != mImplQueryMap.end());
+            assert(mInvertedQueryMap.find(slave_query) != mImplQueryMap.end());
+            mImplQueryMap.erase(real_query);
+            mInvertedQueryMap.erase(slave_query);
 
             // Destroy in two phases. First do simple destruction so we get
             // removal events for everything left in the query.
@@ -347,10 +393,21 @@ protected:
 
             // And finally, register the new one to start picking up new results.
             registerQuery(real_query);
+
+            mQueryTransitionIt++;
+            count++;
         }
 
-        // Signal other thread to clean out old handler and mark transition as finished
-        mRebuildRequest.notify_one();
+        // When we finish processing all these, trigger the next stage
+        // of processing -- deleting the old
+        if (mQueryTransitionIt == mUntransitionedQueries.end()) {
+            mUntransitionedQueries.clear();
+            mQueryTransitionIt = mUntransitionedQueries.end();
+
+            setRebuildingState(DELETING_OLD_HANDLER);
+            // Signal other thread to clean out old handler and mark transition as finished
+            mRebuildRequest.notify_one();
+        }
     }
 
     ImplConstructor mImplConstructor;
@@ -377,7 +434,9 @@ protected:
     enum RebuildingState {
         IDLE,
         REBUILDING,
+        BEGIN_MOVING_QUERIES,
         MOVING_QUERIES,
+        DELETING_OLD_HANDLER,
         EXITING
     };
 
@@ -387,7 +446,10 @@ protected:
     }
 
     bool mustDefer() const {
-        return (mState == REBUILDING || mState == MOVING_QUERIES);
+        return (mState == REBUILDING || mState == BEGIN_MOVING_QUERIES);
+    }
+    bool mustDuplicate() const {
+        return (mState == MOVING_QUERIES);
     }
     bool exiting() const {
         return (mState == EXITING);
@@ -402,6 +464,11 @@ protected:
 
     typedef std::tr1::function<void(QueryHandlerType*)> DeferredOperation;
     std::queue<DeferredOperation> mDeferredOperations;
+
+    QueryToQueryMap mUntransitionedQueries;
+    typename QueryToQueryMap::iterator mQueryTransitionIt;
+
+    int mMaxQueriesTransitionedPerIteration;
 }; // class RebuildingQueryHandler
 
 } // namespace Prox
