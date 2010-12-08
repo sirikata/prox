@@ -59,6 +59,8 @@ class LocationUpdateProvider {
 public:
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
 
+    virtual ~LocationUpdateProvider() {}
+
     virtual void addUpdateListener(LocationUpdateListenerType* listener) = 0;
     virtual void removeUpdateListener(LocationUpdateListenerType* listener) = 0;
 };
