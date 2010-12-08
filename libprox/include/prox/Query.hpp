@@ -63,8 +63,29 @@ public:
     typedef int ID;
 
     ~Query() {
+        if (mValid)
+            destroy(true);
+
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
             (*it)->queryDeleted(this);
+    }
+
+    /** Clear this query and disable the ability to change any of its
+     *  values. Any remaining query results are added before the method returns
+     *  and no further notifications about query event availability will be
+     *  made.  If implicit == true, then the objects still in the result set do
+     *  not have events created to remove them -- i.e. this method returns
+     *  without changing the result set at all. This mode is used by the
+     *  destructor since results cannot be collected after it exits, but can
+     *  also be used if you do not need those updates but still need the query
+     *  data (e.g. position, query angle, etc).
+     */
+    void destroy(bool implicit = false) {
+        assert(mValid);
+        mValid = false;
+
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryDestroyed(this, implicit);
     }
 
     QueryHandlerType* handler() const { return mParent; }
@@ -91,6 +112,7 @@ public:
     }
 
     void position(const MotionVector3& new_pos) {
+        assert(mValid);
         MotionVector3 old_pos = mPosition;
         mPosition = new_pos;
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
@@ -98,6 +120,7 @@ public:
     }
 
     void region(const BoundingSphere& new_region) {
+        assert(mValid);
         BoundingSphere old_region = mRegion;
         mRegion = new_region;
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
@@ -105,6 +128,7 @@ public:
     }
 
     void maxSize(real new_ms) {
+        assert(mValid);
         real old_ms = mMaxSize;
         mMaxSize = new_ms;
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
@@ -112,6 +136,7 @@ public:
     }
 
     void angle(const SolidAngle& new_angle) {
+        assert(mValid);
         SolidAngle old_angle = mMinSolidAngle;
         mMinSolidAngle = new_angle;
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
@@ -147,7 +172,7 @@ public:
             mNotified = true;
         }
 
-        if (mEventListener != NULL)
+        if (mEventListener != NULL && mValid)
             mEventListener->queryHasEvents(this);
     }
 
@@ -165,7 +190,7 @@ public:
             mNotified = true;
         }
 
-        if (mEventListener != NULL)
+        if (mEventListener != NULL && mValid)
             mEventListener->queryHasEvents(this);
     }
 
@@ -190,6 +215,7 @@ protected:
        mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(SimulationTraits::InfiniteRadius),
+       mValid(true),
        mChangeListeners(),
        mEventListener(NULL),
        mNotified(false)
@@ -204,6 +230,7 @@ protected:
        mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(radius),
+       mValid(true),
        mNotified(false)
     {
     }
@@ -216,6 +243,10 @@ protected:
     real mMaxSize;
     SolidAngle mMinSolidAngle;
     real mMaxRadius;
+
+    // Whether this query is still valid. The query may be invalid (removed from
+    // the query handler) but still hold remaining result events.
+    bool mValid;
 
     typedef std::list<QueryChangeListenerType*> ChangeListenerList;
     typedef typename ChangeListenerList::iterator ChangeListenerListIterator;

@@ -319,12 +319,24 @@ public:
         // XXX FIXME
     }
 
-    void queryDeleted(const QueryType* query) {
+    void queryDestroyed(QueryType* query, bool implicit) {
         QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );
         QueryState* state = it->second;
+
+        // Fill in removal events if they aren't implicit
+        if (!implicit) {
+            QueryCacheType emptycache;
+            std::deque<QueryEventType> events;
+            state->cache.exchange(emptycache, &events);
+            query->pushEvents(events);
+        }
+
         delete state;
         mQueries.erase(it);
+    }
+
+    void queryDeleted(const QueryType* query) {
     }
 
 protected:

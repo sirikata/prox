@@ -54,6 +54,9 @@ public:
     virtual void queryRegionChanged(QueryType* query, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
     virtual void queryMaxSizeChanged(QueryType* query, real old_ms, real new_ms) = 0;
     virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) = 0;
+    // If implicit is true, then the query was destroyed as part of the deletion
+    // process and nobody will be able to collect any more results from the query.
+    virtual void queryDestroyed(QueryType* query, bool implicit) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
 
 }; // class QueryChangeListener

@@ -337,15 +337,26 @@ public:
         // XXX FIXME
     }
 
-    void queryDeleted(const QueryType* query) {
+    void queryDestroyed(QueryType* query, bool implicit) {
         QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );
         QueryState* state = it->second;
+
+        // Fill in removal events if they aren't implicit
+        if (!implicit) {
+            QueryEventType rem_evt;
+            state->cut->destroyCut(rem_evt);
+            query->pushEvent(rem_evt);
+        }
+
         delete state;
         mQueries.erase(it);
 
         mRTree->verifyConstraints(mLastTime);
         validateCuts();
+    }
+
+    void queryDeleted(const QueryType* query) {
     }
 
 protected:
@@ -1506,15 +1517,8 @@ private:
         }
 
 
-        // In order to swap trees, we need to get cuts out of the way and
-        // replace them with the root of the new tree.  In order to not have
-        // both trees in memory at the same time, we split this into two
-        // phases. The first removes the cut from the original tree, the second
-        // finishes the process by adding it to the new tree and adding the
-        // updates to the result set.
-
-        void startSwapTrees() {
-            // First, remove all the
+        // Fills in an event that corresponds to destroying the entire cut.
+        void destroyCut(QueryEventType& destroyEvent) {
             // Run through the cut, adding removals to the result event
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {
                 CutNode* cnode = *it;
@@ -1540,6 +1544,17 @@ private:
             }
             nodes.clear();
             length = 0;
+        }
+
+        // In order to swap trees, we need to get cuts out of the way and
+        // replace them with the root of the new tree.  In order to not have
+        // both trees in memory at the same time, we split this into two
+        // phases. The first removes the cut from the original tree, the second
+        // finishes the process by adding it to the new tree and adding the
+        // updates to the result set.
+
+        void startSwapTrees() {
+            destroyCut(swapEvent);
         }
 
         void finishSwapTrees(RTreeNodeType* new_root) {

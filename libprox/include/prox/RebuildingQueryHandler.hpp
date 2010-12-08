@@ -201,16 +201,34 @@ public:
     virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) {
         mImplQueryMap[query]->angle(new_val);
     }
-    virtual void queryDeleted(const QueryType* query) {
+    virtual void queryDestroyed(QueryType* query, bool implicit) {
         typename QueryToQueryMap::iterator it = mImplQueryMap.find(const_cast<QueryType*>(query));
         assert( it != mImplQueryMap.end() );
         QueryType* inner_query = it->second;
+
+        // If necessary, destroy inner query manually to pick up closing events
+        if (!implicit) {
+            inner_query->destroy();
+            moveQueryEvents(inner_query, query);
+        }
+
         delete inner_query;
         mImplQueryMap.erase(it);
         mInvertedQueryMap.erase(inner_query);
     }
+    virtual void queryDeleted(const QueryType* query) {
+    }
 
 protected:
+    // Helper to move queries from implementation query to user's query
+    void moveQueryEvents(QueryType* from_query, QueryType* to_query) {
+        std::deque<QueryEventType> evts;
+        from_query->popEvents(evts);
+        to_query->pushEvents(evts);
+    }
+
+
+
     // LocationUpdateProvider interface. We could track these, but it is easier
     // to just ignore them and always pass the calls on to our children.
     virtual void addUpdateListener(LocationUpdateListenerType* listener) {}
@@ -232,10 +250,7 @@ protected:
     virtual void queryHasEvents(QueryType* query) {
         // Lookup the parent and forward the events
         QueryType* parent_query = mInvertedQueryMap[query];
-
-        std::deque<QueryEventType> evts;
-        query->popEvents(evts);
-        parent_query->pushEvents(evts);
+        moveQueryEvents(query, parent_query);
     }
 
 
@@ -286,7 +301,14 @@ protected:
             QueryType* real_query = qit->first;
             QueryType* slave_query = qit->second;
 
+            // Destroy in two phases. First do simple destruction so we get
+            // removal events for everything left in the query.
+            slave_query->destroy();
+            moveQueryEvents(slave_query, real_query);
+            // Then actually delete the query since we don't want it anymore
             delete slave_query;
+
+            // And finally, register the new one to start picking up new results.
             registerQuery(real_query);
         }
 
