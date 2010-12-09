@@ -285,6 +285,12 @@ protected:
     virtual void removeUpdateListener(LocationUpdateListenerType* listener) {}
 
     virtual void registerQuery(QueryType* query) {
+        registerQuery(query, true);
+    }
+    virtual void registerQuery(QueryType* query, bool is_new) {
+        if (is_new)
+            query->addChangeListener(this);
+
         QueryType* impl_query = mPrimaryHandler->QueryHandlerType::registerQuery(
             query->position(), query->region(), query->maxSize(), query->angle(), query->radius()
         );
@@ -392,7 +398,7 @@ protected:
             delete slave_query;
 
             // And finally, register the new one to start picking up new results.
-            registerQuery(real_query);
+            registerQuery(real_query, false);
 
             mQueryTransitionIt++;
             count++;
