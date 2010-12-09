@@ -384,6 +384,13 @@ protected:
             QueryType* real_query = mQueryTransitionIt->first;
             QueryType* slave_query = mQueryTransitionIt->second;
 
+            // The query may have been removed since we grabbed this
+            // information, check that it is still valid.
+            if (mImplQueryMap.find(real_query) == mImplQueryMap.end()) {
+                mQueryTransitionIt++;
+                continue;
+            }
+
             // Remove old maps for this query
             assert(mImplQueryMap.find(real_query) != mImplQueryMap.end());
             assert(mInvertedQueryMap.find(slave_query) != mImplQueryMap.end());
