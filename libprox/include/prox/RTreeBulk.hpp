@@ -281,6 +281,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb
 )
 {
+    if (object_iterators.empty()) return root;
+
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::Vector3Type Vector3;
