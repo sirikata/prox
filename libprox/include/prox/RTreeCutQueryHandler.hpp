@@ -1527,7 +1527,7 @@ private:
                 // Try to remove the node itself
                 size_t node_removed = results.erase(node->aggregateID());
                 if (node_removed > 0)
-                    swapEvent.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Imposter) );
+                    destroyEvent.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Imposter) );
 
                 // And, if its a leaf, try to remove its children
                 if (node->leaf() && node_removed == 0) {
@@ -1535,7 +1535,7 @@ private:
                         ObjectID leaf_id = parent->mLocCache->iteratorID(node->object(leaf_idx).object);
                         size_t leaf_removed = results.erase(leaf_id);
                         if (leaf_removed > 0)
-                            swapEvent.removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal) );
+                            destroyEvent.removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal) );
                     }
                 }
 
