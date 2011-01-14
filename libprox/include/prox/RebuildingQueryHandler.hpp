@@ -53,7 +53,11 @@ class RebuildingQueryHandler :
         protected QueryEventListener<SimulationTraits>,
         // For children to subscribe, but we just ignore their subscriptions,
         // always passing data on ourselves anyway.
-        protected LocationUpdateProvider<SimulationTraits>
+        protected LocationUpdateProvider<SimulationTraits>,
+        // To properly handle AggregateListener notifications, we need to listen for
+        // updates from the children and pass them along, substituting our own
+        // pointer as the origin
+        protected AggregateListener<SimulationTraits>
 {
 public:
     typedef SimulationTraits SimulationTraitsType;
@@ -124,6 +128,7 @@ public:
         // Construct
         mPrimaryHandler = mImplConstructor();
         // And pass along
+        mPrimaryHandler->setAggregateListener(this);
         mPrimaryHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
     }
 
@@ -332,6 +337,7 @@ protected:
             if (exiting()) return;
 
             mRebuildingHandler = mImplConstructor();
+            mRebuildingHandler->setAggregateListener(this);
             mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
             mRebuildingHandler->bulkLoad(mRebuildObjectList);
             mRebuildObjectList.clear();
@@ -422,6 +428,33 @@ protected:
             mRebuildRequest.notify_one();
         }
     }
+
+    // AggregateListener Interface - just need to pass these along
+    virtual void aggregateCreated(QueryHandlerType* handler, const ObjectID& objid) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateCreated(this, objid);
+    }
+    virtual void aggregateChildAdded(QueryHandlerType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateChildAdded(this, objid, child, bnds);
+    }
+    virtual void aggregateChildRemoved(QueryHandlerType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateChildRemoved(this, objid, child, bnds);
+    }
+    virtual void aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectID& objid, const BoundingSphere& bnds) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateBoundsUpdated(this, objid, bnds);
+    }
+    virtual void aggregateDestroyed(QueryHandlerType* handler, const ObjectID& objid) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateDestroyed(this, objid);
+    }
+    virtual void aggregateObserved(QueryHandlerType* handler, const ObjectID& objid, uint32 nobservers) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateObserved(this, objid, nobservers);
+    }
+
 
     ImplConstructor mImplConstructor;
     LocationServiceCacheType* mLocCache;
