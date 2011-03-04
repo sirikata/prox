@@ -396,7 +396,7 @@ private:
     }
 
 	///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
-    template <class XSimulationTraits=typename SimulationTraits>struct CutNode;
+    template <class XSimulationTraits>struct CutNode;
     struct Cut;
 
 #if RTREE_DATA == RTREE_DATA_BOUNDS
@@ -413,10 +413,10 @@ private:
 
         Cut* parent;
 		typedef typename Prox::RTree<XSimulationTraits, NodeData, CutNode<SimulationTraits> >::RTreeNodeType RTreeNodeType;
-		typename RTreeNodeType * rtnode;
+		RTreeNodeType * rtnode;
         bool satisfies;
 
-        CutNode(QueryHandlerType* handler, Cut* _parent, typename RTreeNodeType* _rt, AggregateListenerType* listener)
+        CutNode(QueryHandlerType* handler, Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
          : parent(_parent),
            rtnode(_rt),
            satisfies(false)
