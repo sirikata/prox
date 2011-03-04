@@ -124,11 +124,11 @@ public:
             mElementsPerNode, mLocCache,
             static_objects,
             aggregateListener(),
-            std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
-            std::tr1::bind(&CutNode::handleObjectInserted, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleObjectRemoved, _1, _2)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2)
         );
     }
 
@@ -212,11 +212,11 @@ public:
             mElementsPerNode, mLocCache,
             static_objects,
             aggregateListener(),
-            std::tr1::bind(&CutNode::handleRootReplaced, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleSplit, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleLiftCut, _1, _2),
-            std::tr1::bind(&CutNode::handleObjectInserted, _1, _2, _3),
-            std::tr1::bind(&CutNode::handleObjectRemoved, _1, _2)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2)
         );
         mRTree->bulkLoad(object_iterators, mLastTime);
 
@@ -395,27 +395,28 @@ private:
         mRTree->erase(mObjects[obj_id], t);
     }
 
-
-    struct CutNode;
+	///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
+    template <class XSimulationTraits=typename SimulationTraits>struct CutNode;
     struct Cut;
 
 #if RTREE_DATA == RTREE_DATA_BOUNDS
-    typedef BoundingSphereData<SimulationTraits, CutNode> NodeData;
+    typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #elif RTREE_DATA == RTREE_DATA_MAXSIZE
-    typedef MaxSphereData<SimulationTraits, CutNode> NodeData;
+    typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #endif
-    typedef Prox::RTree<SimulationTraits, NodeData, CutNode> RTree;
+    typedef Prox::RTree<SimulationTraits, NodeData, CutNode<SimulationTraits> > RTree;
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
-
-    struct CutNode {
+    ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
+    template <class XSimulationTraits>struct CutNode {
         typedef Cut CutType;
 
         Cut* parent;
-        RTreeNodeType* rtnode;
+		typedef typename Prox::RTree<XSimulationTraits, NodeData, CutNode<SimulationTraits> >::RTreeNodeType RTreeNodeType;
+		typename RTreeNodeType * rtnode;
         bool satisfies;
 
-        CutNode(QueryHandlerType* handler, Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
+        CutNode(QueryHandlerType* handler, Cut* _parent, typename RTreeNodeType* _rt, AggregateListenerType* listener)
          : parent(_parent),
            rtnode(_rt),
            satisfies(false)
@@ -469,7 +470,7 @@ private:
         RTreeCutQueryHandler* parent;
         QueryType* query;
         // A cut is made up of a list of CutNodes
-        typedef std::list<CutNode*> CutNodeList;
+        typedef std::list<CutNode<SimulationTraits>*> CutNodeList;
         typedef typename CutNodeList::iterator CutNodeListIterator;
         typedef typename CutNodeList::const_iterator CutNodeListConstIterator;
         CutNodeList nodes;
@@ -506,7 +507,7 @@ private:
         }
 
         CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it, QueryEventType* qevt_out) {
-            CutNode* parent_cn = *parent_it;
+            CutNode<SimulationTraits>* parent_cn = *parent_it;
             assert(!parent_cn->leaf());
             // Inserts before, so get next it
             CutNodeListIterator next_it = parent_it;
@@ -519,7 +520,7 @@ private:
                     qevt_out->additions().push_back( typename QueryEventType::Addition(child_rtnode->aggregateID(), QueryEventType::Imposter) );
                     results.insert(child_rtnode->aggregateID());
                 }
-                next_it = nodes.insert(next_it, new CutNode(parent, this, child_rtnode, parent->aggregateListener()));
+                next_it = nodes.insert(next_it, new CutNode<SimulationTraits>(parent, this, child_rtnode, parent->aggregateListener()));
             }
             // Delete old node
             if (qevt_out) {
@@ -536,7 +537,7 @@ private:
 
         // Replace the children of a leaf node (i.e. objects) with the
         // node itself.  Just adjusts the result set since
-        void replaceLeafChildrenWithParent(CutNode* cnode, QueryEventType* qevt_out) {
+        void replaceLeafChildrenWithParent(CutNode<SimulationTraits>* cnode, QueryEventType* qevt_out) {
             RTreeNodeType* node = cnode->rtnode;
             assert(node->leaf());
             // At leaves, if the aggregate wasn't in the results (either
@@ -576,11 +577,11 @@ private:
             // the iterator passed in.
             CutNodeListIterator parent_insert_it = child_it;
             parent_insert_it++;
-            CutNodeListIterator parent_it = nodes.insert(parent_insert_it, new CutNode(parent, this, parent_rtnode, parent->aggregateListener()));
+            CutNodeListIterator parent_it = nodes.insert(parent_insert_it, new CutNode<SimulationTraits>(parent, this, parent_rtnode, parent->aggregateListener()));
 
             // Work backwards removing all the children.
             for(int i = nchildren-1; i >=0; i--) {
-                CutNode* child_cn = (*child_it);
+                CutNode<SimulationTraits>* child_cn = (*child_it);
                 RTreeNodeType* child_rtnode = child_cn->rtnode;
                 assert(child_rtnode->parent() == parent_rtnode);
                 assert(parent_rtnode->node(i) == child_rtnode);
@@ -634,7 +635,7 @@ private:
         // only makes sense for aggregates.  It should be used when one of the
         // child objects satisfies the constraints and therefore pulls all the
         // children in with it. Should not be used for non-leaf nodes.
-        void replaceParentWithChildrenResults(CutNode* cnode) {
+        void replaceParentWithChildrenResults(CutNode<SimulationTraits>* cnode) {
             QueryEventType evt;
             for(int i = 0; i < cnode->rtnode->size(); i++) {
                 ObjectID child_id = parent->mLocCache->iteratorID(cnode->rtnode->object(i).object);
@@ -694,7 +695,7 @@ private:
 
         // Utility that removes and destroys a cut node, and removes results it
         // had triggered from the result set.
-        void destroyCutNode(CutNode* node, QueryEventType& evt) {
+        void destroyCutNode(CutNode<SimulationTraits>* node, QueryEventType& evt) {
             if (parent->mWithAggregates) {
                 // When dealing with aggregates, we first check if the
                 // node itself is in the result set since if it is, none
@@ -723,7 +724,7 @@ private:
 
         void validateCutNodesInRTreeNodes() const {
             for(CutNodeListConstIterator it = nodes.begin(); it != nodes.end(); it++) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
                 RTreeNodeType* rtnode = node->rtnode;
                 assert(rtnode->findCutNode(node) != rtnode->cutNodesEnd());
             }
@@ -732,11 +733,11 @@ private:
         void validateCutNodesInTree() const {
             // Get the root base on the first cut node.  Even if this one is
             // broken, we'll be able to tell that the trees have become disjoint
-            CutNode* first_cut_node = *(nodes.begin());
+            CutNode<SimulationTraits>* first_cut_node = *(nodes.begin());
             RTreeNodeType* root = _get_root(first_cut_node->rtnode);
 
             for(CutNodeListConstIterator it = nodes.begin(); it != nodes.end(); it++) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
                 assert(_is_ancestor(node->rtnode, root));
             }
         };
@@ -745,9 +746,9 @@ private:
         // ancestors of each other.
         void validateCutNodesUnrelated() const {
             for(CutNodeListConstIterator it = nodes.begin(); it != nodes.end(); it++) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
                 for(CutNodeListConstIterator other_it = nodes.begin(); other_it != nodes.end(); other_it++) {
-                    CutNode* other_node = *other_it;
+                    CutNode<SimulationTraits>* other_node = *other_it;
                     if (node == other_node) continue;
                     assert( ! _is_ancestor(node->rtnode, other_node->rtnode) );
                     assert( ! _is_ancestor(other_node->rtnode, node->rtnode) );
@@ -766,7 +767,7 @@ private:
             bool had_cut = false;
             typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
             if (node_its != root->cutNodesEnd()) {
-                CutNode* cnode = node_its->second;
+                CutNode<SimulationTraits>* cnode = node_its->second;
                 assert(cnode->parent == this);
                 inorder.push_back(cnode);
                 had_cut = true;
@@ -804,7 +805,7 @@ private:
             // First, check for a cut node at this bvh node
             typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(this);
             if (node_its != root->cutNodesEnd()) {
-                CutNode* cnode = node_its->second;
+                CutNode<SimulationTraits>* cnode = node_its->second;
                 assert(cnode->parent == this);
                 destroyCutNode(cnode, evt);
             }
@@ -869,7 +870,7 @@ private:
                 // If we're the root and all children were empty, fill in a
                 // CutNode for us.
                 if (treat_as_root) {
-                    CutNode* new_cnode = new CutNode(parent, this, root, parent->aggregateListener());
+                    CutNode<SimulationTraits>* new_cnode = new CutNode<SimulationTraits>(parent, this, root, parent->aggregateListener());
                     if (parent->mWithAggregates) {
                         evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
                         results.insert(new_cnode->rtnode->aggregateID());
@@ -882,7 +883,7 @@ private:
                 if (children_results[i] == true) // Already filled
                     continue;
                 // Add a CutNode for this child
-                CutNode* new_cnode = new CutNode(parent, this, root->node(i), parent->aggregateListener());
+                CutNode<SimulationTraits>* new_cnode = new CutNode<SimulationTraits>(parent, this, root->node(i), parent->aggregateListener());
                 if (parent->mWithAggregates) {
                     evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
                     results.insert(new_cnode->rtnode->aggregateID());
@@ -931,8 +932,8 @@ private:
             assert(nodes_inorder.size() == nodes.size());
             for(CutNodeListConstIterator it = nodes.begin(), other_it = nodes_inorder.begin();
                 it != nodes.end(); it++, other_it++) {
-                CutNode* node = *it;
-                CutNode* othernode = *other_it;
+                CutNode<SimulationTraits>* node = *it;
+                CutNode<SimulationTraits>* othernode = *other_it;
                 assert(node == othernode);
             }
         };
@@ -961,7 +962,7 @@ private:
         void validateResultsMatchCut() {
             ResultSet accounted;
             for(CutNodeListConstIterator it = nodes.begin(); it != nodes.end(); it++) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
                 RTreeNodeType* rtnode = node->rtnode;
                 if (parent->mWithAggregates) {
                     // Check for the aggregate and invalidate children
@@ -1015,7 +1016,7 @@ private:
                 results.insert(root->aggregateID());
                 events.push_back(evt);
             }
-            nodes.push_back(new CutNode(parent, this, root, parent->aggregateListener()));
+            nodes.push_back(new CutNode<SimulationTraits>(parent, this, root, parent->aggregateListener()));
 
             length = 1;
             validateCut();
@@ -1023,7 +1024,7 @@ private:
 
         ~Cut() {
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
                 node->destroy(parent, parent->aggregateListener());
             }
             nodes.clear();
@@ -1113,7 +1114,7 @@ private:
             float qradius = query->radius();
 
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); ) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
                 bool last_satisfies = node->satisfies;
                 bool satisfies = node->updateSatisfies(qpos, qregion, qmaxsize, qangle, qradius);
                 visited++;
@@ -1332,7 +1333,7 @@ private:
             return visited;
         }
 
-        void handleRootReplaced(CutNode* cnode, RTreeNodeType* orig_root, RTreeNodeType* new_root) {
+        void handleRootReplaced(CutNode<SimulationTraits>* cnode, RTreeNodeType* orig_root, RTreeNodeType* new_root) {
             // The old root was replaced by the new root because the tree is
             // getting smaller.  We just need to shift our cut down to the new
             // node.
@@ -1350,7 +1351,7 @@ private:
 
         // Handle a split of orig_node into orig_node and new_node. cnode is the
         // CutNode that was (and remains) at orig_node.
-        void handleSplit(CutNode* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+        void handleSplit(CutNode<SimulationTraits>* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
             // Add a new CutNode to new_node and insert it in our cut list.
             // Future updates will take care of any additional changes (push up
             // or down) that still need to be applied to the tree.
@@ -1360,7 +1361,7 @@ private:
             assert(orig_list_it != nodes.end());
             CutNodeListIterator after_orig_list_it = orig_list_it; after_orig_list_it++;
 
-            CutNode* new_cnode = new CutNode(parent, this, new_node, parent->aggregateListener());
+            CutNode<SimulationTraits>* new_cnode = new CutNode<SimulationTraits>(parent, this, new_node, parent->aggregateListener());
             if (parent->mWithAggregates) {
                 QueryEventType evt;
                 evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
@@ -1373,7 +1374,7 @@ private:
             // Mid-operation, no validation
         }
 
-        void handleLiftCut(CutNode* cnode, RTreeNodeType* to_node) {
+        void handleLiftCut(CutNode<SimulationTraits>* cnode, RTreeNodeType* to_node) {
             validateCut();
 
             // This is tricky. The cutnode may be nowhere near the node we need
@@ -1389,7 +1390,7 @@ private:
             bool last_was_ancestor = false;
             CutNodeListIterator it;
             for(it = nodes.begin(); it != nodes.end(); ) {
-                CutNode* node = *it;
+                CutNode<SimulationTraits>* node = *it;
 
                 if ( _is_ancestor(node->rtnode, to_node) ) {
                     last_was_ancestor = true;
@@ -1412,7 +1413,7 @@ private:
             // new node
             // NOTE: We always do this because the callback shouldn't even be
             // called unless we needed to remove one of these.
-            CutNode* new_cnode = new CutNode(parent, this, to_node, parent->aggregateListener());
+            CutNode<SimulationTraits>* new_cnode = new CutNode<SimulationTraits>(parent, this, to_node, parent->aggregateListener());
             if (parent->mWithAggregates) {
                 evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode->aggregateID(), QueryEventType::Imposter) );
                 results.insert(new_cnode->rtnode->aggregateID());
@@ -1426,7 +1427,7 @@ private:
             validateCut();
         }
 
-        void handleObjectInserted(CutNode* cnode, const LocCacheIterator& objit, int objidx) {
+        void handleObjectInserted(CutNode<SimulationTraits>* cnode, const LocCacheIterator& objit, int objidx) {
             // Ignore insertions/deletions during rebuild
             if (parent->mRebuilding) return;
 
@@ -1489,7 +1490,7 @@ private:
             }
         }
 
-        void handleObjectRemoved(CutNode* cnode, const LocCacheIterator& objit) {
+        void handleObjectRemoved(CutNode<SimulationTraits>* cnode, const LocCacheIterator& objit) {
             // Ignore insertions/deletions during rebuild
             if (parent->mRebuilding) return;
 
@@ -1521,7 +1522,7 @@ private:
         void destroyCut(QueryEventType& destroyEvent) {
             // Run through the cut, adding removals to the result event
             for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {
-                CutNode* cnode = *it;
+                CutNode<SimulationTraits>* cnode = *it;
                 RTreeNodeType* node = cnode->rtnode;
 
                 // Try to remove the node itself
@@ -1563,7 +1564,7 @@ private:
                 swapEvent.additions().push_back( typename QueryEventType::Addition(new_root->aggregateID(), QueryEventType::Imposter) );
                 results.insert(new_root->aggregateID());
             }
-            nodes.push_back(new CutNode(parent, this, new_root, parent->aggregateListener()));
+            nodes.push_back(new CutNode<SimulationTraits>(parent, this, new_root, parent->aggregateListener()));
             length = 1;
             validateCut();
 

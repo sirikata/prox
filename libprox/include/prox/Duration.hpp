@@ -68,7 +68,7 @@ public:
     bool operator==(const Duration& rhs) const;
 
     Duration abs() const {
-        return Duration(std::abs(mMicrosecs));
+		return Duration(mMicrosecs<0?-mMicrosecs:mMicrosecs);
     }
 private:
     friend class Time;
