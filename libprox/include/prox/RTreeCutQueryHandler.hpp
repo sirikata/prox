@@ -1119,31 +1119,46 @@ private:
                 bool satisfies = node->updateSatisfies(qpos, qregion, qmaxsize, qangle, qradius);
                 visited++;
 
-                // If we're tracking aggregates and we went from satisfies ->
-                // not satisfies, then we need to clear out any children
-                if (last_satisfies && !satisfies && parent->mWithAggregates) {
-                    typename ResultSet::iterator this_result_it = results.find(node->rtnode->aggregateID());
-                    if (this_result_it != results.end()) {
-                        // Either this node was in the result set last time...
-                        // And there's nothing to do -- it will be removed when
-                        // the cut is pushed up the tree
+                // If we went from satisfies -> not satisfies, we may need to
+                // clean up some results
+                if (last_satisfies && !satisfies) {
+                    // If we're tracking aggregates and we went from satisfies ->
+                    // not satisfies, then we need to clear out any children
+                    if (parent->mWithAggregates) {
+                        typename ResultSet::iterator this_result_it = results.find(node->rtnode->aggregateID());
+                        if (this_result_it != results.end()) {
+                            // Either this node was in the result set last time...
+                            // And there's nothing to do -- it will be removed when
+                            // the cut is pushed up the tree
+                        }
+                        else {
+                            // Or its children were, in which case we remove them and
+                            // add this node (even though its not a real result).
+                            // If this change allows merging to the parent node of
+                            // this node, that'll happen upon push-up
+                            QueryEventType evt;
+                            evt.additions().push_back( typename QueryEventType::Addition(node->rtnode->aggregateID(), QueryEventType::Imposter) );
+                            results.insert( node->rtnode->aggregateID() );
+                            for(int i = 0; i < node->rtnode->size(); i++) {
+                                ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
+                                typename ResultSet::iterator result_it = results.find(child_id);
+                                assert(result_it != results.end());
+                                results.erase(result_it);
+                                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                            }
+                            events.push_back(evt);
+                        }
                     }
                     else {
-                        // Or its children were, in which case we remove them and
-                        // add this node (even though its not a real result).
-                        // If this change allows merging to the parent node of
-                        // this node, that'll happen upon push-up
-                        QueryEventType evt;
-                        evt.additions().push_back( typename QueryEventType::Addition(node->rtnode->aggregateID(), QueryEventType::Imposter) );
-                        results.insert( node->rtnode->aggregateID() );
-                        for(int i = 0; i < node->rtnode->size(); i++) {
-                            ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                            typename ResultSet::iterator result_it = results.find(child_id);
-                            assert(result_it != results.end());
-                            results.erase(result_it);
-                            evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal) );
+                        // With no aggregates, if this is a leaf, we need to
+                        // clear out the children
+                        if (node->leaf()) {
+                            for(int i = 0; i < node->rtnode->size(); i++) {
+                                ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
+                                checkMembership(child_id, node->rtnode->childData(i, loc, t), qpos, qregion, qmaxsize, qangle, qradius);
+                                visited++;
+                            }
                         }
-                        events.push_back(evt);
                     }
                 }
 
