@@ -59,6 +59,7 @@ public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef QueryCache<SimulationTraits> QueryCacheType;
+    typedef typename QueryCacheType::ObjectIDSet ObjectIDSetType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
@@ -169,7 +170,7 @@ public:
             }
 
             std::deque<QueryEventType> events;
-            state->cache.exchange(newcache, &events);
+            state->cache.exchange(newcache, &events, mRemovedObjects);
 
             query->pushEvents(events);
 
@@ -179,6 +180,10 @@ public:
             if (QueryHandlerType::mReportQueryStats && report)
                 printf("{ \"id\" : %d, \"checks\" : %d, \"results\" : %d }\n", query->id(), tcount, state->cache.size());
         }
+        // We can clear out permanently removed objects since we should have
+        // processed all their updates already
+        mRemovedObjects.clear();
+
         mLastTime = t;
 
         if (QueryHandlerType::mReportHealth && report) {
@@ -234,6 +239,11 @@ public:
 
         mObjects[obj_id] = mLocCache->startTracking(obj_id);
         insertObj(obj_id, mLastTime);
+
+        // If the object had disconnected and reconnected, make sure we don't
+        // mark it as permanently gone.
+        typename ObjectIDSetType::iterator del_obj_it = mRemovedObjects.find(obj_id);
+        if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
     }
 
     void removeObject(const ObjectID& obj_id) {
@@ -244,6 +254,7 @@ public:
         deleteObj(obj_id, mLastTime);
         mLocCache->stopTracking(obj_loc_it);
         mObjects.erase(it);
+        mRemovedObjects.insert(obj_id);
     }
 
     bool containsObject(const ObjectID& obj_id) {
@@ -328,7 +339,7 @@ public:
         if (!implicit) {
             QueryCacheType emptycache;
             std::deque<QueryEventType> events;
-            state->cache.exchange(emptycache, &events);
+            state->cache.exchange(emptycache, &events, mRemovedObjects);
             query->pushEvents(events);
         }
 
@@ -402,6 +413,7 @@ private:
 
     RTree* mRTree;
     ObjectSet mObjects;
+    ObjectIDSetType mRemovedObjects;
     QueryMap mQueries;
     Time mLastTime;
     uint8 mElementsPerNode;

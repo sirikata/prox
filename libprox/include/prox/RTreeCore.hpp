@@ -130,7 +130,7 @@ public:
     typedef std::tr1::function<void(CutNode*, RTreeNode*, RTreeNode*)> NodeSplitCallback;
     typedef std::tr1::function<void(CutNode*, RTreeNode*)> LiftCutCallback;
     typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, int)> ObjectInsertedCallback;
-    typedef std::tr1::function<void(CutNode*, const LocCacheIterator&)> ObjectRemovedCallback;
+    typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, bool permanent)> ObjectRemovedCallback;
 
     typedef uint16 Index;
 
@@ -301,11 +301,11 @@ public:
     }
 
 private:
-    void notifyRemoved(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
+    void notifyRemoved(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb, bool permanent) {
         ObjectID obj_id = loc->iteratorID(obj);
         if (cb.objectRemoved) {
             for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
-                cb.objectRemoved(cut_it->second, obj);
+                cb.objectRemoved(cut_it->second, obj, permanent);
         }
 
         if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, obj_id, mData.getBounds());
@@ -321,7 +321,7 @@ public:
         if (leaf()) {
             for(int i = 0; i < old_count; i++) {
                 count = old_count-i-1;
-                notifyRemoved(loc, this->elements.objects[old_count-i-1].object, cb);
+                notifyRemoved(loc, this->elements.objects[old_count-i-1].object, cb, false);
                 // Explicitly call destructor, necessary since we use placement
                 // new to handle constructing objects in place (see insert())
                 this->elements.objects[old_count-i-1].~LeafNode();
@@ -395,7 +395,9 @@ public:
         // Finally, reduce the count
         count--;
 
-        notifyRemoved(loc, obj, cb);
+        // This is only invoked due to the deletion of an individual object, so
+        // we specify permanent deletion (last param)
+        notifyRemoved(loc, obj, cb, true);
     }
 
 private:

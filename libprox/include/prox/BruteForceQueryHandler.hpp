@@ -59,6 +59,7 @@ public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef QueryCache<SimulationTraits> QueryCacheType;
+    typedef typename QueryCacheType::ObjectIDSet ObjectIDSetType;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
@@ -134,10 +135,13 @@ public:
             }
 
             std::deque<QueryEventType> events;
-            state->cache.exchange(newcache, &events);
+            state->cache.exchange(newcache, &events, mRemovedObjects);
 
             query->pushEvents(events);
         }
+        // We can clear out permanently removed objects since we should have
+        // processed all their updates already
+        mRemovedObjects.clear();
     }
 
     virtual void rebuild() {
@@ -160,6 +164,10 @@ public:
 
     void addObject(const ObjectID& obj_id) {
         mObjects[obj_id] = mLocCache->startTracking(obj_id);
+        // If the object had disconnected and reconnected, make sure we don't
+        // mark it as permanently gone.
+        typename ObjectIDSetType::iterator del_obj_it = mRemovedObjects.find(obj_id);
+        if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
     }
 
     void removeObject(const ObjectID& obj_id) {
@@ -168,6 +176,7 @@ public:
 
         LocCacheIterator obj_loc_it = it->second;
         mObjects.erase(it);
+        mRemovedObjects.insert(obj_id);
         mLocCache->stopTracking(obj_loc_it);
     }
 
@@ -232,7 +241,7 @@ public:
         if (!implicit) {
             QueryCacheType emptycache;
             std::deque<QueryEventType> events;
-            state->cache.exchange(emptycache, &events);
+            state->cache.exchange(emptycache, &events, mRemovedObjects);
             query->pushEvents(events);
         }
 
@@ -265,6 +274,7 @@ private:
     LocationUpdateProviderType* mLocUpdateProvider;
     ShouldTrackCallback mShouldTrackCB;
     ObjectSet mObjects;
+    ObjectIDSetType mRemovedObjects;
     QueryMap mQueries;
 }; // class BruteForceQueryHandler
 

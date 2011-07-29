@@ -42,7 +42,10 @@ template<typename SimulationTraits>
 class QueryCache {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef QueryEvent<SimulationTraits> QueryEventType;
+
+    typedef std::tr1::unordered_set<ObjectID, ObjectIDHasher> ObjectIDSet;
 
     QueryCache() {
     }
@@ -64,7 +67,13 @@ public:
         mObjects.erase(id);
     }
 
-    void exchange(QueryCache& newcache, std::deque<QueryEventType>* changes) {
+    /** Exchange a newer cache into this one, generating events as we go.
+     *  \param newcache the new cache to replace this one with
+     *  \param changes a queue provided by the caller to hold events
+     *  \param permanent_removals a list of objects which have been permanently
+     *         removed, passed along in the events.
+     */
+    void exchange(QueryCache& newcache, std::deque<QueryEventType>* changes, const ObjectIDSet& permanent_removals) {
         if (changes != NULL) {
             IDSet added_objs;
             std::set_difference(
@@ -90,7 +99,9 @@ public:
 
             for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++) {
                 QueryEventType evt;
-                evt.removals().push_back( typename QueryEventType::Removal(*it, QueryEventType::Normal) );
+                typename QueryEventType::ObjectEventPermanence perm = QueryEventType::Transient;
+                if (permanent_removals.find(*it) != permanent_removals.end()) perm = QueryEventType::Permanent;
+                evt.removals().push_back( typename QueryEventType::Removal(*it, QueryEventType::Normal, perm) );
                 changes->push_back(evt);
             }
         }

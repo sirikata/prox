@@ -66,39 +66,51 @@ public:
         Normal,
         Imposter
     };
+    /** The permanence of a change. Currently only indicates whether a
+     * removal is permanent (e.g. a disconnect) or temporary (e.g. tree
+     * rearranging, fell out of the result set naturally, etc).
+     */
+    enum ObjectEventPermanence {
+        Transient,
+        Permanent
+    };
 
     class Action {
     public:
-        Action(ObjectID id, ObjectType type)
-         : mID(id), mType(type)
+        Action(ObjectID id, ObjectType type, ObjectEventPermanence perm)
+         : mID(id), mType(type), mPerm(perm)
         {}
 
         ObjectID id() const { return mID; }
         ObjectType type() const { return mType; }
+        ObjectEventPermanence permanent() const { return mPerm; }
     private:
         Action();
         ObjectID mID;
         ObjectType mType;
+        ObjectEventPermanence mPerm;
     };
     class Addition : private Action {
     public:
         Addition(ObjectID id, ObjectType type)
-         : Action(id, type)
+         : Action(id, type, Transient)
         {}
 
         using Action::id;
         using Action::type;
+        using Action::permanent;
     };
     typedef std::vector<Addition> AdditionList;
 
     class Removal : private Action {
     public:
-        Removal(ObjectID id, ObjectType type)
-         : Action(id, type)
+        Removal(ObjectID id, ObjectType type, ObjectEventPermanence perm)
+         : Action(id, type, perm)
         {}
 
         using Action::id;
         using Action::type;
+        using Action::permanent;
     };
     typedef std::vector<Removal> RemovalList;
 
