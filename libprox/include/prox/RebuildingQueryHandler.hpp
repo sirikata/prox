@@ -399,7 +399,7 @@ protected:
 
             // Remove old maps for this query
             assert(mImplQueryMap.find(real_query) != mImplQueryMap.end());
-            assert(mInvertedQueryMap.find(slave_query) != mImplQueryMap.end());
+            assert(mInvertedQueryMap.find(slave_query) != mInvertedQueryMap.end());
             mImplQueryMap.erase(real_query);
             mInvertedQueryMap.erase(slave_query);
 
