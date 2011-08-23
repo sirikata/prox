@@ -32,9 +32,12 @@
 
 #include <prox/DefaultSimulationTraits.hpp>
 #include <float.h>
+#include <limits.h>
 
 namespace Prox {
 
 const DefaultSimulationTraits::realType DefaultSimulationTraits::InfiniteRadius = FLT_MAX;
+
+const uint32 DefaultSimulationTraits::InfiniteResults = INT_MAX;
 
 } // namespace Prox

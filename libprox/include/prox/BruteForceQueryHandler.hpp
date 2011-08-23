@@ -232,6 +232,10 @@ public:
         // Nothing to be done, we use values directly from the query
     }
 
+    void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) {
+        // Nothing to be done, we use values directly from the query
+    }
+
     void queryDestroyed(QueryType* query, bool implicit) {
         QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );

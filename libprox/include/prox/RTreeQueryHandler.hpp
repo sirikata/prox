@@ -330,6 +330,10 @@ public:
         // XXX FIXME
     }
 
+    void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) {
+        // XXX FIXME
+    }
+
     void queryDestroyed(QueryType* query, bool implicit) {
         QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );

@@ -257,6 +257,9 @@ public:
     virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) {
         mImplQueryMap[query]->angle(new_val);
     }
+    virtual void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) {
+        mImplQueryMap[query]->maxResults(new_val);
+    }
     virtual void queryDestroyed(QueryType* query, bool implicit) {
         typename QueryToQueryMap::iterator it = mImplQueryMap.find(const_cast<QueryType*>(query));
         assert( it != mImplQueryMap.end() );

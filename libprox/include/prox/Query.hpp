@@ -120,6 +120,11 @@ public:
     const float radius() const {
         return mMaxRadius;
     }
+    /// Maximum number of results this query should return. This adds
+    /// a cap to the result set size.
+    const uint32 maxResults() const {
+        return mMaxResults;
+    }
 
     void position(const MotionVector3& new_pos) {
         assert(mValid);
@@ -152,6 +157,15 @@ public:
         for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
             (*it)->queryAngleChanged(this, old_angle, new_angle);
     }
+
+    void maxResults(const uint32 new_mr) {
+        assert(mValid);
+        uint32 old_mr = mMaxResults;
+        mMaxResults = new_mr;
+        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+            (*it)->queryMaxResultsChanged(this, old_mr, new_mr);
+    }
+
 
     void addChangeListener(QueryChangeListenerType* listener) {
         mChangeListeners.push_back(listener);
@@ -225,6 +239,7 @@ protected:
        mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(SimulationTraits::InfiniteRadius),
+       mMaxResults(SimulationTraits::InfiniteResults),
        mValid(true),
        mChangeListeners(),
        mEventListener(NULL),
@@ -240,6 +255,7 @@ protected:
        mMaxSize(maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(radius),
+       mMaxResults(SimulationTraits::InfiniteResults),
        mValid(true),
        mNotified(false)
     {
@@ -253,6 +269,7 @@ protected:
     real mMaxSize;
     SolidAngle mMinSolidAngle;
     real mMaxRadius;
+    uint32 mMaxResults;
 
     // Whether this query is still valid. The query may be invalid (removed from
     // the query handler) but still hold remaining result events.

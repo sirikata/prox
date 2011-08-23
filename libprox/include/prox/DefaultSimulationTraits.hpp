@@ -69,6 +69,9 @@ public:
 
     const static realType InfiniteRadius;
 
+    // Flags an infinite number of results may be returned, the default
+    const static uint32 InfiniteResults;
+
 }; // class DefaultSimulationTraits
 
 } // namespace Prox
