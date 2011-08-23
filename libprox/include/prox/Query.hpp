@@ -92,21 +92,31 @@ public:
 
     ID id() const { return mID; }
 
+    /// Center position of the querier or aggregate querier.
     const MotionVector3& position() const {
         return mPosition;
     }
     Vector3 position(const Time& t) const {
         return mPosition.position(t);
     }
+    /// Region 'covered' by the queriers, not including their extents. In other
+    /// words, the bounding region of the centers of the queriers. For a single
+    /// querier this will be a single .
     const BoundingSphere& region() const {
         return mRegion;
     }
+    /// Maximum size of queriers. For individual queriers, the size of the
+    /// querier. For aggregate queriers, the size of the largest querier.
     const real maxSize() const {
         return mMaxSize;
     }
+    /// Minimum solid angle of an object which still allows it to be returned as
+    /// a result.
     const SolidAngle& angle() const {
         return mMinSolidAngle;
     }
+    /// Maximum distance from the object to still return results from. This adds
+    /// a distance query component to the query.
     const float radius() const {
         return mMaxRadius;
     }
