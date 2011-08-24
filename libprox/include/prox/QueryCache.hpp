@@ -38,6 +38,14 @@
 
 namespace Prox {
 
+/** QueryCache stores the results of a query evaluation and makes it
+ *  easy to generate QueryEvents by taking the 'difference' between
+ *  two QueryCaches, i.e. the results of two query evaluations.
+ *  QueryCache supports tracking only the top N objects by accepting a
+ *  'score' for each result, evicting the lowest score object if the
+ *  limit is reached. If no limit is placed on the cache size, most of
+ *  the cost of this mode is avoided.
+ */
 template<typename SimulationTraits>
 class QueryCache {
 public:
@@ -47,15 +55,25 @@ public:
 
     typedef std::tr1::unordered_set<ObjectID, ObjectIDHasher> ObjectIDSet;
 
-    QueryCache() {
+    QueryCache(uint32 max_size)
+     : mMaxSize(max_size)
+    {
     }
 
     ~QueryCache() {
     }
 
-    void add(const ObjectID& id) {
+    // Add an object with a score. Large scores are better, so you may need to
+    // invert the values you compute when you assign scores.
+    void add(const ObjectID& id, float32 score) {
         assert( mObjects.find(id) == mObjects.end() );
         mObjects.insert(id);
+
+        if(mMaxSize != SimulationTraits::InfiniteResults) {
+            mScoredObjects.push_back(ScoredObject(id, score));
+            std::push_heap(mScoredObjects.begin(), mScoredObjects.end());
+            clearOverflow();
+        }
     }
 
     bool contains(const ObjectID& id) {
@@ -65,6 +83,20 @@ public:
     void remove(const ObjectID& id) {
         assert( mObjects.find(id) != mObjects.end() );
         mObjects.erase(id);
+
+        // This path is inefficient since we need to remove from the heap
+        for(typename ScoredObjectHeap::iterator it = mScoredObjects.begin(); it != mScoredObjects.end(); it++) {
+            if (it->second.id == id) {
+                mScoredObjects.erase(it);
+                break;
+            }
+        }
+        std::make_heap(mScoredObjects.begin(), mScoredObjects.end());
+    }
+
+    void setMaxSize(uint32 max_size) {
+        mMaxSize = max_size;
+        clearOverflow();
     }
 
     /** Exchange a newer cache into this one, generating events as we go.
@@ -106,16 +138,56 @@ public:
             }
         }
 
+        mMaxSize = newcache.mMaxSize;
         mObjects = newcache.mObjects;
+        mScoredObjects = newcache.mScoredObjects;
     }
 
     int size() const {
         return (int)mObjects.size();
     }
 private:
+    // Must specify maximum size
+    QueryCache() {
+    }
+
+    // Clear 'overflow' objects, i.e. the lowest scored objects until the size
+    // doesn't exceed our maximum
+    void clearOverflow() {
+        if (mMaxSize == SimulationTraits::InfiniteResults) return;
+
+        while(size() > (int)mMaxSize) {
+            std::pop_heap(mScoredObjects.begin(), mScoredObjects.end());
+            mObjects.erase(mScoredObjects.back().id);
+            mScoredObjects.pop_back();
+        }
+    }
+
+    uint32 mMaxSize;
+
     typedef std::set<ObjectID> IDSet;
     typedef typename IDSet::iterator IDSetIterator;
     IDSet mObjects;
+
+    // Tracks scored objects in a heap (backed by a vector) so they
+    // can be evicted if maximum size is reached. This storage is not
+    // maintained if the maximum size is InfiniteResults.
+    struct ScoredObject {
+        ScoredObject(const ObjectID& oid, float32 sc)
+         : id(oid), score(sc)
+        {}
+
+        ObjectID id;
+        float32 score;
+
+        // Using the STL heap methods with < gives you max heap, invert it so we
+        // remove bad scores first.
+        bool operator<(const ScoredObject& rhs) {
+            return score > rhs.score;
+        }
+    };
+    typedef std::vector<ScoredObject> ScoredObjectHeap;
+    ScoredObjectHeap mScoredObjects;
 }; // class QueryCache
 
 } // namespace Prox

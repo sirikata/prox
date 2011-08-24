@@ -114,7 +114,7 @@ public:
         for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
-            QueryCacheType newcache;
+            QueryCacheType newcache(query->maxResults());
 
             // Convert to a single world-space bounding sphere
             Vector3 query_pos = query->position(t);
@@ -129,9 +129,9 @@ public:
                 BoundingSphere obj_loc = mLocCache->worldRegion(obj_loc_it, t);
                 float32 obj_size = mLocCache->maxSize(obj_loc_it);
 
-                bool satisfies = satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_loc.center(), obj_loc.radius(), obj_size, query_pos, query_region, query_ms, query_angle, query_radius);
-                if (satisfies)
-                    newcache.add(obj);
+                float32 satisfies = satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_loc.center(), obj_loc.radius(), obj_size, query_pos, query_region, query_ms, query_angle, query_radius);
+                if (satisfies != -1)
+                    newcache.add(obj, satisfies);
             }
 
             std::deque<QueryEventType> events;
@@ -233,7 +233,11 @@ public:
     }
 
     void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) {
-        // Nothing to be done, we use values directly from the query
+        // Since we need to track removals properly (i.e. generate events) and
+        // QueryCache won't do that if we set its size, we don't change the size
+        // immediately. Instead, we'll just wait until the next iteration and
+        // make future QueryCaches use the new size (still available in the
+        // Query).
     }
 
     void queryDestroyed(QueryType* query, bool implicit) {
@@ -243,7 +247,7 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryCacheType emptycache;
+            QueryCacheType emptycache(query->maxResults());
             std::deque<QueryEventType> events;
             state->cache.exchange(emptycache, &events, mRemovedObjects);
             query->pushEvents(events);
@@ -259,13 +263,17 @@ public:
 
 protected:
     void registerQuery(QueryType* query) {
-        QueryState* state = new QueryState;
+        QueryState* state = new QueryState(query->maxResults());
         mQueries[query] = state;
         query->addChangeListener(this);
     }
 
 private:
     struct QueryState {
+        QueryState(uint32 max_size)
+         : cache(max_size)
+        {}
+
         QueryCacheType cache;
     };
 

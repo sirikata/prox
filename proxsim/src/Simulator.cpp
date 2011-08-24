@@ -127,7 +127,7 @@ static SolidAngle generateQueryAngle(const SolidAngle& qmin, const SolidAngle& q
     return qmin + ((qmax-qmin) * (((float)(rand()))/RAND_MAX));
 }
 
-static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries, const SolidAngle& qmin, const SolidAngle& qmax) {
+static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries, const SolidAngle& qmin, const SolidAngle& qmax, uint32 q_max_results) {
     Vector3 qpos = generatePosition(region);
     Vector3 qvel = generateDirection(!static_queries);
 
@@ -138,15 +138,17 @@ static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region,
         MotionPath(Vector3(0,0,0), mpl),
         generateQueryBounds(),
         generateQueryRadius(),
-        generateQueryAngle(qmin, qmax)
+        generateQueryAngle(qmin, qmax),
+        q_max_results
     );
     return querier;
 }
 
-void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const SolidAngle& max_qangle) {
+void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const SolidAngle& max_qangle, uint32 max_results) {
     mChurn = churnrate;
     mQueryAngleMin = min_qangle;
     mQueryAngleMax = max_qangle;
+    mQueryMaxResults = max_results;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
     addListener(loc_cache);
@@ -225,7 +227,7 @@ void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
 
 void Simulator::createRandomQueries(int nqueries, bool static_queries) {
     for(int i = 0; i < nqueries; i++)
-        addQuery( generateQuery(mHandler, mRegion, static_queries, mQueryAngleMin, mQueryAngleMax) );
+        addQuery( generateQuery(mHandler, mRegion, static_queries, mQueryAngleMin, mQueryAngleMax, mQueryMaxResults) );
 }
 
 void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile) {

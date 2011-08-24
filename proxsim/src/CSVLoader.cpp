@@ -207,7 +207,8 @@ std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nquerier
                 MotionPath(gen_loc(), data[data_idx].motion, true),
                 BoundingSphere(Vector3(0,0,0), data[data_idx].radius),
                 qradius,
-                qangle
+                qangle,
+                Prox::DefaultSimulationTraits::InfiniteResults
             )
         );
     }

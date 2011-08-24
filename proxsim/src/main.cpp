@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
     std::string NQUERIES_ARG("--nqueries=");
     std::string STATIC_QUERIES_ARG("--static-queries=");
     std::string QUERY_ANGLE_ARG("--query-angle=");
+    std::string QUERY_RESULTS_ARG("--query-results=");
     std::string DURATION_ARG("--duration=");
     std::string ITERATIONS_ARG("--iterations=");
     std::string REALTIME_ARG("--realtime=");
@@ -111,6 +112,7 @@ int main(int argc, char** argv) {
     int nqueries = 50;
     bool static_queries = false;
     float query_angle_min = (SolidAngle::Max / 1000.f).asFloat(), query_angle_max = (SolidAngle::Max / 1000.f).asFloat();
+    unsigned int query_max_results = Prox::DefaultSimulationTraits::InfiniteResults;
     int duration = 0; // seconds
     int iterations = 0; // iterations before termination
     bool realtime = true; // realtime or simulated time steps
@@ -166,6 +168,10 @@ int main(int argc, char** argv) {
         else if (arg.find(QUERY_ANGLE_ARG) != std::string::npos) {
             std::string qangle_arg = arg.substr(QUERY_ANGLE_ARG.size());
             convert_range(qangle_arg, &query_angle_min, &query_angle_max);
+        }
+        else if (arg.find(QUERY_RESULTS_ARG) != std::string::npos) {
+            std::string qresults_arg = arg.substr(QUERY_RESULTS_ARG.size());
+            query_max_results = boost::lexical_cast<unsigned int>(qresults_arg);
         }
         else if (arg.find(DURATION_ARG) != std::string::npos) {
             std::string duration_arg = arg.substr(DURATION_ARG.size());
@@ -304,7 +310,7 @@ int main(int argc, char** argv) {
     // Sometimes we're not perfect, but let's aim for 99% of the target objects.
     assert(simulator->allObjectsSize() >= .99f * nobjects);
 
-    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max));
+    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max), query_max_results);
 
     if (!csvmotionfile.empty() && !static_queries)
         simulator->createCSVQueries(nqueries, csvmotionfile);

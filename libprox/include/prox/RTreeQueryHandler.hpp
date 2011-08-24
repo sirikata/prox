@@ -133,7 +133,7 @@ public:
 
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
-            QueryCacheType newcache;
+            QueryCacheType newcache(query->maxResults());
 
             Vector3 qpos = query->position(t);
             BoundingSphere qregion = query->region();
@@ -150,8 +150,9 @@ public:
                 if (node->leaf()) {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
-                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius))
-                            newcache.add(mLocCache->iteratorID(node->object(i).object));
+                        float32 score = node->childData(i,mLocCache,t).score(qpos, qregion, qmaxsize, qangle, qradius);
+                        if (score != -1)
+                            newcache.add(mLocCache->iteratorID(node->object(i).object), score);
                         else
                             ncount++;
                     }
@@ -159,7 +160,8 @@ public:
                 else {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
-                        if (node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius))
+                        bool satisfies = node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                        if (satisfies)
                             node_stack.push(node->node(i));
                         else {
                             internal_ncount++;
@@ -331,7 +333,11 @@ public:
     }
 
     void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) {
-        // XXX FIXME
+        // Since we need to track removals properly (i.e. generate events) and
+        // QueryCache won't do that if we set its size, we don't change the size
+        // immediately. Instead, we'll just wait until the next iteration and
+        // make future QueryCaches use the new size (still available in the
+        // Query).
     }
 
     void queryDestroyed(QueryType* query, bool implicit) {
@@ -341,7 +347,7 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryCacheType emptycache;
+            QueryCacheType emptycache(query->maxResults());
             std::deque<QueryEventType> events;
             state->cache.exchange(emptycache, &events, mRemovedObjects);
             query->pushEvents(events);
@@ -356,7 +362,7 @@ public:
 
 protected:
     void registerQuery(QueryType* query) {
-        QueryState* state = new QueryState;
+        QueryState* state = new QueryState(query->maxResults());
         mQueries[query] = state;
         query->addChangeListener(this);
     }
@@ -388,6 +394,10 @@ private:
     }
 
     struct QueryState {
+        QueryState(uint32 max_size)
+         : cache(max_size)
+        {}
+
         QueryCacheType cache;
     };
 

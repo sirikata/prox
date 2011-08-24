@@ -40,8 +40,11 @@ namespace Prox {
 //
 // For this version, the bounds (obj_radius) should be the bounds of all the
 // *actual objects* not just their centers.
+//
+// Returns -1 if the object doesn't satisfy the query, the computed solid angle
+// if it does
 template<typename SimulationTraits>
-bool satisfiesConstraintsBounds(
+float32 satisfiesConstraintsBounds(
     const typename SimulationTraits::Vector3Type& obj_pos,
     float obj_radius,
     const typename SimulationTraits::Vector3Type& qpos,
@@ -62,13 +65,13 @@ bool satisfiesConstraintsBounds(
 
     // Must satisfy radius constraint
     if (qradius != SimulationTraits::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
-        return false;
+        return -1;
 
     // Must satisfy solid angle constraint
     // If it falls inside the query bounds, then it definitely satisfies the solid angle constraint
     // FIXME we do this check manually for now, but BoundingSphere should provide it
     if (query_rad + obj_radius >= (query_pos-obj_pos).length()) {
-        return true;
+        return SolidAngle::Max.asFloat();
     }
     // Otherwise we need to check the closest possible query position to the object
     Vector3 to_obj = obj_pos - query_pos;
@@ -76,9 +79,9 @@ bool satisfiesConstraintsBounds(
     SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_radius);
 
     if (solid_angle >= qangle)
-        return true;
+        return solid_angle.asFloat();
 
-    return false;
+    return -1;
 }
 
 // Check if an object satisfies the constraints of a query using bounds and max
@@ -86,8 +89,11 @@ bool satisfiesConstraintsBounds(
 //
 // For this version, since the region and maximum object size are separate, the
 // region should be determined only using the objects' centers.
+//
+// Returns -1 if the object doesn't satisfy the query, the computed solid angle
+// if it does
 template<typename SimulationTraits>
-bool satisfiesConstraintsBoundsAndMaxSize(
+float32 satisfiesConstraintsBoundsAndMaxSize(
     const typename SimulationTraits::Vector3Type& obj_pos,
     float obj_radius,
     float obj_max_size,
@@ -116,7 +122,7 @@ bool satisfiesConstraintsBoundsAndMaxSize(
     // is the exact location of the query.  So just let it pass.
     // FIXME we do this check manually for now, but BoundingSphere should provide it
     if (query_rad + obj_radius + obj_max_size >= (query_pos-obj_pos).length())
-        return true;
+        return SolidAngle::Max.asFloat();
 
     float standin_radius = obj_max_size;
 
@@ -125,15 +131,15 @@ bool satisfiesConstraintsBoundsAndMaxSize(
 
     // Must satisfy radius constraint
     if (qradius != SimulationTraits::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
-        return false;
+        return -1;
 
     // Must satisfy solid angle constraint
     SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, standin_radius);
 
     if (solid_angle >= qangle)
-        return true;
+        return solid_angle.asFloat();
 
-    return false;
+    return -1;
 }
 
 } // namespace Prox

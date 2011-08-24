@@ -497,6 +497,13 @@ public:
         Vector3 obj_pos = bounding_sphere.center();
         float obj_radius = bounding_sphere.radius();
 
+        return (satisfiesConstraintsBounds<SimulationTraits>(obj_pos, obj_radius, qpos, qregion, qmaxsize, qangle, qradius) != -1);
+    }
+    // Get the score (or -1) for this data, given the query constraints
+    float32 score(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
+        Vector3 obj_pos = bounding_sphere.center();
+        float obj_radius = bounding_sphere.radius();
+
         return satisfiesConstraintsBounds<SimulationTraits>(obj_pos, obj_radius, qpos, qregion, qmaxsize, qangle, qradius);
     }
 
@@ -693,6 +700,13 @@ public:
         // It's centered at the closest point on the hierarchical bounding sphere to the query, and has the
         // largest radius of any objects in the subtree.
 
+        Vector3 obj_pos = ThisBase::bounding_sphere.center();
+        float obj_radius = ThisBase::bounding_sphere.radius();
+
+        return (satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_pos, obj_radius, mMaxRadius, qpos, qregion, qmaxsize, qangle, qradius) != -1);
+    }
+    // Get the score (or -1) for this data, given the query constraints
+    float32 score(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
         Vector3 obj_pos = ThisBase::bounding_sphere.center();
         float obj_radius = ThisBase::bounding_sphere.radius();
 
