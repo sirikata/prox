@@ -33,7 +33,7 @@
 #include "Simulator.hpp"
 #include "GLRenderer.hpp"
 #include <prox/BruteForceQueryHandler.hpp>
-#include <prox/RTreeQueryHandler.hpp>
+#include <prox/RTreeAngleQueryHandler.hpp>
 #include <prox/RTreeCutQueryHandler.hpp>
 #include <prox/RebuildingQueryHandler.hpp>
 #include "ObjectLocationServiceCache.hpp"
@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
     QueryHandler* handler = NULL;
     if (handler_type == "rtree") {
         handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeQueryHandler<>::Constructor(branching), 10
+            Prox::RTreeAngleQueryHandler<>::Constructor(branching), 10
         );
     }
     else if (handler_type == "rtreecut") {

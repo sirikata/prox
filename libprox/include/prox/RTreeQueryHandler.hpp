@@ -44,6 +44,10 @@
 
 namespace Prox {
 
+/** RTreeQueryHandler is a base class for QueryHandlers that use an RTree
+ *  without cuts and QueryCaches to resolve queries.  It provides a bunch of
+ *  utility code, but no real query processing.
+ */
 template<typename SimulationTraits = DefaultSimulationTraits>
 class RTreeQueryHandler : public QueryHandler<SimulationTraits> {
 public:
@@ -74,13 +78,6 @@ public:
     typedef typename QueryHandlerType::ObjectList ObjectList;
 
     typedef typename std::tr1::function<RTreeQueryHandler*()> QueryHandlerCreator;
-
-    static RTreeQueryHandler* construct(uint16 elements_per_node) {
-        return new RTreeQueryHandler(elements_per_node);
-    }
-    static QueryHandlerCreator Constructor(uint16 elements_per_node) {
-        return std::tr1::bind(&RTreeQueryHandler::construct, elements_per_node);
-    }
 
     RTreeQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
@@ -114,89 +111,10 @@ public:
     }
 
     void tick(const Time& t, bool report) {
-        mRTree->update(t);
-        if (QueryHandlerType::mShouldRestructure)
-            mRTree->restructure(t);
-
-        mRTree->verifyConstraints(t);
-
-        uint32 nrtnodes = 0;
-        if (QueryHandlerType::mTrackChecks)
-            nrtnodes = mRTree->size();
-        if ((QueryHandlerType::mTrackChecks || QueryHandlerType::mReportQueryStats) && report)
-            printf("tick\n");
-
-        for(QueryMapIterator query_it = mQueries.begin(); query_it != mQueries.end(); query_it++) {
-            int tcount = 0; // total
-            int ncount = 0; // negatives, anywhere
-            int internal_ncount = 0; // negatives, internal
-
-            QueryType* query = query_it->first;
-            QueryState* state = query_it->second;
-            QueryCacheType newcache(query->maxResults());
-
-            Vector3 qpos = query->position(t);
-            BoundingSphere qregion = query->region();
-            float qmaxsize = query->maxSize();
-            const SolidAngle& qangle = query->angle();
-            float qradius = query->radius();
-
-            std::stack<RTreeNodeType*> node_stack;
-            node_stack.push(mRTree->root());
-            while(!node_stack.empty()) {
-                RTreeNodeType* node = node_stack.top();
-                node_stack.pop();
-
-                if (node->leaf()) {
-                    for(int i = 0; i < node->size(); i++) {
-                        tcount++;
-                        float32 score = node->childData(i,mLocCache,t).score(qpos, qregion, qmaxsize, qangle, qradius);
-                        if (score != -1)
-                            newcache.add(mLocCache->iteratorID(node->object(i).object), score);
-                        else
-                            ncount++;
-                    }
-                }
-                else {
-                    for(int i = 0; i < node->size(); i++) {
-                        tcount++;
-                        bool satisfies = node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
-                        if (satisfies)
-                            node_stack.push(node->node(i));
-                        else {
-                            internal_ncount++;
-                            ncount++;
-                        }
-                    }
-                }
-            }
-
-            std::deque<QueryEventType> events;
-            state->cache.exchange(newcache, &events, mRemovedObjects);
-
-            query->pushEvents(events);
-
-            if (QueryHandlerType::mTrackChecks && report)
-                printf("{ \"id\" : %d, \"nodes\" : %d, \"checks\" : { \"positive\" : %d, \"negative\" : %d, \"negativeinternal\" : %d, \"total\" : %d } }\n", query->id(), nrtnodes, tcount - ncount, ncount, internal_ncount, tcount);
-
-            if (QueryHandlerType::mReportQueryStats && report)
-                printf("{ \"id\" : %d, \"checks\" : %d, \"results\" : %d }\n", query->id(), tcount, state->cache.size());
-        }
-        // We can clear out permanently removed objects since we should have
-        // processed all their updates already
-        mRemovedObjects.clear();
-
-        mLastTime = t;
-
-        if (QueryHandlerType::mReportHealth && report) {
-            QueryHandlerType::mItsSinceReportedHealth++;
-            if (QueryHandlerType::mItsSinceReportedHealth >= QueryHandlerType::mReportHealthFrequency) {
-                mRTree->reportBounds(t);
-                QueryHandlerType::mItsSinceReportedHealth = 0;
-            }
-        }
-        if (QueryHandlerType::mReportCost && report)
-            printf("{ \"cost\" : %f }\n", cost());
+        // Implementations should override this, but make sure to call preTick
+        // and postTick
+        preTick(t, report);
+        postTick(t, report);
     }
 
     virtual void rebuild() {
@@ -361,13 +279,38 @@ public:
     }
 
 protected:
+    void preTick(const Time& t, bool report) {
+        mRTree->update(t);
+        if (QueryHandlerType::mShouldRestructure)
+            mRTree->restructure(t);
+
+        mRTree->verifyConstraints(t);
+
+        if ((QueryHandlerType::mTrackChecks || QueryHandlerType::mReportQueryStats) && report)
+            printf("tick\n");
+    }
+
+    void postTick(const Time& t, bool report) {
+        mLastTime = t;
+
+        if (QueryHandlerType::mReportHealth && report) {
+            QueryHandlerType::mItsSinceReportedHealth++;
+            if (QueryHandlerType::mItsSinceReportedHealth >= QueryHandlerType::mReportHealthFrequency) {
+                mRTree->reportBounds(t);
+                QueryHandlerType::mItsSinceReportedHealth = 0;
+            }
+        }
+        if (QueryHandlerType::mReportCost && report)
+            printf("{ \"cost\" : %f }\n", cost());
+    }
+
     void registerQuery(QueryType* query) {
         QueryState* state = new QueryState(query->maxResults());
         mQueries[query] = state;
         query->addChangeListener(this);
     }
 
-private:
+
     void destroyCurrentTree() {
         delete mRTree;
 
