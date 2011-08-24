@@ -196,7 +196,7 @@ std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::func
     return results;
 }
 
-std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, std::tr1::function<Vector3()> gen_loc, float qradius, const SolidAngle& qangle) {
+std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, std::tr1::function<Vector3()> gen_loc, float qradius, const SolidAngle& qangle, const float qdistance) {
     std::vector<MotionAndBounds> data = loadCSVMotions(filename);
     std::vector<Querier*> results;
 
@@ -208,6 +208,7 @@ std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nquerier
                 BoundingSphere(Vector3(0,0,0), data[data_idx].radius),
                 qradius,
                 qangle,
+                qdistance,
                 Prox::DefaultSimulationTraits::InfiniteResults
             )
         );

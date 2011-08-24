@@ -35,13 +35,13 @@
 namespace Prox {
 namespace Simulation {
 
-Querier::Querier(QueryHandler* handler, const MotionPath& mp, const BoundingSphere& bounds, float qradius, const SolidAngle& qangle, uint32 max_results)
+Querier::Querier(QueryHandler* handler, const MotionPath& mp, const BoundingSphere& bounds, float qradius, const SolidAngle& qangle, float qdistance, uint32 max_results)
  : mMotion(mp)
 {
     mQuery = handler->registerQuery(
         mp.current(),
         bounds, qradius,
-        qangle
+        qangle, qdistance
     );
     mQuery->maxResults(max_results);
 }

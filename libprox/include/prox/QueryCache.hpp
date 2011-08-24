@@ -146,6 +146,20 @@ public:
     int size() const {
         return (int)mObjects.size();
     }
+
+    bool full() const {
+        return (mMaxSize != SimulationTraits::InfiniteResults && size() == (int)mMaxSize);
+    }
+
+    // Get the score of the worst object in the set. Only makes sense if not
+    // using an infinite set of results (we don't track ordering if using an
+    // infinite set).
+    float32 minScore() const {
+        assert(mMaxSize != SimulationTraits::InfiniteResults);
+        assert(size() > 0);
+
+        return mScoredObjects.front().score;
+    }
 private:
     // Must specify maximum size
     QueryCache() {

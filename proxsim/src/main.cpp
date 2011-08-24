@@ -34,6 +34,7 @@
 #include "GLRenderer.hpp"
 #include <prox/BruteForceQueryHandler.hpp>
 #include <prox/RTreeAngleQueryHandler.hpp>
+#include <prox/RTreeDistanceQueryHandler.hpp>
 #include <prox/RTreeCutQueryHandler.hpp>
 #include <prox/RebuildingQueryHandler.hpp>
 #include "ObjectLocationServiceCache.hpp"
@@ -84,6 +85,7 @@ int main(int argc, char** argv) {
     std::string NQUERIES_ARG("--nqueries=");
     std::string STATIC_QUERIES_ARG("--static-queries=");
     std::string QUERY_ANGLE_ARG("--query-angle=");
+    std::string QUERY_DISTANCE_ARG("--query-distance=");
     std::string QUERY_RESULTS_ARG("--query-results=");
     std::string DURATION_ARG("--duration=");
     std::string ITERATIONS_ARG("--iterations=");
@@ -112,6 +114,7 @@ int main(int argc, char** argv) {
     int nqueries = 50;
     bool static_queries = false;
     float query_angle_min = (SolidAngle::Max / 1000.f).asFloat(), query_angle_max = (SolidAngle::Max / 1000.f).asFloat();
+    float query_max_distance = Prox::DefaultSimulationTraits::InfiniteRadius;
     unsigned int query_max_results = Prox::DefaultSimulationTraits::InfiniteResults;
     int duration = 0; // seconds
     int iterations = 0; // iterations before termination
@@ -168,6 +171,10 @@ int main(int argc, char** argv) {
         else if (arg.find(QUERY_ANGLE_ARG) != std::string::npos) {
             std::string qangle_arg = arg.substr(QUERY_ANGLE_ARG.size());
             convert_range(qangle_arg, &query_angle_min, &query_angle_max);
+        }
+        else if (arg.find(QUERY_DISTANCE_ARG) != std::string::npos) {
+            std::string qdistance_arg = arg.substr(QUERY_DISTANCE_ARG.size());
+            query_max_distance = boost::lexical_cast<float>(qdistance_arg);
         }
         else if (arg.find(QUERY_RESULTS_ARG) != std::string::npos) {
             std::string qresults_arg = arg.substr(QUERY_RESULTS_ARG.size());
@@ -251,6 +258,14 @@ int main(int argc, char** argv) {
             Prox::RTreeAngleQueryHandler<>::Constructor(branching), 10
         );
     }
+    else if (handler_type == "rtreedist") {
+        handler = new Prox::RebuildingQueryHandler<>(
+            Prox::RTreeDistanceQueryHandler<>::Constructor(branching), 10
+        );
+        // In case they didn't reduce it, force a lower default
+        if (query_max_distance == Prox::DefaultSimulationTraits::InfiniteRadius)
+            query_max_distance = 20; // Reasonable match for 200x200x200 region
+    }
     else if (handler_type == "rtreecut") {
         handler = new Prox::RebuildingQueryHandler<>(
             Prox::RTreeCutQueryHandler<>::Constructor(branching, false), 10
@@ -310,7 +325,7 @@ int main(int argc, char** argv) {
     // Sometimes we're not perfect, but let's aim for 99% of the target objects.
     assert(simulator->allObjectsSize() >= .99f * nobjects);
 
-    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max), query_max_results);
+    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max), query_max_distance, query_max_results);
 
     if (!csvmotionfile.empty() && !static_queries)
         simulator->createCSVQueries(nqueries, csvmotionfile);
