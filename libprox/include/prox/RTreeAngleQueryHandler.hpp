@@ -94,7 +94,10 @@ public:
 
             QueryType* query = query_it->first;
             QueryState* state = query_it->second;
-            QueryCacheType newcache(query->maxResults());
+            uint32 qmaxresults = query->maxResults();
+            QueryCacheType newcache(qmaxresults);
+
+            bool capped = (qmaxresults != SimulationTraits::InfiniteResults);
 
             Vector3 qpos = query->position(t);
             BoundingSphere qregion = query->region();
@@ -102,16 +105,31 @@ public:
             const SolidAngle& qangle = query->angle();
             float qradius = query->radius();
 
-            std::stack<RTreeNodeType*> node_stack;
-            node_stack.push(mRTree->root());
-            while(!node_stack.empty()) {
-                RTreeNodeType* node = node_stack.top();
-                node_stack.pop();
+
+            // For an explanation of the approach used here, see
+            // RTreeDistanceQueryHandler. It is essentially the same with a
+            // different scoring function. It is relatively complicated because
+            // it handles both top N by solid angle and solid angle < x queries.
+            NodeHeap node_heap;
+            node_heap.push_back(
+                NodeHeapElement(mRTree->root(), scoreAngle(mRTree->root()->data(), qpos, qregion, qmaxsize, qangle, qradius))
+            );
+
+            while(!node_heap.empty() && // nodes are left to process
+                (!capped || // no cap on number of results
+                     // or capped and  not full or possibly better score
+                    (!newcache.full() || node_heap.front().score > newcache.minScore() )
+                )
+            ) {
+                if (capped) std::pop_heap(node_heap.begin(), node_heap.end());
+                NodeHeapElement elem = node_heap.back();
+                RTreeNodeType* node = elem.node;
+                node_heap.pop_back();
 
                 if (node->leaf()) {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
-                        float32 score = node->childData(i,mLocCache,t).score(qpos, qregion, qmaxsize, qangle, qradius);
+                        float32 score = scoreAngle( node->childData(i,mLocCache,t), qpos, qregion, qmaxsize, qangle, qradius );
                         if (score != -1)
                             newcache.add(mLocCache->iteratorID(node->object(i).object), score);
                         else
@@ -121,9 +139,11 @@ public:
                 else {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
-                        bool satisfies = node->childData(i,mLocCache,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
-                        if (satisfies)
-                            node_stack.push(node->node(i));
+                        float32 score = scoreAngle( node->childData(i,mLocCache,t), qpos, qregion, qmaxsize, qangle, qradius );
+                        if (score != -1) {
+                            node_heap.push_back(NodeHeapElement(node->node(i), score));
+                            if (capped) std::push_heap(node_heap.begin(), node_heap.end());
+                        }
                         else {
                             internal_ncount++;
                             ncount++;
@@ -151,6 +171,26 @@ public:
     }
 
 protected:
+    struct NodeHeapElement {
+        NodeHeapElement(RTreeNodeType* n, float32 s)
+         : node(n), score(s)
+        {}
+
+        RTreeNodeType* node;
+        float32 score;
+
+        bool operator<(const NodeHeapElement& rhs) {
+            return score < rhs.score;
+        }
+    };
+    typedef std::vector<NodeHeapElement> NodeHeap;
+
+    typedef typename RTreeQueryHandlerType::NodeData NodeData;
+
+    static float32 scoreAngle(const NodeData& data, const Vector3& qpos, const BoundingSphere& qbounds, const float qmaxsize, const SolidAngle& qangle, const float qradius) {
+        return data.score(qpos, qbounds, qmaxsize, qangle, qradius);
+    }
+
     using RTreeQueryHandlerType::mLocCache;
     using RTreeQueryHandlerType::mRTree;
     using RTreeQueryHandlerType::mRemovedObjects;
