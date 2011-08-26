@@ -38,7 +38,10 @@
 #include <prox/DefaultSimulationTraits.hpp>
 #include <prox/AggregateListener.hpp>
 #include <boost/thread.hpp>
-
+#ifdef _WIN32
+#pragma warning (push)
+#pragma warning (disable:4355)//this within constructor initializer
+#endif
 namespace Prox {
 
 /** RebuildingQueryHandler is a relatively small wrapper around a regular
@@ -521,5 +524,7 @@ protected:
 }; // class RebuildingQueryHandler
 
 } // namespace Prox
-
+#ifdef _WIN32
+#pragma warning (pop)//this within constructor initializer
+#endif
 #endif //_PROX_REBUILDING_QUERY_HANDLER_HPP_
