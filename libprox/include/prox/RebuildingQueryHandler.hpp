@@ -313,6 +313,7 @@ protected:
         QueryType* impl_query = mPrimaryHandler->QueryHandlerType::registerQuery(
             query->position(), query->region(), query->maxSize(), query->angle(), query->radius()
         );
+        impl_query->maxResults(query->maxResults());
 
         // Maintain index
         mImplQueryMap[query] = impl_query;
