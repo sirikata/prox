@@ -194,15 +194,6 @@ public:
         // Destroy current tree
         destroyCurrentTree();
 
-        // Start tracking all objects for second tree
-        std::vector<LocCacheIterator> object_iterators;
-        object_iterators.reserve( objects.size() );
-        for(typename ObjectList::iterator it = objects.begin(); it != objects.end(); it++) {
-            LocCacheIterator loc_it = mLocCache->startTracking(*it);
-            object_iterators.push_back(loc_it);
-            mObjects[*it] = loc_it;
-        }
-
         // Build new tree
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
@@ -218,7 +209,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
-        mRTree->bulkLoad(object_iterators, mLastTime);
+        mRTree->bulkLoad(objects, mLastTime);
 
         mRebuilding = false;
 
@@ -246,9 +237,13 @@ public:
 
 
     void addObject(const ObjectID& obj_id) {
+        addObject(mLocCache->startTracking(obj_id));
+    }
+    void addObject(const LocCacheIterator& obj_loc_it) {
+        ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
         assert(mObjects.find(obj_id) == mObjects.end());
 
-        mObjects[obj_id] = mLocCache->startTracking(obj_id);
+        mObjects[obj_id] = obj_loc_it;
         insertObj(obj_id, mLastTime);
 
         mRTree->verifyConstraints(mLastTime);
@@ -279,7 +274,7 @@ public:
         ObjectList retval;
         retval.reserve(mObjects.size());
         for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
-            retval.push_back(it->first);
+            retval.push_back(mLocCache->startTracking(it->first));
         return retval;
     }
 

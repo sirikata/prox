@@ -51,6 +51,7 @@ public:
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::realType Real;
@@ -64,7 +65,7 @@ public:
     // actually added or not.
     typedef std::tr1::function<bool(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
 
-    typedef std::vector<ObjectID> ObjectList;
+    typedef std::vector<LocCacheIterator> ObjectList;
 
     QueryHandler()
      : LocationUpdateListenerType(),
@@ -116,6 +117,14 @@ public:
      *  added back again.
      */
     virtual void addObject(const ObjectID& obj_id) = 0;
+    virtual void addObject(const LocCacheIterator& obj_loc_it) = 0;
+    // These versions allow use to get bind() to disambiguate
+    void addObjectByID(const ObjectID& obj_id) {
+        addObject(obj_id);
+    }
+    void addObjectByLocCacheIt(const LocCacheIterator& obj_loc_it) {
+        addObject(obj_loc_it);
+    }
     /** Remove an object from consideration. If called with an object not in the
      *  tree, will be ignored. This method, along with addObject and
      *  ShouldTrackCallback, allows the user to control which subset of objects
@@ -124,31 +133,23 @@ public:
     /** Checks if this handler is currently tracking the given object. */
     virtual bool containsObject(const ObjectID& obj_id) = 0;
     /** Get a list of the current objects tracked. Used for collecting the
-     * information necessary to rebuild a data structur.
+     * information necessary to rebuild a data structure. LocCacheIterators are
+     * extracted rather than IDs to ensure startTracking() has been called on
+     * each of the objects: this ensures the objects remain alive during their
+     * use and the caller is responsible for calling stopTracking.
      */
     virtual ObjectList allObjects() = 0;
 
-    /** Bulk add objects. Defaults to the naive wrapper around addObject,
-     *  but may be overridden with a more efficient implementation.
-     */
-    virtual void bulkAdd(const ObjectList& objs) {
-        for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
-            addObject(*it);
-    }
-    /** Bulk load objects. Defaults to the naive wrapper around addObject,
+    /** Bulk load objects. MUST NOT start tracking the objects in the location
+     *  cache -- a requirement of calling this method is that that should have
+     *  already been done in the correct thread, and the results of doing so are
+     *  the parameter to this function. Defaults to the naive wrapper around addObject,
      *  but may be overridden with a more efficient implementation.
      *  There must be no existing objects in the QueryHandler.
      */
     virtual void bulkLoad(const ObjectList& objs) {
         for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
             addObject(*it);
-    }
-    /** Bulk remove objects. Defaults to the naive wrapper around removeObject,
-     *  but may be overridden with a more efficient implementation.
-     */
-    virtual void bulkRemove(const ObjectList& objs) {
-        for(typename ObjectList::const_iterator it = objs.begin(); it != objs.end(); it++)
-            removeObject(*it);
     }
 
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {

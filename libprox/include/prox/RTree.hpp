@@ -173,9 +173,9 @@ public:
         RTree_verify_constraints(mRoot, mLocCache, t);
     }
 
-    void bulkLoad(std::vector<LocCacheIterator>& object_iterators, const Time& t) {
+    void bulkLoad(const std::vector<LocCacheIterator>& object_iterators, const Time& t) {
         // Bulk loading requires we initialize as with inserting
-        for(typename std::vector<LocCacheIterator>::iterator objit = object_iterators.begin(); objit != object_iterators.end(); objit++)
+        for(typename std::vector<LocCacheIterator>::const_iterator objit = object_iterators.begin(); objit != object_iterators.end(); objit++)
             mObjectLeaves[mLocCache->iteratorID(*objit)] = NULL;
 
         // Then do the actual computation

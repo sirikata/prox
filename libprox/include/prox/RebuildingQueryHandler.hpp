@@ -139,9 +139,17 @@ public:
         using std::tr1::placeholders::_1;
         mPrimaryHandler->addObject(obj_id);
         if (mustDefer())
-            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObject, _1, obj_id));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObjectByID, _1, obj_id));
         else if (mustDuplicate())
             mRebuildingHandler->addObject(obj_id);
+    }
+    virtual void addObject(const LocCacheIterator& obj_loc_it) {
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->addObject(obj_loc_it);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObjectByLocCacheIt, _1, obj_loc_it));
+        else if (mustDuplicate())
+            mRebuildingHandler->addObject(obj_loc_it);
     }
     virtual void removeObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;

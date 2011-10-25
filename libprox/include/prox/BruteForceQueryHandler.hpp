@@ -163,7 +163,11 @@ public:
     }
 
     void addObject(const ObjectID& obj_id) {
-        mObjects[obj_id] = mLocCache->startTracking(obj_id);
+        addObject(mLocCache->startTracking(obj_id));
+    }
+    void addObject(const LocCacheIterator& obj_loc_it) {
+        ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
+        mObjects[obj_id] = obj_loc_it;
         // If the object had disconnected and reconnected, make sure we don't
         // mark it as permanently gone.
         typename ObjectIDSetType::iterator del_obj_it = mRemovedObjects.find(obj_id);
@@ -188,7 +192,7 @@ public:
         ObjectList retval;
         retval.reserve(mObjects.size());
         for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
-            retval.push_back(it->first);
+            retval.push_back( mLocCache->startTracking(it->first) );
         return retval;
     }
 

@@ -124,18 +124,13 @@ public:
         // Destroy current tree
         destroyCurrentTree();
 
-        // Start tracking all objects for second tree
-        std::vector<LocCacheIterator> object_iterators;
-        object_iterators.reserve( objects.size() );
-        for(typename ObjectList::iterator it = objects.begin(); it != objects.end(); it++) {
-            LocCacheIterator loc_it = mLocCache->startTracking(*it);
-            object_iterators.push_back(loc_it);
-            mObjects[*it] = loc_it;
-        }
+        // Copy objects into this list
+        for(typename ObjectList::iterator it = objects.begin(); it != objects.end(); it++)
+            mObjects[mLocCache->iteratorID(*it)] = *it;
 
         // Build new tree
         mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
-        mRTree->bulkLoad(object_iterators, mLastTime);
+        mRTree->bulkLoad(objects, mLastTime);
     }
 
     virtual float cost() {
@@ -155,9 +150,13 @@ public:
 
 
     void addObject(const ObjectID& obj_id) {
-        assert(mObjects.find(obj_id) == mObjects.end());
+        addObject(mLocCache->startTracking(obj_id));
+    }
+    void addObject(const LocCacheIterator& obj_loc_it) {
+        ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
+        assert(mObjects.find( obj_id) == mObjects.end());
 
-        mObjects[obj_id] = mLocCache->startTracking(obj_id);
+        mObjects[obj_id] = obj_loc_it;
         insertObj(obj_id, mLastTime);
 
         // If the object had disconnected and reconnected, make sure we don't
@@ -185,7 +184,7 @@ public:
         ObjectList retval;
         retval.reserve(mObjects.size());
         for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
-            retval.push_back(it->first);
+            retval.push_back(mLocCache->startTracking(it->first));
         return retval;
     }
 
@@ -193,16 +192,11 @@ public:
         bool static_objects = mRTree->staticObjects();
         assert(mObjects.size() == 0);
 
-        // Start tracking all objects
-        std::vector<LocCacheIterator> object_iterators;
-        object_iterators.reserve( objects.size() );
-        for(typename ObjectList::const_iterator it = objects.begin(); it != objects.end(); it++) {
-            LocCacheIterator loc_it = mLocCache->startTracking(*it);
-            object_iterators.push_back(loc_it);
-            mObjects[*it] = loc_it;
-        }
+        // Copy iterators into our storage
+        for(typename ObjectList::const_iterator it = objects.begin(); it != objects.end(); it++)
+            mObjects[mLocCache->iteratorID(*it)] = *it;
 
-        mRTree->bulkLoad(object_iterators, mLastTime);
+        mRTree->bulkLoad(objects, mLastTime);
     }
 
 
