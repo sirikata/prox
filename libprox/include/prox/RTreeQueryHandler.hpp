@@ -107,7 +107,10 @@ public:
         mLocUpdateProvider->addUpdateListener(this);
         mShouldTrackCB = should_track_cb;
 
-        mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
+        mRTree = new RTree(
+            mElementsPerNode, mLocCache, static_objects,
+            std::tr1::bind(&RTreeQueryHandler::reportRestructures, this)
+        );
     }
 
     void tick(const Time& t, bool report) {
@@ -129,7 +132,10 @@ public:
             mObjects[mLocCache->iteratorID(*it)] = *it;
 
         // Build new tree
-        mRTree = new RTree(this, mElementsPerNode, mLocCache, static_objects);
+        mRTree = new RTree(
+            mElementsPerNode, mLocCache, static_objects,
+            std::tr1::bind(&RTreeQueryHandler::reportRestructures, this)
+        );
         mRTree->bulkLoad(objects, mLastTime);
     }
 

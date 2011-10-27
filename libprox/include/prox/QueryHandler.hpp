@@ -88,7 +88,7 @@ public:
 
     void trackChecks(bool t) { mTrackChecks = t; }
     void shouldRestructure(bool r) { mShouldRestructure = r; }
-    void reportRestructures(bool r) { mReportRestructures = r; }
+    void setReportRestructures(bool r) { mReportRestructures = r; }
     bool reportRestructures() const { return mReportRestructures; }
     void reportHealth(bool r) { mReportHealth = r; }
     void reportHealthFrequency(int its) { mReportHealthFrequency = its; }

@@ -66,6 +66,8 @@ public:
     typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
+    typedef typename std::tr1::function<bool()> ReportRestructuresCallback;
+
     typedef typename RTreeNodeType::RootReplacedByChildCallback RootReplacedByChildCallback;
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
 
@@ -75,8 +77,9 @@ public:
 
     typedef typename RTreeNodeType::Index Index;
 
-    RTree(QueryHandlerType* handler, Index elements_per_node, LocationServiceCacheType* loccache,
+    RTree(Index elements_per_node, LocationServiceCacheType* loccache,
         bool static_objects,
+        ReportRestructuresCallback report_restructures_cb,
         AggregatorType* aggregator = NULL,
         AggregateListenerType* agg = NULL,
         RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
@@ -84,12 +87,12 @@ public:
     )
      : mLocCache(loccache),
        mStaticObjects(static_objects),
-       mRestructureMightHaveEffect(false)
+       mRestructureMightHaveEffect(false),
+       mReportRestructures(report_restructures_cb)
     {
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
 
-        mCallbacks.handler = handler;
         mCallbacks.aggregator = aggregator;
         mCallbacks.aggregate = agg;
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
@@ -154,7 +157,7 @@ public:
         // something has changed/the last restructure pass did something
         if (!mStaticObjects || mRestructureMightHaveEffect) {
             RestructureInfo info = RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
-            if (mCallbacks.handler->reportRestructures())
+            if (mReportRestructures && mReportRestructures())
                 printf("{ \"time\" : %d, \"count\" : %d, \"cuts-rebuilt\" : %d }\n", (int)(t-Time::null()).milliseconds(), info.restructures, info.cutRebuilds);
             // Without any additions/removals, a restructure pass can only have
             // an effect if this previous pass actually restructured something.
@@ -252,6 +255,7 @@ private:
     ObjectLeafIndex mObjectLeaves;
     bool mStaticObjects;
     bool mRestructureMightHaveEffect;
+    ReportRestructuresCallback mReportRestructures;
 }; // class RTree
 
 } // namespace Prox

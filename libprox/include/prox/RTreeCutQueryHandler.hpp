@@ -120,9 +120,9 @@ public:
         using std::tr1::placeholders::_3;
 
         mRTree = new RTree(
-            this,
             mElementsPerNode, mLocCache,
             static_objects,
+            std::tr1::bind(&RTreeCutQueryHandler::reportRestructures, this),
             this, aggregateListener(),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
@@ -199,9 +199,9 @@ public:
         using std::tr1::placeholders::_2;
         using std::tr1::placeholders::_3;
         mRTree = new RTree(
-            this,
             mElementsPerNode, mLocCache,
             static_objects,
+            std::tr1::bind(&RTreeCutQueryHandler::reportRestructures, this),
             this, aggregateListener(),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),

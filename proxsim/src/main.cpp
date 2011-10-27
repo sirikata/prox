@@ -340,7 +340,7 @@ int main(int argc, char** argv) {
     handler->reportHealth(report_health);
     handler->reportHealthFrequency(report_health_frequency);
     handler->reportCost(report_cost);
-    handler->reportRestructures(report_restructures);
+    handler->setReportRestructures(report_restructures);
     handler->reportQueryStats(report_query_stats);
     simulator->printRate(report_rate);
     simulator->forceRebuild(force_rebuild);

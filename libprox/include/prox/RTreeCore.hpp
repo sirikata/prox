@@ -113,8 +113,6 @@ public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
-    typedef QueryHandler<SimulationTraits> QueryHandlerType;
-
     typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
@@ -136,7 +134,6 @@ public:
     typedef uint16 Index;
 
     struct Callbacks {
-        QueryHandlerType* handler;
         AggregatorType* aggregator;
         AggregateListenerType* aggregate;
         ObjectLeafChangedCallback objectLeafChanged;
