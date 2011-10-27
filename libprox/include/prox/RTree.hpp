@@ -36,6 +36,7 @@
 #include <prox/Platform.hpp>
 #include <prox/LocationServiceCache.hpp>
 #include <prox/Constraints.hpp>
+#include <prox/Aggregator.hpp>
 #include <prox/AggregateListener.hpp>
 #include <float.h>
 
@@ -62,6 +63,7 @@ public:
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
 
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
+    typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef typename RTreeNodeType::RootReplacedByChildCallback RootReplacedByChildCallback;
@@ -75,6 +77,7 @@ public:
 
     RTree(QueryHandlerType* handler, Index elements_per_node, LocationServiceCacheType* loccache,
         bool static_objects,
+        AggregatorType* aggregator = NULL,
         AggregateListenerType* agg = NULL,
         RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
@@ -87,6 +90,7 @@ public:
         using std::tr1::placeholders::_2;
 
         mCallbacks.handler = handler;
+        mCallbacks.aggregator = aggregator;
         mCallbacks.aggregate = agg;
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);

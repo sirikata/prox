@@ -36,19 +36,22 @@
 #include <prox/Query.hpp>
 #include <prox/LocationServiceCache.hpp>
 #include <prox/DefaultSimulationTraits.hpp>
-#include <prox/AggregateListener.hpp>
+#include <prox/Aggregator.hpp>
 
 namespace Prox {
 
 template<typename SimulationTraits = DefaultSimulationTraits>
-class QueryHandler : public LocationUpdateListener<SimulationTraits>, public QueryChangeListener<SimulationTraits> {
+class QueryHandler :
+        public LocationUpdateListener<SimulationTraits>,
+        public QueryChangeListener<SimulationTraits>,
+        public Aggregator<SimulationTraits>
+{
 public:
     typedef SimulationTraits SimulationTraitsType;
 
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
-    typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
@@ -71,7 +74,6 @@ public:
      : LocationUpdateListenerType(),
        QueryChangeListenerType(),
        mQueryIDSource(0),
-       mAggregateListener(NULL),
        mTrackChecks(false),
        mShouldRestructure(false),
        mReportRestructures(false),
@@ -175,13 +177,6 @@ public:
     virtual uint32 numObjects() const = 0;
     virtual uint32 numQueries() const = 0;
 
-    void setAggregateListener(AggregateListenerType* listener) {
-        mAggregateListener = listener;
-    }
-    void removeAggregateListener() {
-        mAggregateListener = NULL;
-    }
-
     virtual LocationServiceCacheType* locationCache() const = 0;
 
     // LocationUpdateListener
@@ -203,7 +198,7 @@ protected:
     virtual void registerQuery(QueryType* query) = 0;
 
     QueryID mQueryIDSource;
-    AggregateListenerType* mAggregateListener;
+
 
     // Whether to track constraint checks
     bool mTrackChecks;

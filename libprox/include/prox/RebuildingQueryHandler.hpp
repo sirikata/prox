@@ -71,6 +71,7 @@ public:
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
+    typedef Aggregator<SimulationTraits> AggregatorType;
 
     typedef Query<SimulationTraits> QueryType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
@@ -445,29 +446,29 @@ protected:
     }
 
     // AggregateListener Interface - just need to pass these along
-    virtual void aggregateCreated(QueryHandlerType* handler, const ObjectID& objid) {
+    virtual void aggregateCreated(AggregatorType* handler, const ObjectID& objid) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateCreated(this, objid);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateCreated(this, objid);
     }
-    virtual void aggregateChildAdded(QueryHandlerType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
+    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateChildAdded(this, objid, child, bnds);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateChildAdded(this, objid, child, bnds);
     }
-    virtual void aggregateChildRemoved(QueryHandlerType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
+    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateChildRemoved(this, objid, child, bnds);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateChildRemoved(this, objid, child, bnds);
     }
-    virtual void aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectID& objid, const BoundingSphere& bnds) {
+    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectID& objid, const BoundingSphere& bnds) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateBoundsUpdated(this, objid, bnds);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateBoundsUpdated(this, objid, bnds);
     }
-    virtual void aggregateDestroyed(QueryHandlerType* handler, const ObjectID& objid) {
+    virtual void aggregateDestroyed(AggregatorType* handler, const ObjectID& objid) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateDestroyed(this, objid);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateDestroyed(this, objid);
     }
-    virtual void aggregateObserved(QueryHandlerType* handler, const ObjectID& objid, uint32 nobservers) {
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectID& objid, uint32 nobservers) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (QueryHandlerType::mAggregateListener) QueryHandlerType::mAggregateListener->aggregateObserved(this, objid, nobservers);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateObserved(this, objid, nobservers);
     }
 
 

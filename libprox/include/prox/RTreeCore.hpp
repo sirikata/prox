@@ -115,6 +115,7 @@ public:
 
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
 
+    typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef RTreeLeafNode<SimulationTraits, CutNode> LeafNode;
@@ -136,6 +137,7 @@ public:
 
     struct Callbacks {
         QueryHandlerType* handler;
+        AggregatorType* aggregator;
         AggregateListenerType* aggregate;
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
@@ -208,7 +210,7 @@ public:
 
         leaf(true);
 
-        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateCreated(callbacks.handler, aggregate);
+        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateCreated(callbacks.aggregator, aggregate);
     }
 
     // We have a destroy method and hide the destructor in private in order to
@@ -218,7 +220,7 @@ public:
         // entire node
         clear(loc, callbacks);
 
-        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateDestroyed(callbacks.handler, aggregate);
+        if (callbacks.aggregate != NULL) callbacks.aggregate->aggregateDestroyed(callbacks.aggregator, aggregate);
         delete this;
     }
 
@@ -297,7 +299,7 @@ public:
         mData = NodeData();
         for(int i = 0; i < size(); i++)
             mData.mergeIn( childData(i, loc, t) );
-        if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(cb.handler, aggregate, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(cb.aggregator, aggregate, mData.getBounds());
     }
 
 private:
@@ -308,7 +310,7 @@ private:
                 cb.objectRemoved(cut_it->second, obj, permanent);
         }
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, obj_id, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.aggregator, aggregate, obj_id, mData.getBounds());
     }
 
 public:
@@ -355,7 +357,7 @@ public:
         count++;
         mData.mergeIn( NodeData(loc, obj, t) );
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.handler, aggregate, loc->iteratorID(obj), mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.aggregator, aggregate, loc->iteratorID(obj), mData.getBounds());
 
         if (cb.objectInserted) {
             for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
@@ -371,7 +373,7 @@ public:
         count++;
         mData.mergeIn( node->data() );
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.handler, aggregate, node->aggregate, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.aggregator, aggregate, node->aggregate, mData.getBounds());
     }
 
     // NOTE: does not recalculate the bounding sphere
@@ -420,7 +422,7 @@ public:
             if (elements.nodes[node_idx] == node) break;
         erase(node_idx);
 
-        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.handler, aggregate, node->aggregate, mData.getBounds());
+        if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.aggregator, aggregate, node->aggregate, mData.getBounds());
     }
 
     // Removes the last child in the node and returns the pointer to it.
@@ -463,7 +465,6 @@ public:
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
-    typedef Query<SimulationTraits> QueryType;
 
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
@@ -660,8 +661,6 @@ public:
     typedef typename SimulationTraits::TimeType Time;
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
-
-    typedef Query<SimulationTraits> QueryType;
 
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 

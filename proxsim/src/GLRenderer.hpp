@@ -67,12 +67,12 @@ public:
 
 protected:
     // AggregateListener Interface
-    virtual void aggregateCreated(QueryHandlerType* handler, const ObjectIDType& objid);
-    virtual void aggregateChildAdded(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
-    virtual void aggregateChildRemoved(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
-    virtual void aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds);
-    virtual void aggregateDestroyed(QueryHandlerType* handler, const ObjectIDType& objid);
-    virtual void aggregateObserved(QueryHandlerType* handler, const ObjectIDType& objid, uint32 nobservers);
+    virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid);
+    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
+    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
+    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds);
+    virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid);
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers);
 
     GLRenderer();
 

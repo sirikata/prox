@@ -36,7 +36,7 @@
 namespace Prox {
 
 template<typename SimulationTraits>
-class QueryHandler;
+class Aggregator;
 
 /** An AggregateListener is informed about updates to aggregates.  Aggregates
  *  are collections of objects which may be returned because they would satisfy
@@ -68,20 +68,20 @@ class AggregateListener {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectIDType;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphereType;
-    typedef QueryHandler<SimulationTraits> QueryHandlerType;
+    typedef Aggregator<SimulationTraits> AggregatorType;
 
     AggregateListener() {}
     virtual ~AggregateListener() {}
 
-    virtual void aggregateCreated(QueryHandlerType* handler, const ObjectIDType& objid) = 0;
-    virtual void aggregateChildAdded(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
-    virtual void aggregateChildRemoved(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
+    virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) = 0;
+    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
+    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
     // Only invoked on pure bounds updates. Passed as part of the
     // callback for childAdded and childRemoved.
-    virtual void aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) = 0;
-    virtual void aggregateDestroyed(QueryHandlerType* handler, const ObjectIDType& objid) = 0;
+    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) = 0;
+    virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) = 0;
 
-    virtual void aggregateObserved(QueryHandlerType* handler, const ObjectIDType& objid, uint32 nobservers) = 0;
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) = 0;
 
 }; // class AggregateListener
 
