@@ -57,6 +57,11 @@ class QueryHandler;
  *  changes.  The trivial way to convert this to location and bounds
  *  is to use the center as the location and change the bounds center
  *  to the origin.
+ *
+ *  NOTE: Callbacks may happen from any thread since they may occur during
+ *  normal operation as well as during rebuilding (which occurs in a separate
+ *  thread). Listeners are responsible for ensuring the callbacks are
+ *  thread-safe.
  */
 template<typename SimulationTraits>
 class AggregateListener {

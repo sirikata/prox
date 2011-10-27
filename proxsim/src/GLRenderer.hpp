@@ -98,7 +98,9 @@ protected:
 
     uint32 mMaxObservers;
 
-    ObjectIDSet mLeafAggregates;
+    typedef boost::mutex Mutex;
+    typedef boost::lock_guard<Mutex> Lock;
+    Mutex mAggregateMutex;
     typedef std::tr1::unordered_map<ObjectID, BoundingSphereType, ObjectID::Hasher> AggregateBounds;
     AggregateBounds mAggregateBounds;
 
