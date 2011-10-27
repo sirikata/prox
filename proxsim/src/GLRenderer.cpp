@@ -149,6 +149,7 @@ void GLRenderer::queryHasEvents(Query* query) {
 
 void GLRenderer::validateSeenObjects() {
 #ifdef PROXDEBUG
+    Lock(mAggregateMutex);
     // Validate
     for (ObjectRefCountMap::iterator it = mSeenObjects.begin(); it != mSeenObjects.end(); it++) {
         assert(
@@ -177,11 +178,13 @@ void GLRenderer::simulatorRemovedQuery(Querier* query) {
 }
 
 void GLRenderer::aggregateCreated(QueryHandlerType* handler, const ObjectIDType& objid) {
+    Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) == mAggregateObjects.end() );
     mAggregateObjects[objid] = ObjectIDSet();
 }
 
 void GLRenderer::aggregateChildAdded(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
+    Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].insert(child);
 
@@ -192,16 +195,19 @@ void GLRenderer::aggregateChildAdded(QueryHandlerType* handler, const ObjectIDTy
 }
 
 void GLRenderer::aggregateChildRemoved(QueryHandlerType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
+    Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].erase(child);
 }
 
 void GLRenderer::aggregateBoundsUpdated(QueryHandlerType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) {
+    Lock lck(mAggregateMutex);
     if (mAggregateBounds.find(objid) != mAggregateBounds.end())
         mAggregateBounds[objid] = bnds;
 }
 
 void GLRenderer::aggregateDestroyed(QueryHandlerType* handler, const ObjectIDType& objid) {
+    Lock lck(mAggregateMutex);
     AggregateObjectMap::iterator it = mAggregateObjects.find(objid);
     assert(it != mAggregateObjects.end());
     mAggregateObjects.erase(it);
@@ -210,6 +216,7 @@ void GLRenderer::aggregateDestroyed(QueryHandlerType* handler, const ObjectIDTyp
 }
 
 void GLRenderer::aggregateObserved(QueryHandlerType* handler, const ObjectIDType& objid, uint32 nobservers) {
+    Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
 }
 
@@ -241,6 +248,7 @@ void GLRenderer::display() {
           break;
       case SmallestAggregates:
           {
+              Lock lck(mAggregateMutex);
               int idx = 0;
               for(AggregateBounds::iterator it = mAggregateBounds.begin(); it != mAggregateBounds.end(); it++) {
                   ObjectID agg = it->first;
