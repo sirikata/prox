@@ -33,10 +33,10 @@
 #ifndef _PROX_REBUILDING_QUERY_HANDLER_HPP_
 #define _PROX_REBUILDING_QUERY_HANDLER_HPP_
 
-#include <prox/Query.hpp>
-#include <prox/LocationServiceCache.hpp>
-#include <prox/DefaultSimulationTraits.hpp>
-#include <prox/AggregateListener.hpp>
+#include <prox/geom/Query.hpp>
+#include <prox/base/LocationServiceCache.hpp>
+#include <prox/base/DefaultSimulationTraits.hpp>
+#include <prox/base/AggregateListener.hpp>
 #include <boost/thread.hpp>
 #ifdef _WIN32
 #pragma warning (push)

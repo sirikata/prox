@@ -1,5 +1,5 @@
 /*  libprox
- *  Duration.hpp
+ *  Time.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,55 +30,48 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_DURATION_HPP_
-#define _PROX_DURATION_HPP_
+#ifndef _PROX_TIME_HPP_
+#define _PROX_TIME_HPP_
 
-#include <prox/Platform.hpp>
+#include <prox/util/Platform.hpp>
 
 namespace Prox {
 namespace Reference {
 
-class Time;
+class Duration;
 
-class Duration {
+class Time {
 public:
-    Duration(uint64 microsecs);
-    Duration(const Duration& cpy);
-    ~Duration();
+    Time(const Time& cpy);
+    ~Time();
 
-    static Duration seconds(float dt);
-    static Duration seconds(uint32 dt);
-    static Duration milliseconds(float dt);
-    static Duration milliseconds(uint32 dt);
-    static Duration microseconds(uint64 dt) { return Duration(dt); }
+    Time operator+(const Duration& dt) const;
+    Time& operator+=(const Duration& dt);
 
-    float seconds() const;
-    float milliseconds() const;
-    int64 microseconds() const { return mMicrosecs; }
+    Time operator-(const Duration& dt) const;
+    Time& operator-=(const Duration& dt);
 
-    Duration operator+(const Duration& rhs) const;
-    Duration& operator+=(const Duration& rhs);
+    Duration operator-(const Time& rhs) const;
 
-    Time operator+(const Time& rhs) const;
+    bool operator<(const Time& rhs) const;
+    bool operator>(const Time& rhs) const;
+    bool operator==(const Time& rhs) const;
 
-    Duration operator-(const Duration& rhs) const;
-    Duration& operator-=(const Duration& rhs);
+    int64 microseconds() const { return mSinceEpoch; }
 
-    bool operator<(const Duration& rhs) const;
-    bool operator==(const Duration& rhs) const;
-
-    Duration abs() const {
-		return Duration(mMicrosecs<0?-mMicrosecs:mMicrosecs);
-    }
+    static Time null() { return Time(0); }
+    static Time microseconds(int64 micro) { return Time((uint64)micro); }
+    static Time microseconds(uint64 micro) { return Time((uint64)micro); }
 private:
-    friend class Time;
+    friend class Duration;
 
-    Duration();
+    Time();
+    Time(uint64 since_epoch);
 
-    int64 mMicrosecs;
-}; // class Duration
+    uint64 mSinceEpoch; // microseconds since epoch
+}; // class Time
 
 } // namespace Reference
 } // namespace Prox
 
-#endif //_PROX_DURATION_HPP_
+#endif //_PROX_TIME_HPP_

@@ -33,7 +33,7 @@
 #ifndef _PROX_QUERY_CHANGE_LISTENER_HPP_
 #define _PROX_QUERY_CHANGE_LISTENER_HPP_
 
-#include <prox/QueryBaseChangeListener.hpp>
+#include <prox/base/QueryBaseChangeListener.hpp>
 
 namespace Prox {
 

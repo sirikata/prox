@@ -5,10 +5,10 @@
 #ifndef _PROX_QUERY_BASE_HPP_
 #define _PROX_QUERY_BASE_HPP_
 
-#include <prox/Platform.hpp>
-#include <prox/DefaultSimulationTraits.hpp>
-#include <prox/QueryEvent.hpp>
-#include <prox/QueryEventListener.hpp>
+#include <prox/util/Platform.hpp>
+#include <prox/base/DefaultSimulationTraits.hpp>
+#include <prox/base/QueryEvent.hpp>
+#include <prox/base/QueryEventListener.hpp>
 #include <boost/thread.hpp>
 
 namespace Prox {

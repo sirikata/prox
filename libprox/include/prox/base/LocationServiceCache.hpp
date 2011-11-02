@@ -33,8 +33,8 @@
 #ifndef _PROX_LOCATION_SERVICE_CACHE_HPP_
 #define _PROX_LOCATION_SERVICE_CACHE_HPP_
 
-#include <prox/Platform.hpp>
-#include <prox/LocationUpdateListener.hpp>
+#include <prox/util/Platform.hpp>
+#include <prox/base/LocationUpdateListener.hpp>
 
 namespace Prox {
 

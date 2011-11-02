@@ -30,7 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <prox/BoundingSphere.hpp>
+#include <prox/util/BoundingSphere.hpp>
 #include <cassert>
 #include <cmath>
 

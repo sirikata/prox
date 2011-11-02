@@ -33,7 +33,7 @@
 #ifndef _BOUNDING_SPHERE_HPP_
 #define _BOUNDING_SPHERE_HPP_
 
-#include <prox/Platform.hpp>
+#include <prox/util/Platform.hpp>
 #include <cmath>
 
 namespace Prox {

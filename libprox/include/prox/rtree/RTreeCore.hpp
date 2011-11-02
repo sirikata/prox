@@ -33,10 +33,10 @@
 #ifndef _PROX_RTREE_CORE_HPP_
 #define _PROX_RTREE_CORE_HPP_
 
-#include <prox/Platform.hpp>
-#include <prox/LocationServiceCache.hpp>
-#include <prox/Constraints.hpp>
-#include <prox/AggregateListener.hpp>
+#include <prox/util/Platform.hpp>
+#include <prox/base/LocationServiceCache.hpp>
+#include <prox/rtree/Constraints.hpp>
+#include <prox/base/AggregateListener.hpp>
 #include <float.h>
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?

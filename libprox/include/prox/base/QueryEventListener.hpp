@@ -1,7 +1,7 @@
 /*  libprox
- *  DefaultSimulationTraits.cpp
+ *  QueryEventListener.hpp
  *
- *  Copyright (c) 2010, Ewen Cheslack-Postava
+ *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,14 +30,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <prox/base/DefaultSimulationTraits.hpp>
-#include <float.h>
-#include <limits.h>
+#ifndef _PROX_QUERY_EVENT_LISTENER_HPP_
+#define _PROX_QUERY_EVENT_LISTENER_HPP_
 
 namespace Prox {
 
-const DefaultSimulationTraits::realType DefaultSimulationTraits::InfiniteRadius = FLT_MAX;
+template<typename SimulationTraits, typename QueryTypeT>
+class QueryEventListener {
+public:
+    typedef QueryTypeT QueryType;
 
-const uint32 DefaultSimulationTraits::InfiniteResults = INT_MAX;
+    QueryEventListener() {}
+    virtual ~QueryEventListener() {}
+
+    virtual void queryHasEvents(QueryType* query) = 0;
+
+}; // class QueryEventListener
 
 } // namespace Prox
+
+#endif //_PROX_QUERY_EVENT_LISTENER_HPP_

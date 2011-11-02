@@ -30,7 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <prox/SolidAngle.hpp>
+#include <prox/util/SolidAngle.hpp>
 #include <cassert>
 #include <cmath>
 

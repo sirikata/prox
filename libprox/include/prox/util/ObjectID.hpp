@@ -1,5 +1,5 @@
 /*  libprox
- *  MotionVector.hpp
+ *  ObjectID.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,74 +30,86 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MOTION_VECTOR_HPP_
-#define _MOTION_VECTOR_HPP_
+#ifndef _PROX_OBJECT_ID_HPP_
+#define _PROX_OBJECT_ID_HPP_
 
-#include <prox/Vector3.hpp>
-#include <prox/Time.hpp>
-#include <prox/Duration.hpp>
+#include <prox/util/Platform.hpp>
 
 namespace Prox {
 namespace Reference {
 
-template<typename CoordType_t>
-class MotionVector {
+class ObjectID {
+    enum {
+        UUID_SIZE = 16
+    };
 public:
-    typedef CoordType_t CoordType;
-
-    MotionVector(const Time& t, const CoordType& pos, const CoordType& vel)
-     : mTime(t), mStart(pos), mDirection(vel)
+    enum {
+        static_size=UUID_SIZE
+    };
+    static const ObjectID& null() {
+        static unsigned char data[UUID_SIZE]={0};
+        static ObjectID retval (data,UUID_SIZE);
+        return retval;
+    }
+    ObjectID(const void *data, int size)
     {
+        if (size==UUID_SIZE) {
+            memcpy(mID,data,UUID_SIZE);
+        }else {
+            memset(mID,0,UUID_SIZE);
+            assert(false);
+        }
     }
 
-    const Time& updateTime() const {
-        return mTime;
+    void *begin(){
+        return &mID[0];
+    }
+    void *end(){
+        return (&mID[0]+UUID_SIZE);
     }
 
-    const CoordType& position() const {
-        return mStart;
+    const void *begin()const{
+        return &mID[0];
+    }
+    const void *end()const {
+        return (&mID[0]+UUID_SIZE);
     }
 
-    CoordType position(const Duration& dt) const {
-        return mStart + mDirection * dt.seconds();
+    bool operator<(const ObjectID& rhs) const {
+        return memcmp(mID,rhs.mID,UUID_SIZE)<0;
+    }
+    bool operator==(const ObjectID& rhs) const {
+        return memcmp(mID,rhs.mID,UUID_SIZE)==0;
     }
 
-    CoordType position(const Time& t) const {
-        return position(t - mTime);
+    struct Hasher {
+        size_t operator() (const ObjectID& objid) const {
+            return *((const size_t*)objid.begin());
+        }
+    };
+
+    struct Random {
+        ObjectID operator() () const {
+            unsigned char buf[UUID_SIZE];
+            for(int i = 0; i < UUID_SIZE; i++)
+                buf[i] = (unsigned char)(rand() % 256);
+            return ObjectID(buf, UUID_SIZE);
+        }
+    };
+
+    std::string toString() const {
+        std::stringstream ss;
+        ss << Hasher()(*this);
+        return ss.str();
     }
 
-    const CoordType& velocity() const {
-        return mDirection;
-    }
-    MotionVector& operator+=(const CoordType &offset) {
-        mStart+=offset;
-        return *this;
-    }
-    MotionVector operator+(const CoordType &offset) {
-        return MotionVector(
-            mTime,
-            mStart + offset,
-            mDirection
-        );
-    }
-    void update(const Time& t, const CoordType& pos, const CoordType& vel) {
-        assert(t > mTime);
-        mTime = t;
-        mStart = pos;
-        mDirection = vel;
-    }
 private:
-    MotionVector();
+    ObjectID();
 
-    Time mTime;
-    CoordType mStart;
-    CoordType mDirection;
-}; // class MotionVector
-
-typedef MotionVector<Vector3f> MotionVector3f;
-typedef MotionVector<Vector3d> MotionVector3d;
+    unsigned char mID[UUID_SIZE];
+}; // class ObjectID
 
 } // namespace Reference
 } // namespace Prox
 
-#endif //_MOTION_VECTOR_HPP_
+#endif //_PROX_OBJECT_ID_HPP_

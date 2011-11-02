@@ -1,5 +1,5 @@
 /*  libprox
- *  DefaultSimulationTraits.hpp
+ *  Duration.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,50 +30,55 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
-#define _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
+#ifndef _PROX_DURATION_HPP_
+#define _PROX_DURATION_HPP_
 
-#include <prox/Vector3.hpp>
-#include <prox/MotionVector.hpp>
-
-#include <prox/BoundingSphere.hpp>
-
-#include <prox/SolidAngle.hpp>
-
-#include <prox/ObjectID.hpp>
-
-#include <prox/Time.hpp>
-#include <prox/Duration.hpp>
-
-// LocationServiceCache?
+#include <prox/util/Platform.hpp>
 
 namespace Prox {
+namespace Reference {
 
-class DefaultSimulationTraits {
+class Time;
+
+class Duration {
 public:
-    typedef float realType;
+    Duration(uint64 microsecs);
+    Duration(const Duration& cpy);
+    ~Duration();
 
-    typedef Reference::Vector3f Vector3Type;
-    typedef Reference::MotionVector3f MotionVector3Type;
+    static Duration seconds(float dt);
+    static Duration seconds(uint32 dt);
+    static Duration milliseconds(float dt);
+    static Duration milliseconds(uint32 dt);
+    static Duration microseconds(uint64 dt) { return Duration(dt); }
 
-    typedef Reference::BoundingSphere3f BoundingSphereType;
+    float seconds() const;
+    float milliseconds() const;
+    int64 microseconds() const { return mMicrosecs; }
 
-    typedef Reference::SolidAngle SolidAngleType;
+    Duration operator+(const Duration& rhs) const;
+    Duration& operator+=(const Duration& rhs);
 
-    typedef Reference::ObjectID ObjectIDType;
-    typedef Reference::ObjectID::Hasher ObjectIDHasherType;
-    typedef Reference::ObjectID::Random ObjectIDRandomType;
+    Time operator+(const Time& rhs) const;
 
-    typedef Reference::Time TimeType;
-    typedef Reference::Duration DurationType;
+    Duration operator-(const Duration& rhs) const;
+    Duration& operator-=(const Duration& rhs);
 
-    const static realType InfiniteRadius;
+    bool operator<(const Duration& rhs) const;
+    bool operator==(const Duration& rhs) const;
 
-    // Flags an infinite number of results may be returned, the default
-    const static uint32 InfiniteResults;
+    Duration abs() const {
+		return Duration(mMicrosecs<0?-mMicrosecs:mMicrosecs);
+    }
+private:
+    friend class Time;
 
-}; // class DefaultSimulationTraits
+    Duration();
 
+    int64 mMicrosecs;
+}; // class Duration
+
+} // namespace Reference
 } // namespace Prox
 
-#endif //_PROX_DEFAULT_SIMULATION_TRAITS_HPP_
+#endif //_PROX_DURATION_HPP_

@@ -33,7 +33,7 @@
 #ifndef _PROX_SOLID_ANGLE_HPP_
 #define _PROX_SOLID_ANGLE_HPP_
 
-#include <prox/Vector3.hpp>
+#include <prox/util/Vector3.hpp>
 
 namespace Prox {
 namespace Reference {

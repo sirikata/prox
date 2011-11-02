@@ -33,7 +33,7 @@
 #ifndef _PROX_QUERY_CACHE_HPP_
 #define _PROX_QUERY_CACHE_HPP_
 
-#include <prox/QueryEvent.hpp>
+#include <prox/base/QueryEvent.hpp>
 #include <algorithm>
 
 namespace Prox {

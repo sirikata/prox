@@ -1,5 +1,5 @@
 /*  libprox
- *  QueryEventListener.hpp
+ *  DefaultSimulationTraits.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,26 +30,50 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_QUERY_EVENT_LISTENER_HPP_
-#define _PROX_QUERY_EVENT_LISTENER_HPP_
+#ifndef _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
+#define _PROX_DEFAULT_SIMULATION_TRAITS_HPP_
+
+#include <prox/util/Vector3.hpp>
+#include <prox/util/MotionVector.hpp>
+
+#include <prox/util/BoundingSphere.hpp>
+
+#include <prox/util/SolidAngle.hpp>
+
+#include <prox/util/ObjectID.hpp>
+
+#include <prox/util/Time.hpp>
+#include <prox/util/Duration.hpp>
+
+// LocationServiceCache?
 
 namespace Prox {
 
-template<typename SimulationTraits>
-class Query;
-
-template<typename SimulationTraits, typename QueryTypeT>
-class QueryEventListener {
+class DefaultSimulationTraits {
 public:
-    typedef QueryTypeT QueryType;
+    typedef float realType;
 
-    QueryEventListener() {}
-    virtual ~QueryEventListener() {}
+    typedef Reference::Vector3f Vector3Type;
+    typedef Reference::MotionVector3f MotionVector3Type;
 
-    virtual void queryHasEvents(QueryType* query) = 0;
+    typedef Reference::BoundingSphere3f BoundingSphereType;
 
-}; // class QueryEventListener
+    typedef Reference::SolidAngle SolidAngleType;
+
+    typedef Reference::ObjectID ObjectIDType;
+    typedef Reference::ObjectID::Hasher ObjectIDHasherType;
+    typedef Reference::ObjectID::Random ObjectIDRandomType;
+
+    typedef Reference::Time TimeType;
+    typedef Reference::Duration DurationType;
+
+    const static realType InfiniteRadius;
+
+    // Flags an infinite number of results may be returned, the default
+    const static uint32 InfiniteResults;
+
+}; // class DefaultSimulationTraits
 
 } // namespace Prox
 
-#endif //_PROX_QUERY_EVENT_LISTENER_HPP_
+#endif //_PROX_DEFAULT_SIMULATION_TRAITS_HPP_

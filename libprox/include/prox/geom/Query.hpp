@@ -33,10 +33,10 @@
 #ifndef _PROX_QUERY_HPP_
 #define _PROX_QUERY_HPP_
 
-#include <prox/Platform.hpp>
-#include <prox/QueryBase.hpp>
-#include <prox/QueryEventListener.hpp>
-#include <prox/QueryChangeListener.hpp>
+#include <prox/util/Platform.hpp>
+#include <prox/base/QueryBase.hpp>
+#include <prox/base/QueryEventListener.hpp>
+#include <prox/geom/QueryChangeListener.hpp>
 
 namespace Prox {
 

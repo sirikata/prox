@@ -33,10 +33,10 @@
 #ifndef _PROX_QUERY_HANDLER_HPP_
 #define _PROX_QUERY_HANDLER_HPP_
 
-#include <prox/Query.hpp>
-#include <prox/LocationServiceCache.hpp>
-#include <prox/DefaultSimulationTraits.hpp>
-#include <prox/Aggregator.hpp>
+#include <prox/geom/Query.hpp>
+#include <prox/base/LocationServiceCache.hpp>
+#include <prox/base/DefaultSimulationTraits.hpp>
+#include <prox/base/Aggregator.hpp>
 
 namespace Prox {
 

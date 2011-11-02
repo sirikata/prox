@@ -33,11 +33,11 @@
 #ifndef _PROX_RTREE_HPP_
 #define _PROX_RTREE_HPP_
 
-#include <prox/Platform.hpp>
-#include <prox/LocationServiceCache.hpp>
-#include <prox/Constraints.hpp>
-#include <prox/Aggregator.hpp>
-#include <prox/AggregateListener.hpp>
+#include <prox/util/Platform.hpp>
+#include <prox/base/LocationServiceCache.hpp>
+#include <prox/rtree/Constraints.hpp>
+#include <prox/base/Aggregator.hpp>
+#include <prox/base/AggregateListener.hpp>
 #include <float.h>
 
 #include "RTreeCore.hpp"

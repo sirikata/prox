@@ -30,8 +30,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <prox/Time.hpp>
-#include <prox/Duration.hpp>
+#include <prox/util/Time.hpp>
+#include <prox/util/Duration.hpp>
 
 namespace Prox {
 namespace Reference {

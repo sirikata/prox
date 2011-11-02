@@ -33,7 +33,7 @@
 #ifndef _BOUNDING_BOX_HPP_
 #define _BOUNDING_BOX_HPP_
 
-#include <prox/Platform.hpp>
+#include <prox/util/Platform.hpp>
 #include "SimulationTypes.hpp"
 #include <cmath>
 

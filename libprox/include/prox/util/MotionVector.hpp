@@ -1,5 +1,5 @@
 /*  libprox
- *  Time.hpp
+ *  MotionVector.hpp
  *
  *  Copyright (c) 2009, Ewen Cheslack-Postava
  *  All rights reserved.
@@ -30,48 +30,74 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PROX_TIME_HPP_
-#define _PROX_TIME_HPP_
+#ifndef _MOTION_VECTOR_HPP_
+#define _MOTION_VECTOR_HPP_
 
-#include <prox/Platform.hpp>
+#include <prox/util/Vector3.hpp>
+#include <prox/util/Time.hpp>
+#include <prox/util/Duration.hpp>
 
 namespace Prox {
 namespace Reference {
 
-class Duration;
-
-class Time {
+template<typename CoordType_t>
+class MotionVector {
 public:
-    Time(const Time& cpy);
-    ~Time();
+    typedef CoordType_t CoordType;
 
-    Time operator+(const Duration& dt) const;
-    Time& operator+=(const Duration& dt);
+    MotionVector(const Time& t, const CoordType& pos, const CoordType& vel)
+     : mTime(t), mStart(pos), mDirection(vel)
+    {
+    }
 
-    Time operator-(const Duration& dt) const;
-    Time& operator-=(const Duration& dt);
+    const Time& updateTime() const {
+        return mTime;
+    }
 
-    Duration operator-(const Time& rhs) const;
+    const CoordType& position() const {
+        return mStart;
+    }
 
-    bool operator<(const Time& rhs) const;
-    bool operator>(const Time& rhs) const;
-    bool operator==(const Time& rhs) const;
+    CoordType position(const Duration& dt) const {
+        return mStart + mDirection * dt.seconds();
+    }
 
-    int64 microseconds() const { return mSinceEpoch; }
+    CoordType position(const Time& t) const {
+        return position(t - mTime);
+    }
 
-    static Time null() { return Time(0); }
-    static Time microseconds(int64 micro) { return Time((uint64)micro); }
-    static Time microseconds(uint64 micro) { return Time((uint64)micro); }
+    const CoordType& velocity() const {
+        return mDirection;
+    }
+    MotionVector& operator+=(const CoordType &offset) {
+        mStart+=offset;
+        return *this;
+    }
+    MotionVector operator+(const CoordType &offset) {
+        return MotionVector(
+            mTime,
+            mStart + offset,
+            mDirection
+        );
+    }
+    void update(const Time& t, const CoordType& pos, const CoordType& vel) {
+        assert(t > mTime);
+        mTime = t;
+        mStart = pos;
+        mDirection = vel;
+    }
 private:
-    friend class Duration;
+    MotionVector();
 
-    Time();
-    Time(uint64 since_epoch);
+    Time mTime;
+    CoordType mStart;
+    CoordType mDirection;
+}; // class MotionVector
 
-    uint64 mSinceEpoch; // microseconds since epoch
-}; // class Time
+typedef MotionVector<Vector3f> MotionVector3f;
+typedef MotionVector<Vector3d> MotionVector3d;
 
 } // namespace Reference
 } // namespace Prox
 
-#endif //_PROX_TIME_HPP_
+#endif //_MOTION_VECTOR_HPP_

@@ -33,14 +33,14 @@
 #ifndef _PROX_BRUTE_FORCE_QUERY_HANDLER_HPP_
 #define _PROX_BRUTE_FORCE_QUERY_HANDLER_HPP_
 
-#include <prox/QueryHandler.hpp>
-#include <prox/LocationUpdateListener.hpp>
-#include <prox/QueryChangeListener.hpp>
-#include <prox/QueryCache.hpp>
+#include <prox/geom/QueryHandler.hpp>
+#include <prox/base/LocationUpdateListener.hpp>
+#include <prox/geom/QueryChangeListener.hpp>
+#include <prox/base/QueryCache.hpp>
 
-#include <prox/DefaultSimulationTraits.hpp>
+#include <prox/base/DefaultSimulationTraits.hpp>
 
-#include <prox/Constraints.hpp>
+#include <prox/rtree/Constraints.hpp>
 
 namespace Prox {
 

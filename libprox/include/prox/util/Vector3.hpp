@@ -32,7 +32,7 @@
 #ifndef _PROX_VECTOR3_HPP_
 #define _PROX_VECTOR3_HPP_
 
-#include <prox/Platform.hpp>
+#include <prox/util/Platform.hpp>
 #include <assert.h>
 #include <sstream>
 #include <cmath>

@@ -33,7 +33,7 @@
 #ifndef _PROX_QUERY_EVENT_HPP_
 #define _PROX_QUERY_EVENT_HPP_
 
-#include <prox/DefaultSimulationTraits.hpp>
+#include <prox/base/DefaultSimulationTraits.hpp>
 
 namespace Prox {
 
