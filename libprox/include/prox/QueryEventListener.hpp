@@ -38,10 +38,10 @@ namespace Prox {
 template<typename SimulationTraits>
 class Query;
 
-template<typename SimulationTraits>
+template<typename SimulationTraits, typename QueryTypeT>
 class QueryEventListener {
 public:
-    typedef Query<SimulationTraits> QueryType;
+    typedef QueryTypeT QueryType;
 
     QueryEventListener() {}
     virtual ~QueryEventListener() {}

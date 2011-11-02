@@ -34,11 +34,9 @@
 #define _PROX_QUERY_HPP_
 
 #include <prox/Platform.hpp>
-#include <prox/DefaultSimulationTraits.hpp>
-#include <prox/QueryEvent.hpp>
+#include <prox/QueryBase.hpp>
 #include <prox/QueryEventListener.hpp>
 #include <prox/QueryChangeListener.hpp>
-#include <boost/thread.hpp>
 
 namespace Prox {
 
@@ -46,7 +44,9 @@ template<typename SimulationTraits>
 class QueryHandler;
 
 template<typename SimulationTraits = DefaultSimulationTraits>
-class Query {
+class Query :
+        public QueryBase< SimulationTraits, Query<SimulationTraits>, QueryHandler<SimulationTraits>, QueryChangeListener<SimulationTraits> >
+{
 public:
     typedef typename SimulationTraits::realType real;
     typedef typename SimulationTraits::Vector3Type Vector3;
@@ -55,61 +55,17 @@ public:
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
 
+    typedef QueryBase< SimulationTraits, Query<SimulationTraits>, QueryHandler<SimulationTraits>, QueryChangeListener<SimulationTraits> > QueryBaseType;
+
     typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
-    typedef QueryEventListener<SimulationTraits> QueryEventListenerType;
+    typedef QueryEventListener< SimulationTraits, Query<SimulationTraits> > QueryEventListenerType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef int ID;
 
-    ~Query() {
-        if (mValid)
-            destroy(true);
+    ~Query() {}
 
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryDeleted(this);
-    }
-
-    /** Clear this query and disable the ability to change any of its
-     *  values. Any remaining query results are added before the method returns
-     *  and no further notifications about query event availability will be
-     *  made.  If implicit == true, then the objects still in the result set do
-     *  not have events created to remove them -- i.e. this method returns
-     *  without changing the result set at all. This mode is used by the
-     *  destructor since results cannot be collected after it exits, but can
-     *  also be used if you do not need those updates but still need the query
-     *  data (e.g. position, query angle, etc).
-     */
-    void destroy(bool implicit = false) {
-        assert(mValid);
-        mValid = false;
-
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryDestroyed(this, implicit);
-    }
-
-    QueryHandlerType* handler() const { return mParent; }
-
-    ID id() const { return mID; }
-
-    /// Center position of the querier or aggregate querier.
-    const MotionVector3& position() const {
-        return mPosition;
-    }
-    Vector3 position(const Time& t) const {
-        return mPosition.position(t);
-    }
-    /// Region 'covered' by the queriers, not including their extents. In other
-    /// words, the bounding region of the centers of the queriers. For a single
-    /// querier this will be a single .
-    const BoundingSphere& region() const {
-        return mRegion;
-    }
-    /// Maximum size of queriers. For individual queriers, the size of the
-    /// querier. For aggregate queriers, the size of the largest querier.
-    const real maxSize() const {
-        return mMaxSize;
-    }
     /// Minimum solid angle of an object which still allows it to be returned as
     /// a result.
     const SolidAngle& angle() const {
@@ -126,105 +82,23 @@ public:
         return mMaxResults;
     }
 
-    void position(const MotionVector3& new_pos) {
-        assert(mValid);
-        MotionVector3 old_pos = mPosition;
-        mPosition = new_pos;
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryPositionChanged(this, old_pos, new_pos);
-    }
-
-    void region(const BoundingSphere& new_region) {
-        assert(mValid);
-        BoundingSphere old_region = mRegion;
-        mRegion = new_region;
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryRegionChanged(this, old_region, new_region);
-    }
-
-    void maxSize(real new_ms) {
-        assert(mValid);
-        real old_ms = mMaxSize;
-        mMaxSize = new_ms;
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
-            (*it)->queryMaxSizeChanged(this, old_ms, new_ms);
-    }
-
     void angle(const SolidAngle& new_angle) {
-        assert(mValid);
+        assert(QueryBaseType::mValid);
         SolidAngle old_angle = mMinSolidAngle;
         mMinSolidAngle = new_angle;
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+        for(typename QueryBaseType::ChangeListenerListIterator it = QueryBaseType::mChangeListeners.begin(); it != QueryBaseType::mChangeListeners.end(); it++)
             (*it)->queryAngleChanged(this, old_angle, new_angle);
     }
 
     void maxResults(const uint32 new_mr) {
-        assert(mValid);
+        assert(QueryBaseType::mValid);
         uint32 old_mr = mMaxResults;
         mMaxResults = new_mr;
-        for(ChangeListenerListIterator it = mChangeListeners.begin(); it != mChangeListeners.end(); it++)
+        for(typename QueryBaseType::ChangeListenerListIterator it = QueryBaseType::mChangeListeners.begin(); it != QueryBaseType::mChangeListeners.end(); it++)
             (*it)->queryMaxResultsChanged(this, old_mr, new_mr);
     }
 
 
-    void addChangeListener(QueryChangeListenerType* listener) {
-        mChangeListeners.push_back(listener);
-    }
-
-    void removeChangeListener(QueryChangeListenerType* listener) {
-        ChangeListenerListIterator it = std::find(mChangeListeners.begin(), mChangeListeners.end(), listener);
-        if (it != mChangeListeners.end())
-            mChangeListeners.erase(it);
-    }
-
-    void setEventListener(QueryEventListenerType* listener) {
-        mEventListener = listener;
-    }
-
-    void removeEventListener() {
-        mEventListener = NULL;
-    }
-
-
-    void pushEvent(const QueryEventType& evt) {
-        {
-            boost::mutex::scoped_lock lock(mEventQueueMutex);
-
-            mEventQueue.push_back(evt);
-
-            if (mNotified) return;
-            mNotified = true;
-        }
-
-        if (mEventListener != NULL && mValid)
-            mEventListener->queryHasEvents(this);
-    }
-
-    void pushEvents(std::deque<QueryEventType>& evts) {
-        {
-            boost::mutex::scoped_lock lock(mEventQueueMutex);
-
-            while( !evts.empty() ) {
-                mEventQueue.push_back( evts.front() );
-                evts.pop_front();
-            }
-
-            if (mNotified) return;
-
-            mNotified = true;
-        }
-
-        if (mEventListener != NULL && mValid)
-            mEventListener->queryHasEvents(this);
-    }
-
-    void popEvents(std::deque<QueryEventType>& evts) {
-        boost::mutex::scoped_lock lock(mEventQueueMutex);
-
-        assert( evts.empty() );
-        mEventQueue.swap(evts);
-        mNotified = false;
-    }
 
 protected:
     friend class QueryHandler<SimulationTraits>;
@@ -232,58 +106,24 @@ protected:
     Query();
 
     Query(QueryHandlerType* parent, ID id, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle)
-     : mParent(parent),
-       mID(id),
-       mPosition(pos),
-       mRegion(region),
-       mMaxSize(maxSize),
+     : QueryBaseType(parent, id, pos, region, maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(SimulationTraits::InfiniteRadius),
-       mMaxResults(SimulationTraits::InfiniteResults),
-       mValid(true),
-       mChangeListeners(),
-       mEventListener(NULL),
-       mNotified(false)
+       mMaxResults(SimulationTraits::InfiniteResults)
     {
     }
 
     Query(QueryHandlerType* parent, ID id, const MotionVector3& pos, const BoundingSphere& region, real maxSize, const SolidAngle& minAngle, real radius)
-     : mParent(parent),
-       mID(id),
-       mPosition(pos),
-       mRegion(region),
-       mMaxSize(maxSize),
+     : QueryBaseType(parent, id, pos, region, maxSize),
        mMinSolidAngle(minAngle),
        mMaxRadius(radius),
-       mMaxResults(SimulationTraits::InfiniteResults),
-       mValid(true),
-       mNotified(false)
+       mMaxResults(SimulationTraits::InfiniteResults)
     {
     }
 
-    QueryHandlerType* mParent;
-    ID mID;
-
-    MotionVector3 mPosition;
-    BoundingSphere mRegion;
-    real mMaxSize;
     SolidAngle mMinSolidAngle;
     real mMaxRadius;
     uint32 mMaxResults;
-
-    // Whether this query is still valid. The query may be invalid (removed from
-    // the query handler) but still hold remaining result events.
-    bool mValid;
-
-    typedef std::list<QueryChangeListenerType*> ChangeListenerList;
-    typedef typename ChangeListenerList::iterator ChangeListenerListIterator;
-    ChangeListenerList mChangeListeners;
-    QueryEventListenerType* mEventListener;
-
-    typedef std::deque<QueryEventType> EventQueue;
-    EventQueue mEventQueue;
-    bool mNotified; // whether we've notified event listeners of new events
-    boost::mutex mEventQueueMutex;
 }; // class Query
 
 } // namespace Prox

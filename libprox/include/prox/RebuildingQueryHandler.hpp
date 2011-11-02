@@ -53,7 +53,7 @@ namespace Prox {
 template<typename SimulationTraits = DefaultSimulationTraits>
 class RebuildingQueryHandler :
         public QueryHandler<SimulationTraits>,
-        protected QueryEventListener<SimulationTraits>,
+        protected QueryEventListener<SimulationTraits, Query<SimulationTraits> >,
         // For children to subscribe, but we just ignore their subscriptions,
         // always passing data on ourselves anyway.
         protected LocationUpdateProvider<SimulationTraits>,

@@ -64,7 +64,7 @@ typedef Prox::DefaultSimulationTraits::DurationType Duration;
 
 typedef Prox::Query<DefaultSimulationTraits> Query;
 typedef Prox::QueryEvent<DefaultSimulationTraits> QueryEvent;
-typedef Prox::QueryEventListener<DefaultSimulationTraits> QueryEventListener;
+typedef Prox::QueryEventListener<DefaultSimulationTraits, Query> QueryEventListener;
 typedef Prox::QueryHandler<DefaultSimulationTraits> QueryHandler;
 
 typedef Prox::LocationServiceCache<DefaultSimulationTraits> LocationServiceCache;

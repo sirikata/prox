@@ -33,13 +33,17 @@
 #ifndef _PROX_QUERY_CHANGE_LISTENER_HPP_
 #define _PROX_QUERY_CHANGE_LISTENER_HPP_
 
+#include <prox/QueryBaseChangeListener.hpp>
+
 namespace Prox {
 
 template<typename SimulationTraits>
 class Query;
 
 template<typename SimulationTraits>
-class QueryChangeListener {
+class QueryChangeListener :
+        public QueryBaseChangeListener< SimulationTraits, Query<SimulationTraits> >
+{
 public:
     typedef typename SimulationTraits::realType real;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
