@@ -5,6 +5,8 @@
 #ifndef _PROX_PROXSIMCORE_CONVERT_HPP_
 #define _PROX_PROXSIMCORE_CONVERT_HPP_
 
+#include <boost/lexical_cast.hpp>
+
 static bool convert_bool(const std::string& arg) {
     return (arg == "on" || arg == "true" || arg == "yes");
 }

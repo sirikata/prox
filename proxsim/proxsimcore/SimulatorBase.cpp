@@ -95,6 +95,10 @@ static SolidAngle generateQueryAngle(const SolidAngle& qmin, const SolidAngle& q
 
 void SimulatorBase::initialize(int churnrate) {
     mChurn = churnrate;
+
+    ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
+    addListener(loc_cache);
+    mLocCache = loc_cache;
 }
 
 void SimulatorBase::createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac) {

@@ -144,10 +144,6 @@ void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const So
     mQueryDistance = dist;
     mQueryMaxResults = max_results;
 
-    ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
-    SimulatorBase::addListener(loc_cache);
-    mLocCache = loc_cache;
-
     mHandler->initialize(mLocCache, mLocCache, !mHaveMovingObjects);
 }
 

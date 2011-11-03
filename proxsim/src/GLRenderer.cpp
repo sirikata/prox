@@ -45,13 +45,6 @@ using namespace Prox;
 namespace Prox {
 namespace Simulation {
 
-struct GLColor {
-    float r, g, b;
-};
-#define COLOR_PALETTE_COLORS 1024
-static GLColor color_palette[COLOR_PALETTE_COLORS];
-static bool color_palette_initialized = false;
-
 GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
  : GLRendererBase(sim, display),
    mSimulator(sim),
