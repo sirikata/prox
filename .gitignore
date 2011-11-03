@@ -6,6 +6,7 @@ build/cmake_install.cmake
 build/libprox.a
 build/libproxsimcore.a
 build/proxsim
+build/manual_proxsim
 
 # Doxygen output
 docs/
