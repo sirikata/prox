@@ -301,15 +301,26 @@ const BoundingBox3& Simulator::region() const {
     return mRegion;
 }
 
-void Simulator::addListener(SimulatorListener* listener) {
-    assert( std::find(mListeners.begin(), mListeners.end(), listener) == mListeners.end() );
-    mListeners.push_back(listener);
+void Simulator::addListener(SimulatorObjectListener* listener) {
+    assert( std::find(mObjectListeners.begin(), mObjectListeners.end(), listener) == mObjectListeners.end() );
+    mObjectListeners.push_back(listener);
 }
 
-void Simulator::removeListener(SimulatorListener* listener) {
-    ListenerList::iterator it = std::find(mListeners.begin(), mListeners.end(), listener);
-    assert( it != mListeners.end() );
-    mListeners.erase(it);
+void Simulator::removeListener(SimulatorObjectListener* listener) {
+    ObjectListenerList::iterator it = std::find(mObjectListeners.begin(), mObjectListeners.end(), listener);
+    assert( it != mObjectListeners.end() );
+    mObjectListeners.erase(it);
+}
+
+void Simulator::addListener(SimulatorQueryListener* listener) {
+    assert( std::find(mQueryListeners.begin(), mQueryListeners.end(), listener) == mQueryListeners.end() );
+    mQueryListeners.push_back(listener);
+}
+
+void Simulator::removeListener(SimulatorQueryListener* listener) {
+    QueryListenerList::iterator it = std::find(mQueryListeners.begin(), mQueryListeners.end(), listener);
+    assert( it != mQueryListeners.end() );
+    mQueryListeners.erase(it);
 }
 
 void Simulator::tick() {
@@ -398,7 +409,7 @@ void Simulator::addObject(Object* obj) {
 
     mObjects[obj->id()] = obj;
     mLocCache->addObject(obj);
-    for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+    for(ObjectListenerList::iterator it = mObjectListeners.begin(); it != mObjectListeners.end(); it++)
         (*it)->simulatorAddedObject(obj, obj->position(), obj->bounds());
 }
 
@@ -409,14 +420,14 @@ void Simulator::removeObject(Object* obj) {
         mRemovedDynamicObjects[obj->id()] = obj;
     else
         mRemovedStaticObjects[obj->id()] = obj;
-    for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+    for(ObjectListenerList::iterator it = mObjectListeners.begin(); it != mObjectListeners.end(); it++)
         (*it)->simulatorRemovedObject(obj);
     mLocCache->removeObject(obj);
 }
 
 void Simulator::addQuery(Querier* query) {
     mQueries.push_back(query);
-    for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+    for(QueryListenerList::iterator it = mQueryListeners.begin(); it != mQueryListeners.end(); it++)
         (*it)->simulatorAddedQuery(query);
 }
 
@@ -424,7 +435,7 @@ void Simulator::removeQuery(Querier* query) {
     QueryList::iterator it = std::find(mQueries.begin(), mQueries.end(), query);
     mQueries.erase(it);
 
-    for(ListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+    for(QueryListenerList::iterator it = mQueryListeners.begin(); it != mQueryListeners.end(); it++)
         (*it)->simulatorRemovedQuery(query);
 }
 

@@ -161,14 +161,6 @@ void GLRenderer::validateSeenObjects() {
 #endif //PROXDEBUG
 }
 
-void GLRenderer::simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds) {
-    // nothing, we draw directly from the iterators in the simulator
-}
-
-void GLRenderer::simulatorRemovedObject(Object* obj) {
-    // nothing, we draw directly from the iterators in the simulator
-}
-
 void GLRenderer::simulatorAddedQuery(Querier* query) {
     query->setEventListener(this);
 }

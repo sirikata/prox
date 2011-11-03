@@ -30,7 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Object.hpp"
+#include <proxsimcore/Object.hpp>
 #include "Querier.hpp"
 #include <boost/lexical_cast.hpp>
 #include <fstream>

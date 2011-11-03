@@ -33,12 +33,13 @@
 #ifndef _PROXSIM_SIMULATOR_HPP_
 #define _PROXSIM_SIMULATOR_HPP_
 
-#include "SimulationTypes.hpp"
-#include "BoundingBox.hpp"
-#include "Object.hpp"
-#include "SimulatorListener.hpp"
-#include "ObjectLocationServiceCache.hpp"
-#include "Timer.hpp"
+#include <proxsimcore/SimulationTypes.hpp>
+#include <proxsimcore/BoundingBox.hpp>
+#include <proxsimcore/Object.hpp>
+#include <proxsimcore/SimulatorObjectListener.hpp>
+#include "SimulatorQueryListener.hpp"
+#include <proxsimcore/ObjectLocationServiceCache.hpp>
+#include <proxsimcore/Timer.hpp>
 #include "Querier.hpp"
 
 namespace Prox {
@@ -71,8 +72,10 @@ public:
 
     const BoundingBox3& region() const;
 
-    void addListener(SimulatorListener* listener);
-    void removeListener(SimulatorListener* listener);
+    void addListener(SimulatorObjectListener* listener);
+    void removeListener(SimulatorObjectListener* listener);
+    void addListener(SimulatorQueryListener* listener);
+    void removeListener(SimulatorQueryListener* listener);
 
     Time time() const { return mTime; }
     bool finished() const { return mFinished; }
@@ -136,8 +139,10 @@ private:
     uint32 mQueryMaxResults;
     QueryList mQueries;
 
-    typedef std::list<SimulatorListener*> ListenerList;
-    ListenerList mListeners;
+    typedef std::list<SimulatorObjectListener*> ObjectListenerList;
+    ObjectListenerList mObjectListeners;
+    typedef std::list<SimulatorQueryListener*> QueryListenerList;
+    QueryListenerList mQueryListeners;
 
     OrderedObjectList mRemovedStaticObjects;
     OrderedObjectList mRemovedDynamicObjects;

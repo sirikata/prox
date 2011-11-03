@@ -33,7 +33,7 @@
 #include "CSVLoader.hpp"
 #include <boost/lexical_cast.hpp>
 #include <fstream>
-#include "BoundingBox.hpp"
+#include <proxsimcore/BoundingBox.hpp>
 
 namespace Prox {
 namespace Simulation {

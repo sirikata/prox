@@ -33,16 +33,16 @@
 #ifndef _PROXSIM_GLRENDERER_HPP_
 #define _PROXSIM_GLRENDERER_HPP_
 
-#include "SimulationTypes.hpp"
+#include <proxsimcore/SimulationTypes.hpp>
 #include "Renderer.hpp"
-#include "BoundingBox.hpp"
-#include "SimulatorListener.hpp"
-#include "Timer.hpp"
+#include <proxsimcore/BoundingBox.hpp>
+#include "SimulatorQueryListener.hpp"
+#include <proxsimcore/Timer.hpp>
 
 namespace Prox {
 namespace Simulation {
 
-class GLRenderer : public Renderer, public QueryEventListener, public SimulatorListener, public AggregateListener {
+class GLRenderer : public Renderer, public QueryEventListener, public SimulatorQueryListener, public AggregateListener {
 public:
     GLRenderer(Simulator* sim, QueryHandler* handler, bool display = true);
     virtual ~GLRenderer();
@@ -53,9 +53,7 @@ public:
     // QueryEventListener Interface
     virtual void queryHasEvents(Query* query);
 
-    // SimulatorListener Interface
-    virtual void simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds);
-    virtual void simulatorRemovedObject(Object* obj);
+    // SimulatorQueryListener Interface
     virtual void simulatorAddedQuery(Querier* query);
     virtual void simulatorRemovedQuery(Querier* query);
 

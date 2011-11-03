@@ -33,8 +33,8 @@
 #ifndef _PROXSIM_QUERIER_HPP_
 #define _PROXSIM_QUERIER_HPP_
 
-#include "SimulationTypes.hpp"
-#include "MotionPath.hpp"
+#include <proxsimcore/SimulationTypes.hpp>
+#include <proxsimcore/MotionPath.hpp>
 
 namespace Prox {
 namespace Simulation {

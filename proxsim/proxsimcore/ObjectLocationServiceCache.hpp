@@ -34,7 +34,7 @@
 #define _PROX_OBJECT_LOCATION_SERVICE_CACHE_HPP_
 
 #include "Object.hpp"
-#include "SimulatorListener.hpp"
+#include "SimulatorObjectListener.hpp"
 #include <boost/thread.hpp>
 
 namespace Prox {
@@ -43,7 +43,7 @@ namespace Simulation {
 /* Implementation of LocationServiceCache which deals directly with locally
  * simulated objects.
  */
-class ObjectLocationServiceCache : public LocationServiceCache, public ObjectUpdateListener, public SimulatorListener {
+class ObjectLocationServiceCache : public LocationServiceCache, public ObjectUpdateListener, public SimulatorObjectListener {
 public:
     ObjectLocationServiceCache();
     virtual ~ObjectLocationServiceCache();
@@ -70,13 +70,11 @@ public:
     virtual void objectBoundsUpdated(Object* obj, const BoundingSphere& old_bounds, const BoundingSphere& new_bounds);
     virtual void objectDeleted(const Object* obj);
 
-    // SimulatorListener Methods
+    // SimulatorObjectListener Methods
     // Note: We'd prefer to do this just with objects but there isn't a good way to set up the listeners ahead
     // of time, so we need to use the simulator just to get the object additions
     virtual void simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds);
     virtual void simulatorRemovedObject(Object* obj);
-    virtual void simulatorAddedQuery(Querier* query);
-    virtual void simulatorRemovedQuery(Querier* query);
 private:
     void tryClearObject(const Object* obj);
 

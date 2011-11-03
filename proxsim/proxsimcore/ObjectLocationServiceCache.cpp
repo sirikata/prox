@@ -188,13 +188,5 @@ void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {
         (*it)->locationDisconnected(obj->id());
 }
 
-void ObjectLocationServiceCache::simulatorAddedQuery(Querier* query) {
-    // Only using this interface for tracking object additions
-}
-
-void ObjectLocationServiceCache::simulatorRemovedQuery(Querier* query) {
-    // Only using this interface for tracking object additions
-}
-
 } // namespace Simulation
 } // namespace Prox

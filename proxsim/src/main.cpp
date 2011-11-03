@@ -37,7 +37,7 @@
 #include <prox/geom/RTreeDistanceQueryHandler.hpp>
 #include <prox/geom/RTreeCutQueryHandler.hpp>
 #include <prox/geom/RebuildingQueryHandler.hpp>
-#include "ObjectLocationServiceCache.hpp"
+#include <proxsimcore/ObjectLocationServiceCache.hpp>
 
 #include <iostream>
 #include <string>
