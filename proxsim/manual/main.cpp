@@ -4,9 +4,7 @@
 
 #include <proxsimcore/ObjectLocationServiceCache.hpp>
 #include <proxsimcore/BoundingBox.hpp>
-
-#include <prox/manual/Query.hpp>
-#include <prox/manual/QueryHandler.hpp>
+#include <prox/manual/RTreeManualQueryHandler.hpp>
 
 #include "Simulator.hpp"
 #include "GLRenderer.hpp"
@@ -30,6 +28,9 @@ int main(int argc, char** argv) {
     std::string CSV_ARG("--csv=");
     std::string CSV_MOTION_ARG("--csvmotion=");
 
+    std::string HANDLER_ARG("--handler=");
+    std::string BRANCH_ARG("--branch=");
+
     unsigned int seed = 0;
     bool display = false;
 
@@ -42,6 +43,9 @@ int main(int argc, char** argv) {
     float moving_frac = 1.0f;
     std::string csvfile = "";
     std::string csvmotionfile = "";
+
+    std::string handler_type = "rtree";
+    int branching = 16;
 
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
@@ -91,11 +95,25 @@ int main(int argc, char** argv) {
             std::string seed_arg = arg.substr(SEED_ARG.size());
             seed = boost::lexical_cast<int>(seed_arg);
         }
+
+        else if (arg.find(HANDLER_ARG) != std::string::npos) {
+            handler_type = arg.substr(HANDLER_ARG.size());
+        }
+        else if (arg.find(BRANCH_ARG) != std::string::npos) {
+            std::string branch_arg = arg.substr(BRANCH_ARG.size());
+            branching = boost::lexical_cast<int>(branch_arg);
+        }
+
     }
 
     srand(seed);
 
-    Simulator* simulator = new Simulator(duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
+    ManualQueryHandler* handler = NULL;
+    if (handler_type == "rtree") {
+        handler = new Prox::RTreeManualQueryHandler<>(branching);
+    }
+
+    Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
     GLRenderer* renderer = new GLRenderer(simulator, display);
 
     BoundingBox3 random_region( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) );

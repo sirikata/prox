@@ -124,7 +124,6 @@ public:
     virtual void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void queryRegionChanged(QueryType* query, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
     virtual void queryMaxSizeChanged(QueryType* query, Real old_ms, Real new_ms) = 0;
-    virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) = 0;
     virtual void queryDestroyed(QueryType* query, bool implicit) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
 }; // class QueryHandlerBase

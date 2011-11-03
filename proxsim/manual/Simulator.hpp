@@ -12,7 +12,7 @@ namespace Simulation {
 
 class Simulator : public SimulatorBase {
 public:
-    Simulator(int duration, const Duration& timestep, int iterations, bool realtime);
+    Simulator(ManualQueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime);
     ~Simulator();
 
     void initialize(int churnrate);
@@ -22,6 +22,7 @@ public:
     virtual void tick_work(Time last_time, Duration elapsed);
 
 private:
+    ManualQueryHandler* mHandler;
 }; // class Simulator
 
 } // namespace Simulation

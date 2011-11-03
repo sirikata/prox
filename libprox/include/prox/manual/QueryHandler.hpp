@@ -13,10 +13,10 @@ namespace Prox {
 
 template<typename SimulationTraits = DefaultSimulationTraits>
 class ManualQueryHandler :
-        public QueryHandlerBase< SimulationTraits, Query<SimulationTraits>, ManualQueryChangeListener<SimulationTraits> >
+        public QueryHandlerBase< SimulationTraits, ManualQuery<SimulationTraits>, ManualQueryChangeListener<SimulationTraits> >
 {
 public:
-    typedef QueryHandlerBase< SimulationTraits, Query<SimulationTraits>, ManualQueryChangeListener<SimulationTraits> > BaseType;
+    typedef QueryHandlerBase< SimulationTraits, ManualQuery<SimulationTraits>, ManualQueryChangeListener<SimulationTraits> > BaseType;
 
     typedef SimulationTraits SimulationTraitsType;
 

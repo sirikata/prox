@@ -34,12 +34,16 @@
 #define _PROX_SIMULATION_TYPES_HPP_
 
 #include <prox/base/DefaultSimulationTraits.hpp>
-#include <prox/geom/Query.hpp>
 #include <prox/base/QueryEvent.hpp>
 #include <prox/base/QueryEventListener.hpp>
 #include <prox/base/LocationServiceCache.hpp>
 #include <prox/base/AggregateListener.hpp>
+
+#include <prox/geom/Query.hpp>
 #include <prox/geom/QueryHandler.hpp>
+
+#include <prox/manual/Query.hpp>
+#include <prox/manual/QueryHandler.hpp>
 
 namespace Prox {
 namespace Simulation {
@@ -61,15 +65,21 @@ typedef Prox::DefaultSimulationTraits::ObjectIDType ObjectID;
 typedef Prox::DefaultSimulationTraits::TimeType Time;
 typedef Prox::DefaultSimulationTraits::DurationType Duration;
 
-
-typedef Prox::Query<DefaultSimulationTraits> Query;
-typedef Prox::QueryEvent<DefaultSimulationTraits> QueryEvent;
-typedef Prox::QueryEventListener<DefaultSimulationTraits, Query> QueryEventListener;
-typedef Prox::QueryHandler<DefaultSimulationTraits> QueryHandler;
-
 typedef Prox::LocationServiceCache<DefaultSimulationTraits> LocationServiceCache;
 
 typedef Prox::AggregateListener<DefaultSimulationTraits> AggregateListener;
+
+typedef Prox::QueryEvent<DefaultSimulationTraits> QueryEvent;
+
+
+typedef Prox::Query<DefaultSimulationTraits> Query;
+typedef Prox::QueryEventListener<DefaultSimulationTraits, Query> QueryEventListener;
+typedef Prox::QueryHandler<DefaultSimulationTraits> QueryHandler;
+
+
+typedef Prox::ManualQuery<DefaultSimulationTraits> ManualQuery;
+typedef Prox::QueryEventListener<DefaultSimulationTraits, ManualQuery> ManualQueryEventListener;
+typedef Prox::ManualQueryHandler<DefaultSimulationTraits> ManualQueryHandler;
 
 } // namespace Simulation
 } // namespace Prox
