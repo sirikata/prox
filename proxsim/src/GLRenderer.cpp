@@ -83,7 +83,7 @@ void glut_timer(int val) {
 }
 
 GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
- : Renderer(sim),
+ : mSimulator(sim),
    mHandler(handler),
    mDisplay(display),
    mWinWidth(0), mWinHeight(0),

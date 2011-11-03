@@ -34,7 +34,6 @@
 #define _PROXSIM_GLRENDERER_HPP_
 
 #include <proxsimcore/SimulationTypes.hpp>
-#include "Renderer.hpp"
 #include <proxsimcore/BoundingBox.hpp>
 #include "SimulatorQueryListener.hpp"
 #include <proxsimcore/Timer.hpp>
@@ -42,7 +41,9 @@
 namespace Prox {
 namespace Simulation {
 
-class GLRenderer : public Renderer, public QueryEventListener, public SimulatorQueryListener, public AggregateListener {
+class Simulator;
+
+class GLRenderer : public QueryEventListener, public SimulatorQueryListener, public AggregateListener {
 public:
     GLRenderer(Simulator* sim, QueryHandler* handler, bool display = true);
     virtual ~GLRenderer();
@@ -79,6 +80,7 @@ protected:
 
     void validateSeenObjects();
 
+    Simulator* mSimulator;
     QueryHandler* mHandler;
 
     bool mDisplay;

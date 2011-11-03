@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
     }
 
     Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
-    Renderer* renderer = new GLRenderer(simulator, handler, display);
+    GLRenderer* renderer = new GLRenderer(simulator, handler, display);
 
     BoundingBox3 random_region( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) );
 
