@@ -44,33 +44,7 @@
 #include <stdint.h>
 
 #include <boost/lexical_cast.hpp>
-
-static bool convert_bool(const std::string& arg) {
-    return (arg == "on" || arg == "true" || arg == "yes");
-}
-
-template<typename T>
-void convert_range(const std::string& arg, T* rmin, T* rmax) {
-    if (arg.find("(") != std::string::npos) {
-        // A real range of the format "(x,y)"
-        int lparen = arg.find("(");
-        int comma = arg.find(",");
-        int rparen = arg.find(")");
-        assert((std::size_t)lparen != std::string::npos);
-        assert((std::size_t)comma != std::string::npos);
-        assert((std::size_t)rparen != std::string::npos);
-        std::string first = arg.substr( lparen+1, (comma-(lparen+1)) );
-        std::string second = arg.substr( comma+1, (rparen-(comma+1)) );
-        *rmin = boost::lexical_cast<T>(first);
-        *rmax = boost::lexical_cast<T>(second);
-    }
-    else {
-        // Just a single value
-        T val = boost::lexical_cast<T>(arg);
-        *rmin = val;
-        *rmax = val;
-    }
-}
+#include <proxsimcore/Convert.hpp>
 
 int main(int argc, char** argv) {
     using namespace Prox::Simulation;
