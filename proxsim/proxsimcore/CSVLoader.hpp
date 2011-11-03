@@ -30,35 +30,33 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "CSVLoader.hpp"
+#ifndef _PROXSIMCORE_CSVLOADER_HPP_
+#define _PROXSIMCORE_CSVLOADER_HPP_
+
+#include <proxsimcore/Object.hpp>
 #include <boost/lexical_cast.hpp>
 #include <fstream>
-#include <proxsimcore/BoundingBox.hpp>
-#include <proxsimcore/CSVLoader.hpp>
 
 namespace Prox {
 namespace Simulation {
 
-std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, std::tr1::function<Vector3()> gen_loc, float qradius, const SolidAngle& qangle, const float qdistance) {
-    std::vector<MotionAndBounds> data = loadCSVMotions(filename);
-    std::vector<Querier*> results;
+struct MotionAndBounds {
+    MotionPath::MotionVectorListPtr motion;
+    Vector3 position;
+    float radius;
+};
 
-    for(unsigned int i = 0; i < (unsigned int)std::min((int)data.size(), nqueriers); i++) {
-        int data_idx = rand() % data.size();
-        results.push_back(
-            new Querier(qh,
-                MotionPath(gen_loc(), data[data_idx].motion, true),
-                BoundingSphere(Vector3(0,0,0), data[data_idx].radius),
-                qradius,
-                qangle,
-                qdistance,
-                Prox::DefaultSimulationTraits::InfiniteResults
-            )
-        );
-    }
+struct MotionInfo {
+    std::vector<Vector3> positions;
+    std::vector<Time> times;
+    float rad;
+};
 
-    return results;
-}
+std::vector<MotionAndBounds> loadCSVMotions(const String& filename);
+std::vector<Object*> loadCSVObjects(const String& filename);
+std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::function<Vector3()> gen_loc, int nobjects);
 
 } // namespace Simulation
 } // namespace Prox
+
+#endif //_PROXSIMCORE_CSVLOADER_HPP_

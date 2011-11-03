@@ -52,80 +52,17 @@ struct GLColor {
 static GLColor color_palette[COLOR_PALETTE_COLORS];
 static bool color_palette_initialized = false;
 
-static void color_palette_initialize() {
-    if (color_palette_initialized) return;
-
-    for(int i = 0; i < COLOR_PALETTE_COLORS; i++) {
-        color_palette[i].r = (rand() % 255)/255.f;
-        color_palette[i].g = (rand() % 255)/255.f;
-        color_palette[i].b = (rand() % 255)/255.f;
-    }
-}
-
-static GLRenderer* GLRenderer_sRenderer = NULL;
-
-
-void glut_display() {
-    GLRenderer_sRenderer->display();
-}
-
-void glut_reshape(int w, int h) {
-    color_palette_initialize();
-    GLRenderer_sRenderer->reshape(w, h);
-}
-
-void glut_keyboard(unsigned char key, int x, int y) {
-    GLRenderer_sRenderer->keyboard(key, x, y);
-}
-
-void glut_timer(int val) {
-    GLRenderer_sRenderer->timer();
-}
-
 GLRenderer::GLRenderer(Simulator* sim, QueryHandler* handler, bool display)
- : mSimulator(sim),
-   mHandler(handler),
-   mDisplay(display),
-   mWinWidth(0), mWinHeight(0),
-   mMaxObservers(1),
-   mDisplayMode(TimesSeen)
+ : GLRendererBase(sim, display),
+   mSimulator(sim),
+   mHandler(handler)
 {
     mSimulator->addListener(this);
     handler->setAggregateListener(this);
-
-    assert(GLRenderer_sRenderer == NULL);
-    GLRenderer_sRenderer = this;
-
-    int argc = 0;
-    if (display) {
-        glutInit( &argc, NULL );
-        glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
-        glutInitWindowSize( 512, 512 );
-
-        glutCreateWindow( "Proximity Simulation" );
-
-        glutDisplayFunc( glut_display );
-        glutReshapeFunc( glut_reshape );
-        glutKeyboardFunc( glut_keyboard );
-    }
 }
 
 GLRenderer::~GLRenderer() {
     mSimulator->removeListener(this);
-    GLRenderer_sRenderer = NULL;
-}
-
-void GLRenderer::run() {
-    reshape(mWinWidth, mWinHeight);
-
-    if (mDisplay) {
-        glutTimerFunc(16, glut_timer, 0);
-        glutMainLoop();
-    }
-    else {
-        while(!mSimulator->finished())
-            glut_timer(true);
-    }
 }
 
 void GLRenderer::queryHasEvents(Query* query) {
@@ -147,20 +84,6 @@ void GLRenderer::queryHasEvents(Query* query) {
     }
 }
 
-void GLRenderer::validateSeenObjects() {
-#ifdef PROXDEBUG
-    Lock(mAggregateMutex);
-    // Validate
-    for (ObjectRefCountMap::iterator it = mSeenObjects.begin(); it != mSeenObjects.end(); it++) {
-        assert(
-            it->second == 0 ||
-            mAggregateObjects.find(it->first) != mAggregateObjects.end() ||
-            mSimulator->objectsFind(it->first) != mSimulator->objectsEnd()
-        );
-    }
-#endif //PROXDEBUG
-}
-
 void GLRenderer::simulatorAddedQuery(Querier* query) {
     query->setEventListener(this);
 }
@@ -169,103 +92,8 @@ void GLRenderer::simulatorRemovedQuery(Querier* query) {
     query->setEventListener(NULL);
 }
 
-void GLRenderer::aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) {
-    Lock lck(mAggregateMutex);
-    assert( mAggregateObjects.find(objid) == mAggregateObjects.end() );
-    mAggregateObjects[objid] = ObjectIDSet();
-}
-
-void GLRenderer::aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
-    Lock lck(mAggregateMutex);
-    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
-    mAggregateObjects[objid].insert(child);
-
-    if (mAggregateObjects.find(child) == mAggregateObjects.end())
-        mAggregateBounds[objid] = bnds;
-    else
-        mAggregateBounds.erase(objid);
-}
-
-void GLRenderer::aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
-    Lock lck(mAggregateMutex);
-    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
-    mAggregateObjects[objid].erase(child);
-}
-
-void GLRenderer::aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) {
-    Lock lck(mAggregateMutex);
-    if (mAggregateBounds.find(objid) != mAggregateBounds.end())
-        mAggregateBounds[objid] = bnds;
-}
-
-void GLRenderer::aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
-    Lock lck(mAggregateMutex);
-    AggregateObjectMap::iterator it = mAggregateObjects.find(objid);
-    assert(it != mAggregateObjects.end());
-    mAggregateObjects.erase(it);
-
-    mAggregateBounds.erase(objid);
-}
-
-void GLRenderer::aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) {
-    Lock lck(mAggregateMutex);
-    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
-}
-
 void GLRenderer::display() {
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-    glPointSize(4.f);
-
-    switch(mDisplayMode) {
-      case TimesSeen:
-          {
-              for(Simulator::ObjectIterator it = mSimulator->objectsBegin(); it != mSimulator->objectsEnd(); it++) {
-                  Object* obj = it->second;
-                  BoundingSphere bb = obj->worldBounds(mSimulator->time());
-
-                  if (mSeenObjects.find(obj->id()) != mSeenObjects.end() && mSeenObjects[obj->id()] > 0) {
-                      float col = 0.5f + 0.5f * ((float)mSeenObjects[obj->id()] / mMaxObservers);
-                      glColor3f(col, col, col);
-                  }
-                  else
-                      glColor3f(0.f, 0.f, 0.f);
-
-                  //drawbb(bb);
-                  glBegin(GL_POINTS);
-                  glVertex3f(bb.center().x, bb.center().y, bb.center().z);
-                  glEnd();
-              }
-          }
-          break;
-      case SmallestAggregates:
-          {
-              Lock lck(mAggregateMutex);
-              int idx = 0;
-              for(AggregateBounds::iterator it = mAggregateBounds.begin(); it != mAggregateBounds.end(); it++) {
-                  ObjectID agg = it->first;
-                  BoundingSphere bb = it->second;
-
-                  int col_idx = ObjectID::Hasher()(agg) % COLOR_PALETTE_COLORS;
-                  glColor3f(color_palette[col_idx].r, color_palette[col_idx].g, color_palette[col_idx].b);
-
-                  ObjectIDSet& children = mAggregateObjects[agg];
-                  glBegin(GL_POINTS);
-                  for(ObjectIDSet::iterator cit = children.begin(); cit != children.end(); cit++) {
-                      Simulator::ObjectIterator oit = mSimulator->objectsFind(*cit);
-                      if (oit == mSimulator->objectsEnd()) continue;
-                      Object* obj = oit->second;
-                      BoundingSphere cbb = obj->worldBounds(mSimulator->time());
-                      glVertex3f(cbb.center().x, cbb.center().y, cbb.center().z);
-                  }
-                  glEnd();
-              }
-          }
-          break;
-      case NumDisplayModes:
-        assert(false);
-        break;
-    }
+    GLRendererBase::display();
 
     glColor3f(1.f, 0.f, 0.f);
     for(Simulator::QueryIterator it = mSimulator->queriesBegin(); it != mSimulator->queriesEnd(); it++) {
@@ -280,94 +108,10 @@ void GLRenderer::display() {
     glutSwapBuffers();
 }
 
-void GLRenderer::reshape(int w, int h) {
-    mWinWidth = w; mWinHeight = h;
-
-    BoundingBox3 sim_bb = mSimulator->region();
-
-    if (!mDisplay) return;
-
-    glClearColor( .3, .3, .3, 1 );
-    glClearDepth(1.0);
-
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-
-    float zsize = 2 * std::max(fabs(sim_bb.max().z), fabs(sim_bb.min().z)) + 1;
-    glOrtho( sim_bb.min().x, sim_bb.max().x, sim_bb.min().y, sim_bb.max().y, sim_bb.max().z + zsize, sim_bb.min().z - zsize);
-    glViewport( 0, 0, mWinWidth, mWinHeight );
-
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-
-    glEnable(GL_DEPTH_TEST);
-
-    glutPostRedisplay();
-}
-
-void GLRenderer::timer() {
-    //mSeenObjects.clear();
-    mSimulator->tick();
-    validateSeenObjects();
-    if (mDisplay) {
-        if (mSimulator->finished()) exit(0);
-        glutTimerFunc(16, glut_timer, 0);
-        glutPostRedisplay();
-    }
-}
-
 void GLRenderer::keyboard(unsigned char key, int x, int y) {
-    if (key == 27) // ESC
-        exit(0);
-    if (key == 'd')
-        mDisplayMode = (DisplayMode) ( (mDisplayMode+1) % NumDisplayModes );
+    GLRendererBase::keyboard(key, x, y);
     if (key == 'r')
         mHandler->rebuild();
-}
-
-void GLRenderer::drawbb(const BoundingBox3& bb) {
-    glBegin(GL_QUADS);
-
-    glVertex3f ( bb.min().x,  bb.min().y,  bb.min().z);
-    glVertex3f ( bb.max().x,  bb.min().y,  bb.min().z);
-    glVertex3f ( bb.max().x,  bb.max().y,  bb.min().z);
-    glVertex3f ( bb.min().x,  bb.max().y,  bb.min().z);
-
-    glVertex3f ( bb.max().x,  bb.min().y,  bb.min().z);
-    glVertex3f ( bb.max().x,  bb.min().y,  bb.max().z);
-    glVertex3f ( bb.max().x,  bb.max().y,  bb.max().z);
-    glVertex3f ( bb.max().x,  bb.max().y,  bb.min().z);
-
-    glVertex3f ( bb.max().x,  bb.min().y,  bb.max().z);
-    glVertex3f ( bb.min().x,  bb.min().y,  bb.max().z);
-    glVertex3f ( bb.min().x,  bb.max().y,  bb.max().z);
-    glVertex3f ( bb.max().x,  bb.max().y,  bb.max().z);
-
-    glVertex3f ( bb.min().x,  bb.min().y,  bb.max().z);
-    glVertex3f ( bb.min().x,  bb.min().y,  bb.min().z);
-    glVertex3f ( bb.min().x,  bb.max().y,  bb.min().z);
-    glVertex3f ( bb.min().x,  bb.max().y,  bb.max().z);
-
-    glVertex3f ( bb.min().x,  bb.max().y,  bb.min().z);
-    glVertex3f ( bb.max().x,  bb.max().y,  bb.min().z);
-    glVertex3f ( bb.max().x,  bb.max().y,  bb.max().z);
-    glVertex3f ( bb.min().x,  bb.max().y,  bb.max().z);
-
-    glVertex3f ( bb.min().x,  bb.min().y,  bb.max().z);
-    glVertex3f ( bb.max().x,  bb.min().y,  bb.max().z);
-    glVertex3f ( bb.max().x,  bb.min().y,  bb.min().z);
-    glVertex3f ( bb.min().x,  bb.min().y,  bb.min().z);
-
-    glEnd();
-}
-
-void GLRenderer::drawbs(const BoundingSphere& bs) {
-    Vector3 center = bs.center();
-    float radius = bs.radius();
-    glPushMatrix();
-    glTranslatef(center.x, center.y, center.z);
-    glutSolidSphere(radius, 10, 10);
-    glPopMatrix();
 }
 
 } // namespace Simulation

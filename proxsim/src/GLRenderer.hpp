@@ -33,23 +33,18 @@
 #ifndef _PROXSIM_GLRENDERER_HPP_
 #define _PROXSIM_GLRENDERER_HPP_
 
-#include <proxsimcore/SimulationTypes.hpp>
-#include <proxsimcore/BoundingBox.hpp>
+#include <proxsimcore/GLRendererBase.hpp>
 #include "SimulatorQueryListener.hpp"
-#include <proxsimcore/Timer.hpp>
 
 namespace Prox {
 namespace Simulation {
 
 class Simulator;
 
-class GLRenderer : public QueryEventListener, public SimulatorQueryListener, public AggregateListener {
+class GLRenderer : public GLRendererBase, public QueryEventListener, public SimulatorQueryListener {
 public:
     GLRenderer(Simulator* sim, QueryHandler* handler, bool display = true);
     virtual ~GLRenderer();
-
-    // Renderer Interface
-    virtual void run();
 
     // QueryEventListener Interface
     virtual void queryHasEvents(Query* query);
@@ -59,57 +54,15 @@ public:
     virtual void simulatorRemovedQuery(Querier* query);
 
     // GLRenderer Interface
-    void display();
-    void reshape(int w, int h);
-    void timer();
-    void keyboard(unsigned char key, int x, int y);
+    virtual void display();
+    virtual void keyboard(unsigned char key, int x, int y);
 
 protected:
-    // AggregateListener Interface
-    virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid);
-    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
-    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
-    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds);
-    virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid);
-    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers);
-
     GLRenderer();
-
-    void drawbb(const BoundingBox3& bb);
-    void drawbs(const BoundingSphere& bs);
-
-    void validateSeenObjects();
 
     Simulator* mSimulator;
     QueryHandler* mHandler;
 
-    bool mDisplay;
-
-    typedef std::tr1::unordered_map<ObjectID, uint32, ObjectID::Hasher> ObjectRefCountMap;
-    ObjectRefCountMap mSeenObjects;
-    int mWinWidth, mWinHeight;
-
-    // Gets bounds of an object or aggregate object
-    BoundingSphere getBounds(const ObjectID& obj);
-
-    typedef std::tr1::unordered_set<ObjectID, ObjectID::Hasher> ObjectIDSet;
-    typedef std::tr1::unordered_map<ObjectID, ObjectIDSet, ObjectID::Hasher> AggregateObjectMap;
-    AggregateObjectMap mAggregateObjects;
-
-    uint32 mMaxObservers;
-
-    typedef boost::mutex Mutex;
-    typedef boost::lock_guard<Mutex> Lock;
-    Mutex mAggregateMutex;
-    typedef std::tr1::unordered_map<ObjectID, BoundingSphereType, ObjectID::Hasher> AggregateBounds;
-    AggregateBounds mAggregateBounds;
-
-    enum DisplayMode {
-        TimesSeen,
-        SmallestAggregates,
-        NumDisplayModes
-    };
-    DisplayMode mDisplayMode;
 }; // class Renderer
 
 } // namespace Simulation

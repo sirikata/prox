@@ -51,17 +51,8 @@ static uint32 randUInt32(uint32 minval, uint32 maxval) {
 }
 
 Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime)
- : mFinished(false),
-   mDuration(duration),
-   mTimestep(timestep),
-   mIterations(0),
-   mTerminateIterations(iterations),
-   mRealtime(realtime),
-   mTime(Time::null()),
-   mObjectIDSource(0),
+ : SimulatorBase(duration, timestep, iterations, realtime),
    mHandler(handler),
-   mLocCache(NULL),
-   mHaveMovingObjects(false),
    mForceInitialRebuild(false),
    mForceRebuild(false),
    mReportRate(false),
@@ -146,85 +137,18 @@ static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region,
 }
 
 void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const SolidAngle& max_qangle, const float dist, uint32 max_results) {
-    mChurn = churnrate;
+    SimulatorBase::initialize(churnrate);
+
     mQueryAngleMin = min_qangle;
     mQueryAngleMax = max_qangle;
     mQueryDistance = dist;
     mQueryMaxResults = max_results;
 
     ObjectLocationServiceCache* loc_cache = new ObjectLocationServiceCache();
-    addListener(loc_cache);
+    SimulatorBase::addListener(loc_cache);
     mLocCache = loc_cache;
 
     mHandler->initialize(mLocCache, mLocCache, !mHaveMovingObjects);
-}
-
-void Simulator::createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac) {
-    // Generate objects
-    mHaveMovingObjects = mHaveMovingObjects || (moving_frac > 0.0 && nobjects > 0);
-    for(int i = 0; i < nobjects; i++) {
-        mObjectIDSource++;
-        unsigned char oid_data[ObjectID::static_size]={0};
-        memcpy(oid_data,&mObjectIDSource,ObjectID::static_size<sizeof(mObjectIDSource)?ObjectID::static_size:sizeof(mObjectIDSource));
-        ObjectID oid(oid_data,ObjectID::static_size);
-
-        bool moving = (randFloat() < moving_frac);
-
-        Object* obj = new Object(
-            ObjectID(oid_data,ObjectID::static_size),
-            generateMotionPath(region, moving),
-            generateObjectBounds()
-        );
-
-        mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
-
-        mAllObjects[obj->id()] = obj;
-        if (obj->dynamic())
-            mRemovedDynamicObjects[obj->id()] = obj;
-        else
-            mRemovedStaticObjects[obj->id()] = obj;
-    }
-}
-
-void Simulator::createStaticCSVObjects(const std::string csvfile, int nobjects) {
-    std::vector<Object*> objects = loadCSVObjects(csvfile);
-    createCSVObjects(objects, nobjects);
-}
-
-void Simulator::createMotionCSVObjects(const std::string csvfile, int nobjects) {
-    mHaveMovingObjects = mHaveMovingObjects || (nobjects > 0);
-    std::vector<Object*> objects =
-        loadCSVMotionObjects(
-            csvfile,
-            std::tr1::bind(generatePosition, mRegion),
-            nobjects
-        );
-    createCSVObjects(objects, nobjects);
-}
-
-void Simulator::createCSVObjects(std::vector<Object*>& objects, int nobjects) {
-    nobjects = std::min(nobjects, (int)objects.size()); // just in case we don't have enough
-
-    // Update bounding box using full set of data
-    for(int i = 0; i < (int)objects.size(); i++) {
-        Object* obj = objects[i];
-        mRegion.mergeIn( BoundingBox3(obj->position(Time::null()), obj->position(Time::null())) );
-    }
-
-    // Sample a subset of the objects
-    for (int i = 0; i < nobjects; i++) {
-        int x = rand() % objects.size();
-        Object* obj = objects[x];
-        objects.erase( objects.begin() + x );
-        mAllObjects[obj->id()] = obj;
-        if (obj->dynamic())
-            mRemovedDynamicObjects[obj->id()] = obj;
-        else
-            mRemovedStaticObjects[obj->id()] = obj;
-    }
-    // Get rid of the leftovers
-    for(int i = 0; i < (int)objects.size(); i++)
-        delete objects[i];
 }
 
 void Simulator::createRandomQueries(int nqueries, bool static_queries) {
@@ -248,25 +172,6 @@ void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile)
         addQuery(qs[i]);
 }
 
-void Simulator::addObjects() {
-    // All static, then all dynamic to get consistency across experiments that
-    // compare mixed and unmixed trees.
-    while(!mRemovedStaticObjects.empty()) {
-        Object* obj = mRemovedStaticObjects.begin()->second;
-        addObject(obj);
-    }
-    while(!mRemovedDynamicObjects.empty()) {
-        Object* obj = mRemovedDynamicObjects.begin()->second;
-        addObject(obj);
-    }
-}
-
-void Simulator::run() {
-    addObjects();
-
-    mTimer.start();
-}
-
 void Simulator::shutdown() {
     while(!mQueries.empty()) {
         Querier* query = mQueries.front();
@@ -277,39 +182,7 @@ void Simulator::shutdown() {
     delete mHandler;
     mHandler = NULL;
 
-    // Remove all objects
-    while(!mObjects.empty()) {
-        Object* obj = mObjects.begin()->second;
-        removeObject(obj);
-    }
-    // And delete them all
-    while(!mRemovedDynamicObjects.empty()) {
-        Object* obj = mRemovedDynamicObjects.begin()->second;
-        delete obj;
-        mRemovedDynamicObjects.erase(mRemovedDynamicObjects.begin());
-    }
-    while(!mRemovedStaticObjects.empty()) {
-        Object* obj = mRemovedStaticObjects.begin()->second;
-        delete obj;
-        mRemovedStaticObjects.erase(mRemovedStaticObjects.begin());
-    }
-
-    delete mLocCache;
-}
-
-const BoundingBox3& Simulator::region() const {
-    return mRegion;
-}
-
-void Simulator::addListener(SimulatorObjectListener* listener) {
-    assert( std::find(mObjectListeners.begin(), mObjectListeners.end(), listener) == mObjectListeners.end() );
-    mObjectListeners.push_back(listener);
-}
-
-void Simulator::removeListener(SimulatorObjectListener* listener) {
-    ObjectListenerList::iterator it = std::find(mObjectListeners.begin(), mObjectListeners.end(), listener);
-    assert( it != mObjectListeners.end() );
-    mObjectListeners.erase(it);
+    SimulatorBase::shutdown();
 }
 
 void Simulator::addListener(SimulatorQueryListener* listener) {
@@ -323,29 +196,8 @@ void Simulator::removeListener(SimulatorQueryListener* listener) {
     mQueryListeners.erase(it);
 }
 
-void Simulator::tick() {
-    Time last_time(mTime);
-    Duration elapsed = mTimer.elapsed();
-    if (mRealtime) {
-        if (mDuration > 0 && elapsed.seconds() > mDuration) {
-            mFinished = true;
-            return;
-        }
-        mTime = Time::null() + elapsed;
-    }
-    else {
-        mTime += mTimestep;
-        if (mDuration > 0 && ((mTime - Time::null()).seconds() > mDuration)) {
-            mFinished = true;
-            return;
-        }
-    }
-
-    //fprintf(stderr, "Tick: %f\n", (mTime - Time::null()).seconds());
-
-    // Give all objects a chance to update their positions
-    for(ObjectList::iterator it = mAllObjects.begin(); it != mObjects.end(); it++)
-        it->second->tick(mTime);
+void Simulator::tick_work(Time last_time, Duration elapsed) {
+    SimulatorBase::tick_work(last_time, elapsed);
 
     if (mForceRebuild || (mForceInitialRebuild && last_time == Time::null())) {
         mHandler->rebuild();
@@ -392,37 +244,6 @@ void Simulator::tick() {
         mItsSinceRateApprox = 0;
         mRateApproxStart = elapsed;
     }
-
-    mIterations++;
-    if (mTerminateIterations > 0 && mIterations >= mTerminateIterations)
-        mFinished = true;
-}
-
-void Simulator::addObject(Object* obj) {
-    // Should find it in one of the two removed objects sets
-    // Static
-    OrderedObjectList::iterator oit = mRemovedStaticObjects.find(obj->id());
-    if (oit != mRemovedStaticObjects.end()) mRemovedStaticObjects.erase(oit);
-    // Dynamic
-    oit = mRemovedDynamicObjects.find(obj->id());
-    if (oit != mRemovedDynamicObjects.end()) mRemovedDynamicObjects.erase(oit);
-
-    mObjects[obj->id()] = obj;
-    mLocCache->addObject(obj);
-    for(ObjectListenerList::iterator it = mObjectListeners.begin(); it != mObjectListeners.end(); it++)
-        (*it)->simulatorAddedObject(obj, obj->position(), obj->bounds());
-}
-
-void Simulator::removeObject(Object* obj) {
-    ObjectList::iterator it = mObjects.find(obj->id());
-    mObjects.erase(it);
-    if (obj->dynamic())
-        mRemovedDynamicObjects[obj->id()] = obj;
-    else
-        mRemovedStaticObjects[obj->id()] = obj;
-    for(ObjectListenerList::iterator it = mObjectListeners.begin(); it != mObjectListeners.end(); it++)
-        (*it)->simulatorRemovedObject(obj);
-    mLocCache->removeObject(obj);
 }
 
 void Simulator::addQuery(Querier* query) {
@@ -437,26 +258,6 @@ void Simulator::removeQuery(Querier* query) {
 
     for(QueryListenerList::iterator it = mQueryListeners.begin(); it != mQueryListeners.end(); it++)
         (*it)->simulatorRemovedQuery(query);
-}
-
-Simulator::ObjectIterator Simulator::objectsBegin() {
-    return mObjects.begin();
-}
-
-Simulator::ObjectIterator Simulator::objectsEnd() {
-    return mObjects.end();
-}
-
-Simulator::ObjectIterator Simulator::objectsFind(const ObjectID& objid) {
-    return mObjects.find(objid);
-}
-
-int Simulator::objectsSize() const {
-    return mObjects.size();
-}
-
-int Simulator::allObjectsSize() const {
-    return mAllObjects.size();
 }
 
 Simulator::QueryIterator Simulator::queriesBegin() {

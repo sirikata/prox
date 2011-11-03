@@ -33,31 +33,19 @@
 #ifndef _PROXSIM_SIMULATOR_HPP_
 #define _PROXSIM_SIMULATOR_HPP_
 
-#include <proxsimcore/SimulationTypes.hpp>
-#include <proxsimcore/BoundingBox.hpp>
-#include <proxsimcore/Object.hpp>
-#include <proxsimcore/SimulatorObjectListener.hpp>
+#include <proxsimcore/SimulatorBase.hpp>
 #include "SimulatorQueryListener.hpp"
-#include <proxsimcore/ObjectLocationServiceCache.hpp>
-#include <proxsimcore/Timer.hpp>
 #include "Querier.hpp"
 
 namespace Prox {
 namespace Simulation {
 
-class Simulator {
+class Simulator : public SimulatorBase {
 private:
-    typedef std::map<ObjectID, Object*> OrderedObjectList;
-    typedef std::tr1::unordered_map<ObjectID, Object*, ObjectID::Hasher> ObjectList;
     typedef std::list<Querier*> QueryList;
 public:
     Simulator(QueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime);
     ~Simulator();
-
-    // note: call these before initialize
-    void createRandomObjects(const BoundingBox3& region, int nobjects, float moving_frac);
-    void createStaticCSVObjects(const std::string csvfile, int nobjects);
-    void createMotionCSVObjects(const std::string csvfile, int nobjects);
 
     void initialize(int churnrate, const SolidAngle& min_qangle, const SolidAngle& max_qangle, const float dist, uint32 max_results);
 
@@ -65,73 +53,31 @@ public:
     void createRandomQueries(int nqueries, bool static_queries);
     void createCSVQueries(int nqueries, const std::string& csvmotionfile);
 
-    // note: call this after all create and initialize calls
-    void run();
+    virtual void shutdown();
 
-    void shutdown();
-
-    const BoundingBox3& region() const;
-
-    void addListener(SimulatorObjectListener* listener);
-    void removeListener(SimulatorObjectListener* listener);
     void addListener(SimulatorQueryListener* listener);
     void removeListener(SimulatorQueryListener* listener);
-
-    Time time() const { return mTime; }
-    bool finished() const { return mFinished; }
 
     void printRate(bool p) { mReportRate = p; }
     void forceInitialRebuild(bool p) { mForceInitialRebuild = p; }
     void forceRebuild(bool p) { mForceRebuild = p; }
 
-    void tick();
+    virtual void tick_work(Time last_time, Duration elapsed);
 
-    typedef ObjectList::iterator ObjectIterator;
     typedef QueryList::iterator QueryIterator;
-
-    ObjectIterator objectsBegin();
-    ObjectIterator objectsEnd();
-    ObjectIterator objectsFind(const ObjectID& objid);
-    int objectsSize() const;
-
-    // Not all objects may be active
-    int allObjectsSize() const;
 
     QueryIterator queriesBegin();
     QueryIterator queriesEnd();
     uint32 queriesSize() const;
 
 private:
-    // Helper, filters the given list of objects to only add the given number of them.
-    void createCSVObjects(std::vector<Object*>& objects, int nobjects);
-
-    void addObject(Object* obj);
-    void removeObject(Object* obj);
-
     void addQuery(Querier* query);
     void removeQuery(Querier* query);
 
     // Reusable for different object loaders.
     void addObjects();
 
-    bool mFinished;
-
-    int mDuration;
-    Duration mTimestep;
-    int mIterations;
-    int mTerminateIterations;
-    bool mRealtime;
-
-    Timer mTimer;
-    Time mTime;
-
-    BoundingBox3 mRegion;
-    int64 mObjectIDSource;
     QueryHandler* mHandler;
-    ObjectLocationServiceCache* mLocCache;
-    bool mHaveMovingObjects;
-    ObjectList mAllObjects;
-    ObjectList mObjects;
 
     SolidAngle mQueryAngleMin;
     SolidAngle mQueryAngleMax;
@@ -139,14 +85,9 @@ private:
     uint32 mQueryMaxResults;
     QueryList mQueries;
 
-    typedef std::list<SimulatorObjectListener*> ObjectListenerList;
-    ObjectListenerList mObjectListeners;
     typedef std::list<SimulatorQueryListener*> QueryListenerList;
     QueryListenerList mQueryListeners;
 
-    OrderedObjectList mRemovedStaticObjects;
-    OrderedObjectList mRemovedDynamicObjects;
-    int32 mChurn; // Rate at which objects are added and removed
     bool mForceInitialRebuild; // Force rebuild on initial tick
     bool mForceRebuild; // Force rebuild every frame by removing all objects and
                         // adding them back in again.

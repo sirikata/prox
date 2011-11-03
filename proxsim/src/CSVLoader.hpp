@@ -30,18 +30,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <proxsimcore/Object.hpp>
+#ifndef _PROXSIM_CSVLOADER_HPP_
+#define _PROXSIM_CSVLOADER_HPP_
+
 #include "Querier.hpp"
-#include <boost/lexical_cast.hpp>
-#include <fstream>
 
 namespace Prox {
 namespace Simulation {
-
-std::vector<Object*> loadCSVObjects(const String& filename);
-std::vector<Object*> loadCSVMotionObjects(const String& filename, std::tr1::function<Vector3()> gen_loc, int nobjects);
 
 std::vector<Querier*> loadCSVMotionQueriers(const String& filename, int nqueriers, QueryHandler* qh, std::tr1::function<Vector3()> gen_loc, float qradius, const SolidAngle& qangle, const float qdistance);
 
 } // namespace Simulation
 } // namespace Prox
+
+#endif //_PROXSIM_CSVLOADER_HPP_
