@@ -74,9 +74,6 @@ private:
     void addQuery(Querier* query);
     void removeQuery(Querier* query);
 
-    // Reusable for different object loaders.
-    void addObjects();
-
     QueryHandler* mHandler;
 
     SolidAngle mQueryAngleMin;

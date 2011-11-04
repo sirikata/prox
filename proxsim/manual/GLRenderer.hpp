@@ -6,16 +6,24 @@
 #define _PROXSIM_MANUAL_GLRENDERER_HPP_
 
 #include <proxsimcore/GLRendererBase.hpp>
+#include "SimulatorQueryListener.hpp"
 
 namespace Prox {
 namespace Simulation {
 
 class Simulator;
 
-class GLRenderer : public GLRendererBase {
+class GLRenderer : public GLRendererBase, public ManualQueryEventListener, public SimulatorQueryListener {
 public:
-    GLRenderer(SimulatorBase* sim, bool display = true);
+    GLRenderer(Simulator* sim, ManualQueryHandler* handler, bool display = true);
     virtual ~GLRenderer();
+
+    // QueryEventListener Interface
+    virtual void queryHasEvents(ManualQuery* query);
+
+    // SimulatorQueryListener Interface
+    virtual void simulatorAddedQuery(Querier* query);
+    virtual void simulatorRemovedQuery(Querier* query);
 
     // GLRenderer Interface
     virtual void display();
@@ -23,7 +31,7 @@ public:
 protected:
     GLRenderer();
 
-    SimulatorBase* mSimulator;
+    Simulator* mSimulator;
 }; // class Renderer
 
 } // namespace Simulation

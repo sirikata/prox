@@ -34,21 +34,12 @@
 #include <stdint.h>
 #include <algorithm>
 #include "CSVLoader.hpp"
+#include <proxsimcore/RandomUtils.hpp>
 
 #define RATE_APPROX_ITERATIONS 25
 
 namespace Prox {
 namespace Simulation {
-
-static float randFloat() {
-    return float(rand()) / RAND_MAX;
-}
-
-static uint32 randUInt32(uint32 minval, uint32 maxval) {
-    uint32 r = (uint32)( randFloat() * (maxval-minval+1) + minval);
-    if (r > maxval) r = maxval;
-    return r;
-}
 
 Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timestep, int iterations, bool realtime)
  : SimulatorBase(duration, timestep, iterations, realtime),
@@ -64,59 +55,6 @@ Simulator::Simulator(QueryHandler* handler, int duration, const Duration& timest
 Simulator::~Simulator() {
 }
 
-static Vector3 generatePosition(const BoundingBox3& region) {
-    Vector3 region_min = region.min();
-    Vector3 region_extents = region.extents();
-
-    return region_min + Vector3(region_extents.x * randFloat(), region_extents.y * randFloat(), 0.f/*region_extents.z * randFloat()*/);
-}
-
-static Vector3 generateDirection(bool moving) {
-    return
-        (moving ?
-            Vector3(randFloat() * 20.f - 10.f, randFloat() * 20.f - 10.f, 0.f/*randFloat() * 20.f - 10.f*/) :
-            Vector3(0, 0, 0)
-        );
-};
-
-static MotionPath generateMotionPath(const BoundingBox3& region, bool moving) {
-    // Our simple model is ballistic, single update
-
-    Vector3 offset = generatePosition(region);
-    MotionPath::MotionVectorListPtr updates(
-        new MotionPath::MotionVectorList()
-    );
-    Vector3 dir = generateDirection(moving);
-    updates->push_back(
-        MotionVector3(
-            Time::null(),
-            Vector3(0,0,0),
-            dir
-        )
-    );
-
-    return MotionPath(offset, updates);
-}
-
-static BoundingBox3 generateObjectBounds() {
-    return BoundingBox3( Vector3(-1, -1, -1), Vector3(1, 1, 1));
-};
-
-static BoundingBox3 generateQueryBounds() {
-    return BoundingBox3( Vector3(0, 0, 0), Vector3(0, 0, 0) );
-}
-
-static float generateQueryRadius() {
-    static float val = sqrtf(6.f) / 2.f; // Diagonal of bounding box
-    return val;
-}
-
-static SolidAngle generateQueryAngle(const SolidAngle& qmin, const SolidAngle& qmax) {
-    assert(qmax >= qmin);
-    if (qmax == qmin) return qmin;
-
-    return qmin + ((qmax-qmin) * (((float)(rand()))/RAND_MAX));
-}
 
 static Querier* generateQuery(QueryHandler* handler, const BoundingBox3& region, bool static_queries, const SolidAngle& qmin, const SolidAngle& qmax, const float q_distance, uint32 q_max_results) {
     Vector3 qpos = generatePosition(region);

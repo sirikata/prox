@@ -16,20 +16,23 @@ int main(int argc, char** argv) {
 
     std::string SEED_ARG("--seed=");
     std::string DISPLAY_ARG("--display=");
-
+    // Simulation params
     std::string DURATION_ARG("--duration=");
     std::string ITERATIONS_ARG("--iterations=");
     std::string REALTIME_ARG("--realtime=");
     std::string TIMESTEP_ARG("--timestep="); // in milliseconds
-
+    // Object params
     std::string NOBJECTS_ARG("--nobjects=");
     std::string STATIC_OBJECTS_ARG("--static-objects=");
     std::string MOVING_FRAC_ARG("--moving-frac=");
     std::string CSV_ARG("--csv=");
     std::string CSV_MOTION_ARG("--csvmotion=");
-
+    // Handler params
     std::string HANDLER_ARG("--handler=");
     std::string BRANCH_ARG("--branch=");
+    // Querier params
+    std::string NQUERIES_ARG("--nqueries=");
+    std::string STATIC_QUERIES_ARG("--static-queries=");
 
     unsigned int seed = 0;
     bool display = false;
@@ -46,6 +49,9 @@ int main(int argc, char** argv) {
 
     std::string handler_type = "rtree";
     int branching = 16;
+
+    int nqueries = 50;
+    bool static_queries = false;
 
     for(int argi = 0; argi < argc; argi++) {
         std::string arg(argv[argi]);
@@ -104,6 +110,15 @@ int main(int argc, char** argv) {
             branching = boost::lexical_cast<int>(branch_arg);
         }
 
+        else if (arg.find(NQUERIES_ARG) != std::string::npos) {
+            std::string nqueries_arg = arg.substr(NQUERIES_ARG.size());
+            nqueries = boost::lexical_cast<int>(nqueries_arg);
+        }
+        else if (arg.find(STATIC_QUERIES_ARG) != std::string::npos) {
+            std::string static_arg = arg.substr(STATIC_QUERIES_ARG.size());
+            static_queries = convert_bool(static_arg);
+        }
+
     }
 
     srand(seed);
@@ -114,7 +129,7 @@ int main(int argc, char** argv) {
     }
 
     Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);
-    GLRenderer* renderer = new GLRenderer(simulator, display);
+    GLRenderer* renderer = new GLRenderer(simulator, handler, display);
 
     BoundingBox3 random_region( Vector3(-100.f, -100.f, -100.f), Vector3(100.f, 100.f, 100.f) );
 
@@ -157,6 +172,11 @@ int main(int argc, char** argv) {
     assert(simulator->allObjectsSize() >= .99f * nobjects);
 
     simulator->initialize(/*churn_rate*/0);
+
+    if (!csvmotionfile.empty() && !static_queries)
+        simulator->createCSVQueries(nqueries, csvmotionfile);
+    else
+        simulator->createRandomQueries(nqueries, static_queries);
 
     simulator->run();
 
