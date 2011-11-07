@@ -116,6 +116,15 @@ public:
 
     void setEventListener(QueryEventListenerType* listener) {
         mEventListener = listener;
+
+        // Notify if we have outstanding events. This ensures events get out,
+        // even if they occurred before the event listener was set, e.g. during
+        // construction. No locking as this should only be happening from the
+        // main thread
+        if (mEventListener != NULL && mValid && !mEventQueue.empty()) {
+            mNotified = true;
+            mEventListener->queryHasEvents((QueryType*)this);
+        }
     }
 
     void removeEventListener() {
@@ -130,6 +139,12 @@ public:
             mEventQueue.push_back(evt);
 
             if (mNotified) return;
+            // Can't notify if we don't have a listener or we've gone
+            // invalid. This check *must* be before marking mNotified or we can
+            // get locked into always thinking we've notified when we actually
+            // haven't.
+            if (mEventListener == NULL || !mValid) return;
+
             mNotified = true;
         }
 
@@ -146,7 +161,13 @@ public:
                 evts.pop_front();
             }
 
+            if (mEventQueue.empty()) return;
             if (mNotified) return;
+            // Can't notify if we don't have a listener or we've gone
+            // invalid. This check *must* be before marking mNotified or we can
+            // get locked into always thinking we've notified when we actually
+            // haven't.
+            if (mEventListener == NULL || !mValid) return;
 
             mNotified = true;
         }

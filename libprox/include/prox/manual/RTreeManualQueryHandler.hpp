@@ -340,6 +340,8 @@ protected:
          : CutBaseType(_parent, _query)
         {
             init(root);
+            // Make sure we get events from initialization to the client
+            if (!events.empty()) query->pushEvents(events);
         }
 
         ~Cut() {
