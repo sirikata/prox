@@ -15,6 +15,10 @@ namespace Prox {
 template<typename SimulationTraits>
 class ManualQueryHandler;
 
+/** ManualQueries are controlled by the querier. They assume a tree structure to
+ *  objects and aggregates. All queriers start at the root and request that
+ *  their results are refined at or coursened to given nodes.
+ */
 template<typename SimulationTraits = DefaultSimulationTraits>
 class ManualQuery :
         public QueryBase< SimulationTraits, ManualQuery<SimulationTraits>, ManualQueryHandler<SimulationTraits>, ManualQueryChangeListener<SimulationTraits> >
@@ -26,6 +30,7 @@ public:
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
 
     typedef QueryBase< SimulationTraits, ManualQuery<SimulationTraits>, ManualQueryHandler<SimulationTraits>, ManualQueryChangeListener<SimulationTraits> > QueryBaseType;
     typedef ManualQuery<SimulationTraits> QueryType;
@@ -48,6 +53,17 @@ protected:
      : QueryBaseType(parent, id, pos, region, maxSize)
     {
     }
+
+    /** Refine the query results at the given node. Returns true if successful. */
+    bool refine(const ObjectID& objid) {
+        return QueryBaseType::handler()->refine(this, objid);
+    }
+
+    /** Coursen the query results to the given node. Return true if successful. */
+    bool coursen(const ObjectID& objid) {
+        return QueryBaseType::handler()->coursen(this, objid);
+    }
+
 }; // class Query
 
 } // namespace Prox

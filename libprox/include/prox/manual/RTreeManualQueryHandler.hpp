@@ -12,12 +12,14 @@
 #include <prox/base/DefaultSimulationTraits.hpp>
 
 #include <prox/rtree/RTree.hpp>
+#include <prox/rtree/Cut.hpp>
 
 namespace Prox {
 
-/** RTreeManualQueryHandler is a base class for QueryHandlers that use an RTree
- *  without cuts and QueryCaches to resolve queries.  It provides a bunch of
- *  utility code, but no real query processing.
+/** RTreeManualQueryHandler uses an RTree data structure for objects and tracks
+ *  each query with a cut. It is largely reactive because it is manually
+ *  controlled -- upon request, cuts are moved up or down, or adjusted due to
+ *  object additions and removals.
  */
 template<typename SimulationTraits = DefaultSimulationTraits>
 class RTreeManualQueryHandler : public ManualQueryHandler<SimulationTraits> {
@@ -28,6 +30,8 @@ public:
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
     typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
+
+    typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
     typedef ManualQuery<SimulationTraits> QueryType;
     typedef QueryEvent<SimulationTraits> QueryEventType;
@@ -78,34 +82,33 @@ public:
         mLocUpdateProvider->addUpdateListener(this);
         mShouldTrackCB = should_track_cb;
 
+        using std::tr1::placeholders::_1;
+        using std::tr1::placeholders::_2;
+        using std::tr1::placeholders::_3;
+
         mRTree = new RTree(
-            mElementsPerNode, mLocCache, static_objects, /*report_restructures_cb*/0
+            mElementsPerNode, mLocCache, static_objects, /*report_restructures_cb*/0,
+            this, QueryHandlerType::mAggregateListener,
+            std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
     }
 
     void tick(const Time& t, bool report) {
-        // Implementations should override this, but make sure to call preTick
-        // and postTick
-        preTick(t, report);
-        postTick(t, report);
+        mRTree->update(t);
+        mRTree->verifyConstraints(t);
+
+
+        mLastTime = t;
     }
 
     virtual void rebuild() {
-        ObjectList objects = allObjects();
-        bool static_objects = mRTree->staticObjects();
-
-        // Destroy current tree
-        destroyCurrentTree();
-
-        // Copy objects into this list
-        for(typename ObjectList::iterator it = objects.begin(); it != objects.end(); it++)
-            mObjects[mLocCache->iteratorID(*it)] = *it;
-
-        // Build new tree
-        mRTree = new RTree(
-            mElementsPerNode, mLocCache, static_objects, /*report_restructures_cb*/0
-        );
-        mRTree->bulkLoad(objects, mLastTime);
+        // FIXME add rebuilding support
+        // when adding rebuilding, make sure to change the rebuilding() method
+        assert(false);
     }
 
     virtual float cost() {
@@ -204,15 +207,12 @@ public:
 
     // QueryChangeListener Implementation
     void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
-        // Nothing to be done, we use values directly from the query
     }
 
     void queryRegionChanged(QueryType* query, const BoundingSphere& old_region, const BoundingSphere& new_region) {
-        // XXX FIXME
     }
 
     void queryMaxSizeChanged(QueryType* query, Real old_ms, Real new_ms) {
-        // XXX FIXME
     }
 
     void queryDestroyed(QueryType* query, bool implicit) {
@@ -222,33 +222,34 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryCacheType emptycache(SimulationTraits::InfiniteResults);
-            std::deque<QueryEventType> events;
-            state->cache.exchange(emptycache, &events, mRemovedObjects);
-            query->pushEvents(events);
+            QueryEventType rem_evt;
+            state->cut->destroyCut(rem_evt);
+            query->pushEvent(rem_evt);
         }
 
         delete state;
         mQueries.erase(it);
+
+        mRTree->verifyConstraints(mLastTime);
+        //validateCuts();
     }
 
     void queryDeleted(const QueryType* query) {
     }
 
 protected:
-    void preTick(const Time& t, bool report) {
-        mRTree->update(t);
-        mRTree->verifyConstraints(t);
-    }
-
-    void postTick(const Time& t, bool report) {
-        mLastTime = t;
-    }
-
     void registerQuery(QueryType* query) {
-        QueryState* state = new QueryState(SimulationTraits::InfiniteResults);
+        QueryState* state = new QueryState(this, query, mRTree->root());
         mQueries[query] = state;
         query->addChangeListener(this);
+    }
+
+    bool refine(QueryType* query, const ObjectID& objid) {
+        return true;
+    }
+
+    bool coursen(QueryType* query, const ObjectID& objid) {
+        return true;
     }
 
 
@@ -277,12 +278,137 @@ protected:
         mRTree->erase(mObjects[obj_id], t);
     }
 
-    struct QueryState {
-        QueryState(uint32 max_size)
-         : cache(max_size)
-        {}
 
-        QueryCacheType cache;
+    ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
+    template <class XSimulationTraits> struct CutNode;
+    class Cut;
+
+#if RTREE_DATA == RTREE_DATA_BOUNDS
+    typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
+#elif RTREE_DATA == RTREE_DATA_MAXSIZE
+    typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
+#endif
+    typedef Prox::RTree<SimulationTraits, NodeData, CutNode<SimulationTraits> > RTree;
+    typedef typename RTree::RTreeNodeType RTreeNodeType;
+
+    ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
+    template <class XSimulationTraits> struct CutNode :
+        public Prox::CutNodeBase<SimulationTraits, QueryHandlerType, NodeData, Cut, CutNode<SimulationTraits> >
+    {
+        typedef Prox::CutNodeBase<SimulationTraits, QueryHandlerType, NodeData, Cut, CutNode<SimulationTraits> > CutNodeBaseType;
+
+        CutNode(QueryHandlerType* handler, Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
+         : CutNodeBaseType(handler, _parent, _rt, listener)
+        {
+        }
+
+    private:
+        friend class Prox::CutNodeBase<SimulationTraits, QueryHandlerType, NodeData, Cut, CutNode<SimulationTraits> >;
+        ~CutNode() {
+        }
+    };
+
+    class Cut
+        : public Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >
+    {
+    private:
+        Cut();
+
+        typedef Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> > CutBaseType;
+        typedef typename CutBaseType::CutNodeList CutNodeList;
+        typedef typename CutBaseType::CutNodeListIterator CutNodeListIterator;
+        typedef typename CutBaseType::CutNodeListConstIterator CutNodeListConstIterator;
+
+        using CutBaseType::parent;
+        using CutBaseType::query;
+        using CutBaseType::nodes;
+        using CutBaseType::length;
+        using CutBaseType::events;
+
+        using CutBaseType::validateCut;
+
+        typedef typename CutBaseType::ResultSet ResultSet;
+        ResultSet results;
+
+
+    public:
+
+        /** Regular constructor.  A new cut simply starts with the root node and
+         *  immediately refines.
+         */
+        Cut(RTreeManualQueryHandler* _parent, QueryType* _query, RTreeNodeType* root)
+         : CutBaseType(_parent, _query)
+        {
+            init(root);
+        }
+
+        ~Cut() {
+        }
+
+        // Methods required by CutBase
+        bool withAggregates() const {
+            return true;
+        }
+        AggregateListenerType* aggregateListener() {
+            return parent->aggregateListener();
+        }
+        LocationServiceCacheType* locCache() {
+            return parent->mLocCache;
+        }
+        const LocationServiceCacheType* locCache() const {
+            return parent->mLocCache;
+        }
+        const Time& curTime() const {
+            return parent->mLastTime;
+        }
+        RTreeNodeType* rootRTreeNode() {
+            return parent->mRTree->root();
+        }
+        bool rebuilding() const {
+            return false;
+        }
+        void addResult(const ObjectID& objid) {
+            results.insert(objid);
+        }
+        size_t removeResult(const ObjectID& objid) {
+            return results.erase(objid);
+        }
+        bool inResults(const ObjectID& objid) const {
+            return results.find(objid) != results.end();
+        }
+        int resultsSize() const {
+            return results.size();
+        }
+        bool satisfiesQuery(RTreeNodeType* node, LocCacheIterator objit, int objidx) const {
+            // This will be called when a node is inserted and this cut is
+            // affected, i.e. when the node is inserted at a node this cut
+            // crosses. For manually controlled, always indicate that the node
+            // satisfies the query since we have no real test to perform. This
+            // will ensure that if other children are being observed, this one
+            // will be as well.
+            return true;
+        }
+
+    public:
+
+        // Returns the number of "nodes" visited, including objects.
+        // In other words, gives the number of solid angle tests performed.
+        int update(LocationServiceCacheType* loc, const Time& t) {
+            return 0;
+        }
+    };
+
+    struct QueryState {
+        QueryState(RTreeManualQueryHandler* _parent, QueryType* _query, RTreeNodeType* root)
+        {
+            cut = new Cut(_parent, _query, root);
+        }
+
+        ~QueryState() {
+            delete cut;
+        }
+
+        Cut* cut;
     };
 
     typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, ObjectIDHasher> ObjectSet;
@@ -290,20 +416,14 @@ protected:
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 
-    struct Cut {
-        void rebuildCutOrder() {}
-    };
-    struct CutNode {
-        typedef Cut CutType;
-    };
+    AggregateListenerType* aggregateListener() {
+        // Currently we only support cuts in the manual query handler -- its the
+        // only efficient way to track and update query state.
+        return QueryHandlerType::mAggregateListener;
+    }
 
-#if RTREE_DATA == RTREE_DATA_BOUNDS
-    typedef BoundingSphereData<SimulationTraits, CutNode> NodeData;
-#elif RTREE_DATA == RTREE_DATA_MAXSIZE
-    typedef MaxSphereData<SimulationTraits, CutNode> NodeData;
-#endif
-    typedef Prox::RTree<SimulationTraits, NodeData, CutNode> RTree;
-    typedef typename RTree::RTreeNodeType RTreeNodeType;
+
+
 
     LocationServiceCacheType* mLocCache;
     LocationUpdateProviderType* mLocUpdateProvider;

@@ -19,9 +19,6 @@ public:
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::realType Real;
-    typedef typename SimulationTraits::Vector3Type Vector3;
-    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
-    typedef typename SimulationTraits::SolidAngleType SolidAngle;
 
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
@@ -50,6 +47,7 @@ public:
     //  bool withAggregates() const; // Whether to use aggregates
     //  AggregateListenerType* aggregateListener();
     //  LocationServiceCacheType* locCache();
+    //  const LocationServiceCacheType* locCache() const;
     //  const Time& curTime() const;
     //  RTreeNodeType* rootRTreeNode();
     //  bool rebuilding() const;
@@ -57,6 +55,8 @@ public:
     //  void removeResult(const ObjectID& objid);
     //  bool inResults(const ObjectID& objid) const;
     //  bool resultsSize() const;
+    //    For insertion/deletion, to decide whether to add to the results
+    //  bool satisfiesQuery(RTreeNodeType* node, LocCacheIterator objit, int objidx) const;
     // And these are helpers that make accessing these convenient within this
     // class.
     bool usesAggregates() const {
@@ -66,6 +66,9 @@ public:
         return getNativeThis()->aggregateListener();
     }
     LocationServiceCacheType* getLocCache() {
+        return getNativeThis()->locCache();
+    }
+    const LocationServiceCacheType* getLocCache() const {
         return getNativeThis()->locCache();
     }
     const Time& getCurTime() const {
@@ -88,6 +91,9 @@ public:
     }
     bool getResultsSize() const {
         return getNativeThis()->resultsSize();
+    }
+    bool checkSatisfiesQuery(RTreeNodeType* node, LocCacheIterator objit, int objidx) const {
+        return getNativeThis()->satisfiesQuery(node, objit, objidx);
     }
 
     int cutSize() const {
@@ -222,15 +228,7 @@ public:
             else {
                 // Check this child to decide whether to replace parent with
                 // children
-                Time t = getCurTime();
-                Vector3 qpos = query->position(t);
-                BoundingSphere qregion = query->region();
-                float qmaxsize = query->maxSize();
-                const SolidAngle& qangle = query->angle();
-                float qradius = query->radius();
-
-                ObjectID child_id = getLocCache()->iteratorID(objit);
-                bool child_satisfies = node->childData(objidx, getLocCache(), t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                bool child_satisfies = checkSatisfiesQuery(node, objit, objidx);
                 if (child_satisfies) {
                     replaceParentWithChildrenResults(cnode);
                 }
@@ -239,15 +237,9 @@ public:
         else {
             // If we're not dealing with aggregates, we just need to check
             // if we should be adding this to the result set immediately.
-            Time t = getCurTime();
-            Vector3 qpos = query->position(t);
-            BoundingSphere qregion = query->region();
-            float qmaxsize = query->maxSize();
-            const SolidAngle& qangle = query->angle();
-            float qradius = query->radius();
-
+            bool child_satisfies = checkSatisfiesQuery(node, objit, objidx);
             ObjectID child_id = getLocCache()->iteratorID(objit);
-            checkMembership(child_id, node->childData(objidx, getLocCache(), t), qpos, qregion, qmaxsize, qangle, qradius);
+            updateMembership(child_id, child_satisfies);
         }
     }
 
@@ -406,10 +398,9 @@ protected:
         return false;
     }
 
-    // Checks for child_id's membership in the result set.  This version
-    // should be used for non-aggregate queries.
-    void checkMembership(const ObjectID& child_id, const NodeDataType& child_data, const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
-        bool child_satisfies = child_data.satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+    // Update membership in the result set based on whether it satisfies the
+    // query. This version should only be used for non-aggregates.
+    void updateMembership(const ObjectID& child_id, bool child_satisfies) {
         bool in_results = isInResults(child_id);
         if (child_satisfies && !in_results) {
             addToResults(child_id);
@@ -426,6 +417,7 @@ protected:
             events.push_back(evt);
         }
     }
+
 
     void removeObjectChildFromResults(const ObjectID& child_id, bool permanent) {
         bool in_results = isInResults(child_id);

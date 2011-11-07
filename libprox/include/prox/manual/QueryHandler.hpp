@@ -49,7 +49,14 @@ public:
         return q;
     }
 protected:
+    // Friend ManualQueries so they can forward requests to us
+    friend class ManualQuery<SimulationTraits>;
+
     virtual void registerQuery(QueryType* query) = 0;
+
+    virtual bool refine(QueryType* query, const ObjectID& objid) = 0;
+    virtual bool coursen(QueryType* query, const ObjectID& objid) = 0;
+
 
     QueryID mQueryIDSource;
 }; // class QueryHandler

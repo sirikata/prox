@@ -471,6 +471,9 @@ private:
         LocationServiceCacheType* locCache() {
             return parent->mLocCache;
         }
+        const LocationServiceCacheType* locCache() const {
+            return parent->mLocCache;
+        }
         const Time& curTime() const {
             return parent->mLastTime;
         }
@@ -489,9 +492,20 @@ private:
         bool inResults(const ObjectID& objid) const {
             return results.find(objid) != results.end();
         }
-
         int resultsSize() const {
             return results.size();
+        }
+        bool satisfiesQuery(RTreeNodeType* node, LocCacheIterator objit, int objidx) const {
+            Time t = curTime();
+            Vector3 qpos = query->position(t);
+            BoundingSphere qregion = query->region();
+            float qmaxsize = query->maxSize();
+            const SolidAngle& qangle = query->angle();
+            float qradius = query->radius();
+
+            ObjectID child_id = this->getLocCache()->iteratorID(objit);
+            bool child_satisfies = node->childData(objidx, this->getLocCache(), t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+            return child_satisfies;
         }
     private:
         // Struct which keeps track of how many children do not satisfy the
@@ -502,6 +516,12 @@ private:
         };
 
     public:
+        // Checks for child_id's membership in the result set.  This version
+        // should be used for non-aggregate queries.
+        void checkMembership(const ObjectID& child_id, const NodeData& child_data, const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
+            bool child_satisfies = child_data.satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+            updateMembership(child_id, child_satisfies);
+        }
 
         // Returns the number of "nodes" visited, including objects.
         // In other words, gives the number of solid angle tests performed.
