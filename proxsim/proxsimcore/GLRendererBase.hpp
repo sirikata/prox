@@ -69,6 +69,7 @@ protected:
     enum DisplayMode {
         TimesSeen,
         SmallestAggregates,
+        SeenWithAggregates, // Draw each object that's been seen, including aggregates
         NumDisplayModes
     };
     DisplayMode mDisplayMode;

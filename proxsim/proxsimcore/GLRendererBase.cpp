@@ -108,10 +108,7 @@ void GLRendererBase::aggregateChildAdded(AggregatorType* handler, const ObjectID
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].insert(child);
 
-    if (mAggregateObjects.find(child) == mAggregateObjects.end())
-        mAggregateBounds[objid] = bnds;
-    else
-        mAggregateBounds.erase(objid);
+    mAggregateBounds[objid] = bnds;
 }
 
 void GLRendererBase::aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
@@ -200,6 +197,34 @@ void GLRendererBase::display() {
                       BoundingSphere cbb = obj->worldBounds(mSimulatorBase->time());
                       glVertex3f(cbb.center().x, cbb.center().y, cbb.center().z);
                   }
+                  glEnd();
+              }
+          }
+          break;
+      case SeenWithAggregates:
+          {
+              for(ObjectRefCountMap::const_iterator it = mSeenObjects.begin(); it != mSeenObjects.end(); it++) {
+                  const ObjectID& objid = it->first;
+                  uint32 num_seen = it->second;
+                  if (num_seen == 0) continue;
+
+                  BoundingSphere bb;
+                  SimulatorBase::ObjectIterator oit = mSimulatorBase->objectsFind(objid);
+                  if (oit != mSimulatorBase->objectsEnd()) {
+                      Object* obj = oit->second;
+                      bb = obj->worldBounds(mSimulatorBase->time());
+                  }
+                  else {
+                      AggregateBounds::const_iterator agg_bounds_it = mAggregateBounds.find(objid);
+                      if (agg_bounds_it == mAggregateBounds.end()) continue;
+                      bb = agg_bounds_it->second;
+                  }
+
+                  float col = 0.5f + 0.5f * ((float)num_seen / mMaxObservers);
+                  glColor3f(col, col, col);
+
+                  glBegin(GL_POINTS);
+                  glVertex3f(bb.center().x, bb.center().y, bb.center().z);
                   glEnd();
               }
           }
