@@ -67,6 +67,10 @@ void Simulator::createCSVQueries(int nqueries, const std::string& csvmotionfile)
 void Simulator::tick_work(Time last_time, Duration elapsed) {
     SimulatorBase::tick_work(last_time, elapsed);
 
+    // Give all queries a chance to update
+    for(QueryList::iterator it = mQueries.begin(); it != mQueries.end(); it++)
+        (*it)->tick(mTime);
+
     mHandler->tick(mTime);
 }
 

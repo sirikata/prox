@@ -176,6 +176,16 @@ public:
             mEventListener->queryHasEvents((QueryType*)this);
     }
 
+    // Copy events instead of popping them. They remain in the queue. Useful for
+    // intercepting query events and then passing them along to other listeners.
+    void copyEvents(std::deque<QueryEventType>& evts) {
+        boost::mutex::scoped_lock lock(mEventQueueMutex);
+
+        assert( evts.empty() );
+        evts = mEventQueue;
+        mNotified = false;
+    }
+
     void popEvents(std::deque<QueryEventType>& evts) {
         boost::mutex::scoped_lock lock(mEventQueueMutex);
 

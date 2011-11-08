@@ -101,6 +101,13 @@ public:
         mRTree->update(t);
         mRTree->verifyConstraints(t);
 
+        // Currently, Cut and CutNode expect that *something* will be
+        // periodically servicing the queries and will therefore take care of
+        // pushing updates out. So for now, we do this here, although it would
+        // be better if it was done only in response to events being added.
+        for (QueryMapIterator qit = mQueries.begin(); qit != mQueries.end(); qit++) {
+            qit->second->cut->pushEvents();
+        }
 
         mLastTime = t;
     }
@@ -245,11 +252,16 @@ protected:
     }
 
     bool refine(QueryType* query, const ObjectID& objid) {
-        return true;
+        // If it's a leaf objects, we can't refine
+        if (containsObject(objid)) return false;
+
+        Cut* cut = mQueries[query]->cut;
+        return cut->refine(objid);
     }
 
-    bool coursen(QueryType* query, const ObjectID& objid) {
-        return true;
+    bool coarsen(QueryType* query, const ObjectID& objid) {
+        Cut* cut = mQueries[query]->cut;
+        return cut->coarsen(objid);
     }
 
 
@@ -311,13 +323,13 @@ protected:
     class Cut
         : public Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >
     {
-    private:
-        Cut();
-
         typedef Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> > CutBaseType;
         typedef typename CutBaseType::CutNodeList CutNodeList;
         typedef typename CutBaseType::CutNodeListIterator CutNodeListIterator;
         typedef typename CutBaseType::CutNodeListConstIterator CutNodeListConstIterator;
+
+    private:
+        Cut();
 
         using CutBaseType::parent;
         using CutBaseType::query;
@@ -340,8 +352,7 @@ protected:
          : CutBaseType(_parent, _query)
         {
             init(root);
-            // Make sure we get events from initialization to the client
-            if (!events.empty()) query->pushEvents(events);
+            pushEvents();
         }
 
         ~Cut() {
@@ -391,6 +402,11 @@ protected:
             return true;
         }
 
+        // Push events if there are any queued up.
+        void pushEvents() {
+            if (!events.empty()) query->pushEvents(events);
+        }
+
     public:
 
         // Returns the number of "nodes" visited, including objects.
@@ -398,6 +414,61 @@ protected:
         int update(LocationServiceCacheType* loc, const Time& t) {
             return 0;
         }
+
+
+        // These are methods specific to this type of cut processing
+        CutNodeListIterator findCutNode(const ObjectID& objid) {
+            // FIXME this is inefficient but we don't currently have a faster way of
+            // looking up nodes/cut nodes
+            CutNodeListIterator cut_node_it = nodes.begin();
+            while(cut_node_it != nodes.end()) {
+                // Not sure why, but we apparently have to dereference this in
+                // the loop because it won't compile unless we assign it into a
+                // variable.
+                CutNode<SimulationTraits>* cnode = *cut_node_it;
+                if (cnode->rtnode->aggregateID() == objid) break;
+                cut_node_it++;
+            }
+            return cut_node_it;
+        }
+
+        bool refine(const ObjectID& objid) {
+            // Find the cut node
+            CutNodeListIterator cut_node_it = findCutNode(objid);
+            if (cut_node_it == nodes.end()) return false;
+            // and refine it
+            CutNode<SimulationTraits>* cnode = *cut_node_it;
+            if (cnode->rtnode->leaf()) return false;
+            QueryEventType evt;
+            replaceParentWithChildren(cut_node_it, &evt);
+            query->pushEvent(evt);
+            return true;
+        }
+
+        bool coarsen(const ObjectID& objid) {
+            // Coarsening is essentially the same operation as lifting a
+            // cut. We'll just reuse that logic, meaning we need to find a
+            // CutNode to lift and the RTreeNode to lift up to. The CutNode can
+            // be any node under the RTreeNode we want to lift to. The RTreeNode
+            // is just going to be the parent of the node with the objid specified.
+
+            // Find the associated CutNode, which might be out of date.
+            CutNodeListIterator cut_node_it = findCutNode(objid);
+            if (cut_node_it == nodes.end()) return false;
+
+            // Get the parent RTreeNode
+            CutNode<SimulationTraits>* from_cut_node = *cut_node_it;
+            RTreeNodeType* to_rtree_node = from_cut_node->rtnode->parent();
+            if (to_rtree_node == NULL) return false;
+
+            // And just reuse the lift cut operation
+            handleLiftCut(from_cut_node, to_rtree_node);
+
+            pushEvents();
+
+            return true;
+        }
+
     };
 
     struct QueryState {

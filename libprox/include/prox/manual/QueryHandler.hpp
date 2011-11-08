@@ -54,8 +54,16 @@ protected:
 
     virtual void registerQuery(QueryType* query) = 0;
 
+    /** Refine a query's results by expanding the query's result cut at the
+     *  specified object identifier to its children.
+     */
     virtual bool refine(QueryType* query, const ObjectID& objid) = 0;
-    virtual bool coursen(QueryType* query, const ObjectID& objid) = 0;
+    /** Coarsen a query's results by reducing the query's result cut at the
+     *  specified object identifier to its parent. This will also, obviously
+     *  remove any other children (or deeper descendants) that fall under
+     *  objid's parent.
+     */
+    virtual bool coarsen(QueryType* query, const ObjectID& objid) = 0;
 
 
     QueryID mQueryIDSource;

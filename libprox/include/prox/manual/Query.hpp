@@ -17,7 +17,7 @@ class ManualQueryHandler;
 
 /** ManualQueries are controlled by the querier. They assume a tree structure to
  *  objects and aggregates. All queriers start at the root and request that
- *  their results are refined at or coursened to given nodes.
+ *  their results are refined at or coarsened to given nodes.
  */
 template<typename SimulationTraits = DefaultSimulationTraits>
 class ManualQuery :
@@ -44,6 +44,16 @@ public:
 
     virtual ~ManualQuery() {}
 
+    /** Refine the query results at the given node. Returns true if successful. */
+    bool refine(const ObjectID& objid) {
+        return QueryBaseType::handler()->refine(this, objid);
+    }
+
+    /** Coarsen the query results to the given node. Return true if successful. */
+    bool coarsen(const ObjectID& objid) {
+        return QueryBaseType::handler()->coarsen(this, objid);
+    }
+
 protected:
     friend class ManualQueryHandler<SimulationTraits>;
 
@@ -52,16 +62,6 @@ protected:
     ManualQuery(QueryHandlerType* parent, ID id, const MotionVector3& pos, const BoundingSphere& region, real maxSize)
      : QueryBaseType(parent, id, pos, region, maxSize)
     {
-    }
-
-    /** Refine the query results at the given node. Returns true if successful. */
-    bool refine(const ObjectID& objid) {
-        return QueryBaseType::handler()->refine(this, objid);
-    }
-
-    /** Coursen the query results to the given node. Return true if successful. */
-    bool coursen(const ObjectID& objid) {
-        return QueryBaseType::handler()->coursen(this, objid);
     }
 
 }; // class Query
