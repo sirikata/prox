@@ -62,7 +62,6 @@ public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
 
-    typedef QueryHandler<SimulationTraits> QueryHandlerType;
     typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 

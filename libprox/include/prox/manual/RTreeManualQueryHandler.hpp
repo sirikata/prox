@@ -29,7 +29,6 @@ public:
     typedef ManualQueryHandler<SimulationTraits> QueryHandlerType;
     typedef LocationUpdateListener<SimulationTraits> LocationUpdateListenerType;
     typedef LocationUpdateProvider<SimulationTraits> LocationUpdateProviderType;
-    typedef QueryChangeListener<SimulationTraits> QueryChangeListenerType;
 
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
