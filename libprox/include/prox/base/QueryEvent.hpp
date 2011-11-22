@@ -77,40 +77,40 @@ public:
 
     class Action {
     public:
-        Action(ObjectID id, ObjectType type, ObjectEventPermanence perm)
-         : mID(id), mType(type), mPerm(perm)
+        Action(ObjectID id)
+         : mID(id)
         {}
 
         ObjectID id() const { return mID; }
-        ObjectType type() const { return mType; }
-        ObjectEventPermanence permanent() const { return mPerm; }
     private:
         Action();
         ObjectID mID;
-        ObjectType mType;
-        ObjectEventPermanence mPerm;
     };
     class Addition : private Action {
     public:
         Addition(ObjectID id, ObjectType type)
-         : Action(id, type, Transient)
+         : Action(id),
+           mType(type)
         {}
 
         using Action::id;
-        using Action::type;
-        using Action::permanent;
+        ObjectType type() const { return mType; }
+    private:
+        ObjectType mType;
     };
     typedef std::vector<Addition> AdditionList;
 
     class Removal : private Action {
     public:
-        Removal(ObjectID id, ObjectType type, ObjectEventPermanence perm)
-         : Action(id, type, perm)
+        Removal(ObjectID id, ObjectEventPermanence perm)
+         : Action(id),
+           mPerm(perm)
         {}
 
         using Action::id;
-        using Action::type;
-        using Action::permanent;
+        ObjectEventPermanence permanent() const { return mPerm; }
+    private:
+        ObjectEventPermanence mPerm;
     };
     typedef std::vector<Removal> RemovalList;
 

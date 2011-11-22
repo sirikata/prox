@@ -133,7 +133,7 @@ public:
                 QueryEventType evt;
                 typename QueryEventType::ObjectEventPermanence perm = QueryEventType::Transient;
                 if (permanent_removals.find(*it) != permanent_removals.end()) perm = QueryEventType::Permanent;
-                evt.removals().push_back( typename QueryEventType::Removal(*it, QueryEventType::Normal, perm) );
+                evt.removals().push_back( typename QueryEventType::Removal(*it, perm) );
                 changes->push_back(evt);
             }
         }

@@ -265,7 +265,7 @@ public:
             // Try to remove the node itself
             size_t node_removed = removeFromResults(node->aggregateID());
             if (node_removed > 0)
-                destroyEvent.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Imposter, QueryEventType::Transient) );
+                destroyEvent.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Transient) );
 
             // And, if its a leaf, try to remove its children
             if (node->leaf() && node_removed == 0) {
@@ -273,7 +273,7 @@ public:
                     ObjectID leaf_id = getLocCache()->iteratorID(node->object(leaf_idx).object);
                     size_t leaf_removed = removeFromResults(leaf_id);
                     if (leaf_removed > 0)
-                        destroyEvent.removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal, QueryEventType::Transient) );
+                        destroyEvent.removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
                 }
             }
 
@@ -413,7 +413,7 @@ protected:
             removeFromResults(child_id);
 
             QueryEventType evt;
-            evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal, QueryEventType::Transient) );
+            evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
             events.push_back(evt);
         }
     }
@@ -427,7 +427,7 @@ protected:
             QueryEventType evt;
             evt.removals().push_back(
                 typename QueryEventType::Removal(
-                    child_id, QueryEventType::Normal,
+                    child_id,
                     permanent ? QueryEventType::Permanent : QueryEventType::Transient
                 )
             );
@@ -453,7 +453,7 @@ protected:
             // set.
             size_t nremoved = removeFromResults(node->rtnode->aggregateID());
             if (nremoved > 0) {
-                evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Imposter, QueryEventType::Transient) );
+                evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Transient) );
             }
             else {
                 // If it wasn't there and this is a leaf, we need to
@@ -490,7 +490,7 @@ protected:
         }
         // Delete old node
         if (qevt_out) {
-            qevt_out->removals().push_back( typename QueryEventType::Removal(parent_cn->rtnode->aggregateID(), QueryEventType::Imposter, QueryEventType::Transient) );
+            qevt_out->removals().push_back( typename QueryEventType::Removal(parent_cn->rtnode->aggregateID(), QueryEventType::Transient) );
             removeFromResults(parent_cn->rtnode->aggregateID());
         }
         nodes.erase(parent_it);
@@ -517,7 +517,7 @@ protected:
             ObjectID leaf_id = getLocCache()->iteratorID(node->object(leafidx).object);
             size_t n_leaf_removed = removeFromResults(leaf_id);
             if (n_leaf_removed > 0)
-                qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal, QueryEventType::Transient) );
+                qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
         }
 
         qevt_out->additions().push_back( typename QueryEventType::Addition(node->aggregateID(), QueryEventType::Imposter) );
@@ -558,7 +558,7 @@ protected:
                 size_t nremoved = removeFromResults(child_rtnode->aggregateID());
                 if (nremoved > 0) {
                     aggregate_was_in_results = true;
-                    qevt_out->removals().push_back( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Imposter, QueryEventType::Transient) );
+                    qevt_out->removals().push_back( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Transient) );
                 }
             }
             // At leaves, if the aggregate wasn't in the results (either
@@ -576,7 +576,7 @@ protected:
                     ObjectID leaf_id = getLocCache()->iteratorID(child_rtnode->object(leafidx).object);
                     size_t n_leaf_removed = removeFromResults(leaf_id);
                     if (n_leaf_removed > 0)
-                        qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Normal, QueryEventType::Transient) );
+                        qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
                 }
             }
 
@@ -615,7 +615,7 @@ protected:
         //it the hard way and assert:
         size_t nremoved = removeFromResults(cnode->rtnode->aggregateID());
         assert(nremoved == 1);
-        evt.removals().push_back( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Imposter, QueryEventType::Transient) );
+        evt.removals().push_back( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Transient) );
         events.push_back(evt);
     }
 

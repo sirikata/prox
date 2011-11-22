@@ -608,7 +608,7 @@ private:
                                 typename ResultSet::iterator result_it = results.find(child_id);
                                 assert(result_it != results.end());
                                 results.erase(result_it);
-                                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Normal, QueryEventType::Transient) );
+                                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
                             }
                             events.push_back(evt);
                         }
