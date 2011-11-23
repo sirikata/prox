@@ -601,7 +601,7 @@ private:
                             // If this change allows merging to the parent node of
                             // this node, that'll happen upon push-up
                             QueryEventType evt;
-                            evt.additions().push_back( typename QueryEventType::Addition(node->rtnode->aggregateID(), QueryEventType::Imposter) );
+                            evt.additions().push_back( typename QueryEventType::Addition(node->rtnode, QueryEventType::Imposter) );
                             results.insert( node->rtnode->aggregateID() );
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);

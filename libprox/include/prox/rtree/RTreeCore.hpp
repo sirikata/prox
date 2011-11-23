@@ -107,6 +107,7 @@ struct RTreeNode : public CutNodeContainer<CutNode> {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
+    typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
     typedef typename SimulationTraits::ObjectIDRandomType ObjectIDRandom;
     typedef typename SimulationTraits::TimeType Time;
 
@@ -267,6 +268,12 @@ public:
     }
     void parent(RTreeNode* _p) {
         mParent = _p;
+    }
+    const ObjectID& parentAggregateID() const {
+        if (mParent != NULL)
+            return mParent->aggregateID();
+        static ObjectID no_parent_id = ObjectIDNull()();
+        return no_parent_id;
     }
 
     const LeafNode& object(int i) const {

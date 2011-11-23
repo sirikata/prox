@@ -62,6 +62,7 @@ public:
 
     typedef Reference::ObjectID ObjectIDType;
     typedef Reference::ObjectID::Hasher ObjectIDHasherType;
+    typedef Reference::ObjectID::Null ObjectIDNullType;
     typedef Reference::ObjectID::Random ObjectIDRandomType;
 
     typedef Reference::Time TimeType;

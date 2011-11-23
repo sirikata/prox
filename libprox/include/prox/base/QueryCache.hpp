@@ -50,6 +50,7 @@ template<typename SimulationTraits>
 class QueryCache {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
     typedef QueryEvent<SimulationTraits> QueryEventType;
 
@@ -125,7 +126,8 @@ public:
             // Therefore, we always have single action QueryEvents
             for(IDSetIterator it = added_objs.begin(); it != added_objs.end(); it++) {
                 QueryEventType evt;
-                evt.additions().push_back( typename QueryEventType::Addition(*it, QueryEventType::Normal) );
+                // Note null parent -- should only use QueryCache when not using aggregates.
+                evt.additions().push_back( typename QueryEventType::Addition(*it, QueryEventType::Normal, ObjectIDNull()()) );
                 changes->push_back(evt);
             }
 

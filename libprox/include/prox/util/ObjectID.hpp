@@ -97,6 +97,12 @@ public:
         }
     };
 
+    struct Null {
+        const ObjectID& operator() () const {
+            return ObjectID::null();
+        }
+    };
+
     std::string toString() const {
         std::stringstream ss;
         ss << Hasher()(*this);

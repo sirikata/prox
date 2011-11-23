@@ -61,6 +61,7 @@ template<typename SimulationTraits = DefaultSimulationTraits>
 class QueryEvent {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
 
     enum ObjectType {
         Normal,
@@ -88,15 +89,29 @@ public:
     };
     class Addition : private Action {
     public:
-        Addition(ObjectID id, ObjectType type)
+        // If parent == ObjectIDNull()() this is equivalent to no parent (or
+        // parent's not exposed)
+        Addition(ObjectID id, ObjectType type, ObjectID parent)
          : Action(id),
-           mType(type)
+           mType(type),
+           mParent(parent)
+        {}
+        // Helper that fills in the ID and parent from some node (currently
+        // based of RTreeNode). Should have aggregateID() and
+        // parentAggregateID() methods.
+        template <typename NodeType>
+        Addition(const NodeType* node, ObjectType type)
+         : Action(node->aggregateID()),
+           mType(type),
+           mParent(node->parentAggregateID())
         {}
 
         using Action::id;
         ObjectType type() const { return mType; }
+        ObjectID parent() const { return mParent; }
     private:
         ObjectType mType;
+        ObjectID mParent;
     };
     typedef std::vector<Addition> AdditionList;
 
