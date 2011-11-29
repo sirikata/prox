@@ -49,11 +49,19 @@ public:
     /** Initialze the query handler.
      *  \param loc_cache LocationServiceCache to use for learning about object
      *                   updates
+     *  \param loc_up_provider LocationUpdateProvider for location updates.
      *  \param static_objects if true, disables processing necessary for
      *                        supporting dynamic objects.
      *  \param should_track_cb if non-NULL, invoked when new objects are
      *                         discovered to decide whether to track them and
      *                         return them to queriers.
+     *
+     *  Note: Although LocationServiceCache implements LocationUpdateProvider,
+     *  it is a pain to have to reimplement all of the LocationServiceCache just
+     *  to override LocationUpdateProvider. This split is rarely used. For an
+     *  example, see RebuildingQueryHandler, which ignores
+     *  LocationUpdateListener subscriptions and always passes events onto its
+     *  child handlers.
      */
     virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
 
