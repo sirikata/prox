@@ -432,15 +432,23 @@ protected:
         }
 
         bool refine(const ObjectID& objid) {
+            // Check that it is refinable. It must be in the results still to be
+            // refinable
+            if (!isInResults(objid)) return false;
+
             // Find the cut node
             CutNodeListIterator cut_node_it = findCutNode(objid);
             if (cut_node_it == nodes.end()) return false;
             // and refine it
             CutNode<SimulationTraits>* cnode = *cut_node_it;
-            if (cnode->rtnode->leaf()) return false;
-            QueryEventType evt;
-            replaceParentWithChildren(cut_node_it, &evt);
-            query->pushEvent(evt);
+            if (cnode->rtnode->leaf()) {
+                replaceParentWithChildrenResults(cnode);
+            }
+            else {
+                QueryEventType evt;
+                replaceParentWithChildren(cut_node_it, &evt);
+                query->pushEvent(evt);
+            }
             return true;
         }
 
