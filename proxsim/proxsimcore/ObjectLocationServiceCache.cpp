@@ -96,13 +96,13 @@ void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
 }
 
 
-const MotionVector3& ObjectLocationServiceCache::location(const Iterator& id) const {
+MotionVector3 ObjectLocationServiceCache::location(const Iterator& id) const {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->position();
 }
 
-const BoundingSphere& ObjectLocationServiceCache::region(const Iterator& id) const {
+BoundingSphere ObjectLocationServiceCache::region(const Iterator& id) const {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     assert(obj->bounds().center() == Reference::Vector3f::nil());

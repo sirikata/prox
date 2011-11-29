@@ -54,8 +54,8 @@ public:
     virtual Iterator startTracking(const ObjectID& id);
     virtual void stopTracking(const Iterator& id);
 
-    virtual const MotionVector3& location(const Iterator& id) const;
-    virtual const BoundingSphere& region(const Iterator& id) const;
+    virtual MotionVector3 location(const Iterator& id) const;
+    virtual BoundingSphere region(const Iterator& id) const;
     virtual float32 maxSize(const Iterator& id) const;
     virtual bool isLocal(const Iterator& id) const;
 
