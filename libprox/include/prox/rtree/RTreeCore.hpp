@@ -188,11 +188,11 @@ public:
             return parent->object(idx).object;
         }
 
-        NodeData data(const LocationServiceCacheType* loc, const LocCacheIterator& child, const Time& t) {
+        NodeData data(LocationServiceCacheType* loc, const LocCacheIterator& child, const Time& t) {
             return NodeData(loc, child, t);
         }
 
-        void insert(RTreeNode* parent, const LocationServiceCacheType* loc, const LocCacheIterator& newchild, const Time& t, const Callbacks& cb) {
+        void insert(RTreeNode* parent, LocationServiceCacheType* loc, const LocCacheIterator& newchild, const Time& t, const Callbacks& cb) {
             parent->insert(loc, newchild, t, cb);
         }
     };
@@ -213,7 +213,7 @@ public:
 
     // We have a destroy method and hide the destructor in private in order to
     // ensure the aggregate callbacks get invoked properly.
-    void destroy(const LocationServiceCacheType* loc, const Callbacks& callbacks) {
+    void destroy(LocationServiceCacheType* loc, const Callbacks& callbacks) {
         // Make sure we get all the destructors right by just clearing the
         // entire node
         clear(loc, callbacks);
@@ -292,14 +292,14 @@ public:
         return mData;
     }
 
-    NodeData childData(int i, const LocationServiceCacheType* loc, const Time& t) {
+    NodeData childData(int i, LocationServiceCacheType* loc, const Time& t) {
         if (leaf())
             return NodeData(loc, object(i).object, t);
         else
             return node(i)->data();
     }
 
-    void recomputeData(const LocationServiceCacheType* loc, const Time& t, const Callbacks& cb) {
+    void recomputeData(LocationServiceCacheType* loc, const Time& t, const Callbacks& cb) {
         mData = NodeData();
         for(int i = 0; i < size(); i++)
             mData.mergeIn( childData(i, loc, t) );
@@ -307,7 +307,7 @@ public:
     }
 
 private:
-    void notifyRemoved(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb, bool permanent) {
+    void notifyRemoved(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb, bool permanent) {
         ObjectID obj_id = loc->iteratorID(obj);
         if (cb.objectRemoved) {
             for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
@@ -319,7 +319,7 @@ private:
 
 public:
 
-    void clear(const LocationServiceCacheType* loc, const Callbacks& cb) {
+    void clear(LocationServiceCacheType* loc, const Callbacks& cb) {
         Index old_count = count;
 
         // If we have child objects, we need to notify cuts of removal
@@ -347,7 +347,7 @@ public:
         mData = NodeData();
     }
 
-    void insert(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t, const Callbacks& cb) {
+    void insert(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t, const Callbacks& cb) {
         assert (count < max_elements);
         assert (leaf() == true);
 
@@ -381,7 +381,7 @@ public:
     }
 
     // NOTE: does not recalculate the bounding sphere
-    void erase(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
+    void erase(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
         assert(count > 0);
         assert(leaf() == true);
 
@@ -446,7 +446,7 @@ public:
         return false;
     }
 
-    RTreeNode* selectBestChildNode(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t) {
+    RTreeNode* selectBestChildNode(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t) {
         return NodeData::selectBestChildNode(this, loc, obj, t);
     }
 
@@ -477,7 +477,7 @@ public:
     {
     }
 
-    BoundingSphereDataBase(const LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t)
+    BoundingSphereDataBase(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t)
      : bounding_sphere( loc->worldCompleteBounds(obj, t) )
     {
         // Note use of worldCompleteBounds above instead of worldRegion because
@@ -513,7 +513,7 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -642,7 +642,7 @@ public:
     {
     }
 
-    BoundingSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    BoundingSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, BoundingSphereData, CutNode>( loc, obj_id, t )
     {
     }
@@ -674,7 +674,7 @@ public:
     {
     }
 
-    MaxSphereData(const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    MaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
        mMaxRadius( loc->maxSize(obj_id) )
     {
@@ -717,7 +717,7 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, const LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -793,7 +793,7 @@ private:
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_choose_leaf(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t)
 {
@@ -844,7 +844,7 @@ template<typename SimulationTraits, typename NodeData, typename CutNode, typenam
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
     ChildType to_insert,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
@@ -915,7 +915,7 @@ template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* L,
     RTreeNode<SimulationTraits, NodeData, CutNode>* LL,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
  {
@@ -962,7 +962,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
@@ -1083,7 +1083,7 @@ void RTree_verify_no_cut_nodes_in_tree(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* leaf,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
@@ -1170,7 +1170,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_update_up_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
@@ -1186,7 +1186,7 @@ void RTree_update_up_tree(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_object(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::ObjectIDType& obj_id,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
@@ -1204,7 +1204,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_object(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
@@ -1246,7 +1246,7 @@ template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_report_bounds(
     FILE* fout,
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t)
 {
     fprintf(fout, "{ ");
@@ -1275,7 +1275,7 @@ void RTree_report_bounds(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
@@ -1339,7 +1339,7 @@ void RTree_collect_objects(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_destroy_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;

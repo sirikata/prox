@@ -117,7 +117,7 @@ void RTree_restructure_split_children(
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
 void RTree_restructure_nodes_children(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
     std::tr1::unordered_set<typename CutNode::CutType*>* affected_cuts)
@@ -208,7 +208,7 @@ struct RestructureInfo {
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RestructureInfo RTree_restructure_tree_work(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
     std::tr1::unordered_set<typename CutNode::CutType*>* affected_cuts)
@@ -260,7 +260,7 @@ RestructureInfo RTree_restructure_tree_work(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RestructureInfo RTree_restructure_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {

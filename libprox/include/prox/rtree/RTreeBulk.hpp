@@ -131,7 +131,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree_from
 // binary tree.
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_subtree(
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
     std::vector< BulkLoadElement<SimulationTraits, NodeData> >& objects,
     int branching,

@@ -54,12 +54,12 @@ public:
     virtual Iterator startTracking(const ObjectID& id);
     virtual void stopTracking(const Iterator& id);
 
-    virtual MotionVector3 location(const Iterator& id) const;
-    virtual BoundingSphere region(const Iterator& id) const;
-    virtual float32 maxSize(const Iterator& id) const;
-    virtual bool isLocal(const Iterator& id) const;
+    virtual MotionVector3 location(const Iterator& id);
+    virtual BoundingSphere region(const Iterator& id);
+    virtual float32 maxSize(const Iterator& id);
+    virtual bool isLocal(const Iterator& id);
 
-    virtual const ObjectID& iteratorID(const Iterator& id) const;
+    virtual const ObjectID& iteratorID(const Iterator& id);
 
     virtual void addUpdateListener(LocationUpdateListenerType* listener);
     virtual void removeUpdateListener(LocationUpdateListenerType* listener);

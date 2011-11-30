@@ -66,10 +66,7 @@ public:
     AggregateListenerType* getAggregateListener() {
         return getNativeThis()->aggregateListener();
     }
-    LocationServiceCacheType* getLocCache() {
-        return getNativeThis()->locCache();
-    }
-    const LocationServiceCacheType* getLocCache() const {
+    LocationServiceCacheType* getLocCache() const {
         return getNativeThis()->locCache();
     }
     const Time& getCurTime() const {

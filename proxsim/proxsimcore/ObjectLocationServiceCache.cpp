@@ -96,30 +96,30 @@ void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
 }
 
 
-MotionVector3 ObjectLocationServiceCache::location(const Iterator& id) const {
+MotionVector3 ObjectLocationServiceCache::location(const Iterator& id) {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->position();
 }
 
-BoundingSphere ObjectLocationServiceCache::region(const Iterator& id) const {
+BoundingSphere ObjectLocationServiceCache::region(const Iterator& id) {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     assert(obj->bounds().center() == Reference::Vector3f::nil());
     return sNullBoundingSphere;
 }
 
-float32 ObjectLocationServiceCache::maxSize(const Iterator& id) const {
+float32 ObjectLocationServiceCache::maxSize(const Iterator& id) {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->bounds().radius();
 }
 
-bool ObjectLocationServiceCache::isLocal(const Iterator& id) const {
+bool ObjectLocationServiceCache::isLocal(const Iterator& id) {
     return true; // We don't deal with replicas in the simulation
 }
 
-const ObjectID& ObjectLocationServiceCache::iteratorID(const Iterator& id) const {
+const ObjectID& ObjectLocationServiceCache::iteratorID(const Iterator& id) {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
     return obj->id();

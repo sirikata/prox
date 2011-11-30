@@ -364,10 +364,7 @@ protected:
         AggregateListenerType* aggregateListener() {
             return parent->aggregateListener();
         }
-        LocationServiceCacheType* locCache() {
-            return parent->mLocCache;
-        }
-        const LocationServiceCacheType* locCache() const {
+        LocationServiceCacheType* locCache() const {
             return parent->mLocCache;
         }
         const Time& curTime() const {

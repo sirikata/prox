@@ -103,21 +103,21 @@ public:
     // The helper method worldCompleteBounds computes a bounding sphere for the
     // entire contents of the element (worldRegion + maxSize to radius).
 
-    virtual MotionVector3 location(const Iterator& id) const = 0;
-    virtual BoundingSphere region(const Iterator& id) const = 0;
-    virtual BoundingSphere worldRegion(const Iterator& id, const Time& t) const {
+    virtual MotionVector3 location(const Iterator& id) = 0;
+    virtual BoundingSphere region(const Iterator& id) = 0;
+    virtual BoundingSphere worldRegion(const Iterator& id, const Time& t) {
         BoundingSphere reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() );
     }
-    virtual float32 maxSize(const Iterator& id) const = 0;
-    virtual BoundingSphere worldCompleteBounds(const Iterator& id, const Time& t) const {
+    virtual float32 maxSize(const Iterator& id) = 0;
+    virtual BoundingSphere worldCompleteBounds(const Iterator& id, const Time& t) {
         BoundingSphere reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );
     }
     // Returns true if the object is local, false if it is a replica
-    virtual bool isLocal(const Iterator& id) const = 0;
+    virtual bool isLocal(const Iterator& id) = 0;
 
-    virtual const ObjectID& iteratorID(const Iterator& id) const = 0;
+    virtual const ObjectID& iteratorID(const Iterator& id) = 0;
 
 };
 

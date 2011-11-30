@@ -47,7 +47,7 @@ namespace Prox {
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 float RTree_traverse_cost(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t
 ) {
 
@@ -84,7 +84,7 @@ float RTree_traverse_cost(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 float RTree_cost(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    const LocationServiceCache<SimulationTraits>* loc,
+    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t
 ) {
     return COST_NODE_TEST + RTree_traverse_cost(node, loc, t);
