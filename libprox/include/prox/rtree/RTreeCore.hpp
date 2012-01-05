@@ -110,6 +110,7 @@ public:
     typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
     typedef typename SimulationTraits::ObjectIDRandomType ObjectIDRandom;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
@@ -300,10 +301,13 @@ public:
     }
 
     void recomputeData(LocationServiceCacheType* loc, const Time& t, const Callbacks& cb) {
+        BoundingSphere orig = mData.getBounds();
         mData = NodeData();
         for(int i = 0; i < size(); i++)
             mData.mergeIn( childData(i, loc, t) );
-        if (cb.aggregate != NULL) cb.aggregate->aggregateBoundsUpdated(cb.aggregator, aggregate, mData.getBounds());
+        BoundingSphere updated = mData.getBounds();
+        if (cb.aggregate != NULL && updated != orig)
+            cb.aggregate->aggregateBoundsUpdated(cb.aggregator, aggregate, mData.getBounds());
     }
 
 private:
