@@ -152,13 +152,13 @@ public:
         else if (mustDuplicate())
             mRebuildingHandler->addObject(obj_loc_it);
     }
-    virtual void removeObject(const ObjectID& obj_id) {
+    virtual void removeObject(const ObjectID& obj_id, bool temporary = false) {
         using std::tr1::placeholders::_1;
-        mPrimaryHandler->removeObject(obj_id);
+        mPrimaryHandler->removeObject(obj_id, temporary);
         if (mustDefer())
-            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::removeObject, _1, obj_id));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::removeObject, _1, obj_id, temporary));
         else if (mustDuplicate())
-            mRebuildingHandler->removeObject(obj_id);
+            mRebuildingHandler->removeObject(obj_id, temporary);
     }
     virtual bool containsObject(const ObjectID& obj_id) {
         if (mPrimaryHandler->containsObject(obj_id))

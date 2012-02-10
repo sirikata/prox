@@ -174,13 +174,16 @@ public:
         if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
     }
 
-    void removeObject(const ObjectID& obj_id) {
+    void removeObject(const ObjectID& obj_id, bool temporary = false) {
         typename ObjectSet::iterator it = mObjects.find(obj_id);
         if (it == mObjects.end()) return;
 
         LocCacheIterator obj_loc_it = it->second;
         mObjects.erase(it);
-        mRemovedObjects.insert(obj_id);
+        // Don't add to removed objects if it's temporary so that we generate
+        // Transient removal events
+        if (!temporary)
+            mRemovedObjects.insert(obj_id);
         mLocCache->stopTracking(obj_loc_it);
     }
 

@@ -164,11 +164,11 @@ public:
         }
     }
 
-    void erase(const LocCacheIterator& obj, const Time& t) {
+    void erase(const LocCacheIterator& obj, const Time& t, bool temporary) {
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
-        mRoot = RTree_delete_object(mRoot, mLocCache, obj, t, mCallbacks);
+        mRoot = RTree_delete_object(mRoot, mLocCache, obj, t, temporary, mCallbacks);
         mObjectLeaves.erase(objid);
 
         mRestructureMightHaveEffect = true;

@@ -89,8 +89,15 @@ public:
     /** Remove an object from consideration. If called with an object not in the
      *  tree, will be ignored. This method, along with addObject and
      *  ShouldTrackCallback, allows the user to control which subset of objects
-     *  from the location service cache are candidate results for this handler. */
-    virtual void removeObject(const ObjectID& obj_id) = 0;
+     *  from the location service cache are candidate results for this handler.
+     *
+     *  \param obj_id the object to remove
+     *  \param temporary if true, treat this removal as temporary. This causes
+     *  any removal events triggered by it to be marked as temporary. Useful if
+     *  you have multiple query handlers and are moving objects between them (as
+     *  opposed to an object actually being deleted).
+     */
+    virtual void removeObject(const ObjectID& obj_id, bool temporary = false) = 0;
     /** Checks if this handler is currently tracking the given object. */
     virtual bool containsObject(const ObjectID& obj_id) = 0;
     /** Get a list of the current objects tracked. Used for collecting the

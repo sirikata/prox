@@ -385,7 +385,7 @@ public:
     }
 
     // NOTE: does not recalculate the bounding sphere
-    void erase(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Callbacks& cb) {
+    void erase(LocationServiceCacheType* loc, const LocCacheIterator& obj, bool temporary, const Callbacks& cb) {
         assert(count > 0);
         assert(leaf() == true);
 
@@ -407,7 +407,7 @@ public:
 
         // This is only invoked due to the deletion of an individual object, so
         // we specify permanent deletion (last param)
-        notifyRemoved(loc, obj, cb, true);
+        notifyRemoved(loc, obj, cb, !temporary);
     }
 
 private:
@@ -1282,6 +1282,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     LocationServiceCache<SimulationTraits>* loc,
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t,
+    bool temporary,
     const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
@@ -1295,7 +1296,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
 
     // Notify any cuts that the object is leaving
     assert(leaf_with_obj->leaf());
-    leaf_with_obj->erase(loc, obj_id, cb);
+    leaf_with_obj->erase(loc, obj_id, temporary, cb);
 
     RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_condense_tree(leaf_with_obj, loc, t, cb);
 

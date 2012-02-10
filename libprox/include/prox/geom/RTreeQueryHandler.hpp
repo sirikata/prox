@@ -171,15 +171,16 @@ public:
         if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
     }
 
-    void removeObject(const ObjectID& obj_id) {
+    void removeObject(const ObjectID& obj_id, bool temporary = false) {
         typename ObjectSet::iterator it = mObjects.find(obj_id);
         if (it == mObjects.end()) return;
 
         LocCacheIterator obj_loc_it = it->second;
-        deleteObj(obj_id, mLastTime);
+        deleteObj(obj_id, mLastTime, temporary);
         mLocCache->stopTracking(obj_loc_it);
         mObjects.erase(it);
-        mRemovedObjects.insert(obj_id);
+        if (!temporary)
+            mRemovedObjects.insert(obj_id);
     }
 
     bool containsObject(const ObjectID& obj_id) {
@@ -331,9 +332,9 @@ protected:
         mRTree->update(mObjects[obj_id], t);
     }
 
-    void deleteObj(const ObjectID& obj_id, const Time& t) {
+    void deleteObj(const ObjectID& obj_id, const Time& t, bool temporary) {
         assert(mObjects.find(obj_id) != mObjects.end());
-        mRTree->erase(mObjects[obj_id], t);
+        mRTree->erase(mObjects[obj_id], t, temporary);
     }
 
     struct QueryState {
