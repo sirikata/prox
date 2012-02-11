@@ -207,8 +207,8 @@ public:
         updateObj(obj_id, mLastTime); // FIXME new time?
     }
 
-    void locationDisconnected(const ObjectID& obj_id) {
-        removeObject(obj_id);
+    void locationDisconnected(const ObjectID& obj_id, bool permanent = false) {
+        removeObject(obj_id, permanent);
     }
 
     // QueryChangeListener Implementation

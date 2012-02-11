@@ -247,13 +247,13 @@ public:
         else if (mustDuplicate())
             mRebuildingHandler->locationMaxSizeUpdated(obj_id, old_maxSize, new_maxSize);
     }
-    virtual void locationDisconnected(const ObjectID& obj_id) {
+    virtual void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
         using std::tr1::placeholders::_1;
-        mPrimaryHandler->locationDisconnected(obj_id);
+        mPrimaryHandler->locationDisconnected(obj_id, temporary);
         if (mustDefer())
-            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationDisconnected, _1, obj_id));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationDisconnected, _1, obj_id, temporary));
         else if (mustDuplicate())
-            mRebuildingHandler->locationDisconnected(obj_id);
+            mRebuildingHandler->locationDisconnected(obj_id, temporary);
     }
 
     // QueryChangeListener

@@ -133,7 +133,7 @@ public:
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
     virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) = 0;
-    virtual void locationDisconnected(const ObjectID& obj_id) = 0;
+    virtual void locationDisconnected(const ObjectID& obj_id, bool temporary = false) = 0;
 
     // QueryChangeListener
     virtual void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;

@@ -50,7 +50,12 @@ public:
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) = 0;
     virtual void locationMaxSizeUpdated(const ObjectID& obj_id, Real old_maxSize, Real new_maxSize) = 0;
-    virtual void locationDisconnected(const ObjectID& obj_id) = 0;
+    // The temporary flag allows you to override how the removal would otherwise
+    // be viewed. By default, the removal is permanent, but there may be cases
+    // where you want to indicate that it is actually temporary (e.g. because
+    // your LocationServiceCache is fed by proximity results, which want to mask
+    // quick additions/failures).
+    virtual void locationDisconnected(const ObjectID& obj_id, bool temporary = false) = 0;
 
 }; // class LocationUpdateListener
 

@@ -219,8 +219,8 @@ public:
         // Nothing to be done, we use values directly from the object
     }
 
-    void locationDisconnected(const ObjectID& obj_id) {
-        removeObject(obj_id);
+    void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
+        removeObject(obj_id, temporary);
     }
 
     void queryPositionChanged(QueryType* query, const MotionVector3& old_pos, const MotionVector3& new_pos) {
