@@ -197,21 +197,149 @@ public:
         return RTree_cost(mRoot, mLocCache, t);
     }
 
+
+
+    // Iteration over nodes. This just means internal nodes are visited as
+    // well. This iterator does pre-order traversal. This is most convenient if
+    // you're trying to replicate the tree since it gives you the tree top-down,
+    // i.e. you always have the parents before getting their children.
+    class NodeIteratorBase {
+    public:
+        NodeIteratorBase(RTree* o, RTreeNodeType* r)
+         : owner(o), node(r), idx(-1)
+        {}
+
+        // true if this points at a valid value, false if it's end()
+        bool valid() const {
+            return (
+                node != NULL &&
+                (idx == -1 || idx < node->size())
+            );
+        }
+
+        NodeIteratorBase& operator++() { //prefix
+            assert(valid());
+
+            // Move the child index along. For internal nodes this'll push us
+            // past self-processing and move to children, for leaf nodes it'll
+            // move us to the next child or over the end of the list.
+            idx++;
+
+            // Our traversal only uses internal nodes as node once: when they
+            // visit them. They then start working on children. We should always
+            // be hitting the first child here.
+            if (!node->leaf()) {
+                assert(idx == 0);
+                assert(node->size() > 0); // Non-leaf nodes should always have
+                                          // some children
+                node = node->node(idx);
+                idx = -1;
+                return *this;
+            }
+
+            // Otherwise, we're processing a leaf node. The simple case is if we
+            // just have another child to process
+            if (idx < node->size())
+                return *this;
+
+            // Otherwise we've hit the end of this node and need to move onto
+            // the parent's next node. However, this process can chain upwards
+            // -- we may have reached the end of the parent, and the end of the
+            // grandparent, etc.
+            RTreeNodeType* parent = node->parent();
+            do {
+                // If we've hit the end of everything, set ourselves to end().
+                if (parent == NULL) {
+                    node = NULL;
+                    idx = -1;
+                    return *this;
+                }
+
+                // Otherwise, find ourselves in the parent
+                Index par_idx;
+                for(par_idx = 0; par_idx < parent->size(); par_idx++)
+                    if (parent->node(par_idx) == node) break;
+                assert(par_idx < parent->size());
+                // And move it forward
+                par_idx++;
+                // If the index is still a valid child, we can move onto that
+                // child
+                if (par_idx < parent->size()) {
+                    node = parent->node(par_idx);
+                    idx = -1;
+                    return *this;
+                }
+                // Otherwise, we've gone over the end of the parent too. Move us
+                // up to the parent, the parent to the grandparent, and keep
+                // working our way up.
+                node = parent;
+                parent = parent->parent();
+                // Do nothing to idx. It isn't used in this loop and will get
+                // reset on either of the possible exits.
+            } while(true);
+            // We don't really need this except to satisfy the compiler: we can
+            // only end the above loop in two ways, finding another node in one
+            // of the ancestors or hitting the root with no more work.
+            return *this;
+        }
+
+        NodeIteratorBase operator++(int) { //postfix
+            NodeIteratorBase orig = *this;
+            ++(*this);
+            return orig;
+        }
+
+        const ObjectID& id() const {
+            assert(valid());
+            // If we haven't processed the current node yet
+            if (idx == -1)
+                return node->aggregateID();
+
+            // If we're processing children, we should be at a leaf node
+            assert(node->leaf());
+            return owner->mLocCache->iteratorID(node->object(idx).object);
+        }
+
+        bool operator==(const NodeIteratorBase& rhs) {
+            return (node == rhs.node && (node == NULL || idx == rhs.idx));
+        }
+        bool operator!=(const NodeIteratorBase& rhs) {
+            return !(*this == rhs);
+        }
+
+    private:
+        // Parent RTree
+        RTree* owner;
+        // Current node being processed
+        RTreeNodeType* node;
+        // Child index in this node, or -1 if we we're still processing this
+        // node. The index only applies for leaf nodes as node, rather than idx,
+        // will change as we traverse children nodes. When we finish a child
+        // node, we figure out the next child to process by finding the index of
+        // the child we just finished with.
+        int16 idx;
+    };
+    typedef NodeIteratorBase NodeIterator;
+
+    NodeIterator nodesBegin() { return NodeIterator(this, mRoot); }
+    NodeIterator nodesEnd() { return NodeIterator(this, NULL); }
+
 private:
     typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
 
+    // Iteration over objects
     template<class InternalIterator>
-    class IteratorWrapper {
+    class ObjectIDIteratorWrapper {
     public:
-        IteratorWrapper(InternalIterator _it)
+        ObjectIDIteratorWrapper(InternalIterator _it)
          :it(_it)
         {}
 
-        IteratorWrapper& operator++() {
+        ObjectIDIteratorWrapper& operator++() {
             it++;
             return *this;
         }
-        IteratorWrapper& operator++(int) {
+        ObjectIDIteratorWrapper& operator++(int) {
             it++;
             return *this;
         }
@@ -219,21 +347,22 @@ private:
         const ObjectID& id() const { return it->first; }
         const ObjectID& operator*() const { return it->first; }
 
-        bool operator==(const IteratorWrapper& rhs) {
+        bool operator==(const ObjectIDIteratorWrapper& rhs) {
             return it == rhs.it;
         }
-        bool operator!=(const IteratorWrapper& rhs) {
+        bool operator!=(const ObjectIDIteratorWrapper& rhs) {
             return it != rhs.it;
         }
     private:
         InternalIterator it;
     };
-    typedef IteratorWrapper<typename ObjectLeafIndex::iterator> ObjectIDIterator;
-    typedef IteratorWrapper<typename ObjectLeafIndex::const_iterator> ConstObjectIDIterator;
+    typedef ObjectIDIteratorWrapper<typename ObjectLeafIndex::iterator> ObjectIDIterator;
+    typedef ObjectIDIteratorWrapper<typename ObjectLeafIndex::const_iterator> ConstObjectIDIterator;
 
     ObjectIDIterator objectsBegin() { return ObjectIDIterator(mObjectLeaves.begin()); }
     ObjectIDIterator objectsEnd() { return ObjectIDIterator(mObjectLeaves.end()); }
     int objectsSize() { return mObjectLeaves.size(); }
+
 
     void onObjectLeafChanged(const LocCacheIterator& obj, RTreeNodeType* node) {
         const ObjectID& objid = mLocCache->iteratorID(obj);

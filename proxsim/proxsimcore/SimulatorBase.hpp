@@ -56,6 +56,7 @@ public:
     // Not all objects may be active
     int allObjectsSize() const;
 
+    virtual void printNodes() const = 0;
 protected:
     // Provides last_time and elapsed. Currnet time is available in mTime.
     virtual void tick_work(Time last_time, Duration elapsed);

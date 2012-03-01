@@ -14,6 +14,8 @@
 #include <prox/rtree/RTree.hpp>
 #include <prox/rtree/Cut.hpp>
 
+#include <prox/manual/impl/RTreeManualNodeIterator.hpp>
+
 namespace Prox {
 
 /** RTreeManualQueryHandler uses an RTree data structure for objects and tracks
@@ -243,6 +245,7 @@ public:
     void queryDeleted(const QueryType* query) {
     }
 
+
 protected:
     void registerQuery(QueryType* query) {
         QueryState* state = new QueryState(this, query, mRTree->root());
@@ -294,12 +297,14 @@ protected:
     template <class XSimulationTraits> struct CutNode;
     class Cut;
 
+public: // Public for the sake of implementation -- node iterators are separate classes
 #if RTREE_DATA == RTREE_DATA_BOUNDS
     typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #elif RTREE_DATA == RTREE_DATA_MAXSIZE
     typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #endif
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode<SimulationTraits> > RTree;
+protected:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
@@ -500,6 +505,15 @@ protected:
     }
 
 
+    typedef typename RTreeManualQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
+    friend class RTreeManualQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+
+    virtual NodeIteratorImpl* nodesBeginImpl() {
+        return new NodeIteratorImpl(mRTree->nodesBegin());
+    }
+    virtual NodeIteratorImpl* nodesEndImpl() {
+        return new NodeIteratorImpl(mRTree->nodesEnd());
+    }
 
 
     LocationServiceCacheType* mLocCache;

@@ -43,6 +43,8 @@
 #include <prox/rtree/RTree.hpp>
 #include <prox/rtree/Cut.hpp>
 
+#include <prox/geom/impl/RTreeCutNodeIterator.hpp>
+
 namespace Prox {
 
 /** Implementation of QueryHandler which uses cuts through an RTree to track the
@@ -399,12 +401,14 @@ private:
     template <class XSimulationTraits> struct CutNode;
     struct Cut;
 
+public: // Public for the sake of implementation -- node iterators are separate classes
 #if RTREE_DATA == RTREE_DATA_BOUNDS
     typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #elif RTREE_DATA == RTREE_DATA_MAXSIZE
     typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #endif
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode<SimulationTraits> > RTree;
+private:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
@@ -814,6 +818,18 @@ private:
     AggregateListenerType* aggregateListener() {
         return (mWithAggregates ? QueryHandlerType::mAggregateListener : NULL);
     }
+
+
+    typedef typename RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
+    friend class RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+
+    virtual NodeIteratorImpl* nodesBeginImpl() {
+        return new NodeIteratorImpl(mRTree->nodesBegin());
+    }
+    virtual NodeIteratorImpl* nodesEndImpl() {
+        return new NodeIteratorImpl(mRTree->nodesEnd());
+    }
+
 
 
     struct QueryState {

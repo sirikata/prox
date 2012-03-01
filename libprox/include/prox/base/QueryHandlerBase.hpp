@@ -8,6 +8,8 @@
 #include <prox/base/LocationServiceCache.hpp>
 #include <prox/base/Aggregator.hpp>
 
+#include <prox/base/impl/NodeIterator.hpp>
+
 namespace Prox {
 
 template<typename SimulationTraits, typename QueryTypeT, typename QueryChangeListenerTypeT>
@@ -39,6 +41,9 @@ public:
     typedef std::tr1::function<bool(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
 
     typedef std::vector<LocCacheIterator> ObjectList;
+
+    typedef QueryHandlerBaseImpl::NodeIterator<SimulationTraits> NodeIterator;
+    typedef QueryHandlerBaseImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
 
     QueryHandlerBase()
      : LocationUpdateListenerType(),
@@ -128,6 +133,12 @@ public:
 
     virtual LocationServiceCacheType* locationCache() const = 0;
 
+    // Iterators over 'nodes', which are whatever internal representation is
+    // used for objects and collections of objects. Sometimes this is just the
+    // same as the set of all objects, other times it may include aggregates.
+    NodeIterator nodesBegin() { return NodeIterator(nodesBeginImpl()); };
+    NodeIterator nodesEnd() { return NodeIterator(nodesEndImpl()); };
+
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) = 0;
@@ -141,6 +152,12 @@ public:
     virtual void queryMaxSizeChanged(QueryType* query, Real old_ms, Real new_ms) = 0;
     virtual void queryDestroyed(QueryType* query, bool implicit) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
+
+protected:
+
+    // Implementation of iterators
+    virtual NodeIteratorImpl* nodesBeginImpl() = 0;
+    virtual NodeIteratorImpl* nodesEndImpl() = 0;
 }; // class QueryHandlerBase
 
 } // namespace Prox

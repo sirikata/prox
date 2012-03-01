@@ -37,6 +37,8 @@ public:
 
     typedef typename BaseType::ShouldTrackCallback ShouldTrackCallback;
     typedef typename BaseType::ObjectList ObjectList;
+    typedef typename BaseType::NodeIterator NodeIterator;
+    typedef typename BaseType::NodeIteratorImpl NodeIteratorImpl;
 
     ManualQueryHandler()
      : BaseType()
@@ -48,6 +50,7 @@ public:
         registerQuery(q);
         return q;
     }
+
 protected:
     // Friend ManualQueries so they can forward requests to us
     friend class ManualQuery<SimulationTraits>;
@@ -65,6 +68,9 @@ protected:
      */
     virtual bool coarsen(QueryType* query, const ObjectID& objid) = 0;
 
+    // Implementation of iterators
+    virtual NodeIteratorImpl* nodesBeginImpl() = 0;
+    virtual NodeIteratorImpl* nodesEndImpl() = 0;
 
     QueryID mQueryIDSource;
 }; // class QueryHandler

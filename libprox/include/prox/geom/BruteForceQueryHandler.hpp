@@ -42,6 +42,8 @@
 
 #include <prox/rtree/Constraints.hpp>
 
+#include <prox/geom/impl/BruteForceNodeIterator.hpp>
+
 namespace Prox {
 
 template<typename SimulationTraits = DefaultSimulationTraits>
@@ -276,6 +278,18 @@ protected:
     }
 
 private:
+
+    typedef typename BruteForceQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
+    friend class BruteForceQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+
+    virtual NodeIteratorImpl* nodesBeginImpl() {
+        return new NodeIteratorImpl(mObjects.begin());
+    }
+    virtual NodeIteratorImpl* nodesEndImpl() {
+        return new NodeIteratorImpl(mObjects.end());
+    }
+
+
     struct QueryState {
         QueryState(uint32 max_size)
          : cache(max_size)

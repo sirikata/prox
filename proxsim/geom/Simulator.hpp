@@ -64,6 +64,8 @@ public:
 
     virtual void tick_work(Time last_time, Duration elapsed);
 
+    virtual void printNodes() const;
+
     typedef QueryList::iterator QueryIterator;
 
     QueryIterator queriesBegin();

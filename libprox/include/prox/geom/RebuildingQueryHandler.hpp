@@ -42,6 +42,9 @@
 #pragma warning (push)
 #pragma warning (disable:4355)//this within constructor initializer
 #endif
+
+#include <prox/geom/impl/RebuildingNodeIterator.hpp>
+
 namespace Prox {
 
 /** RebuildingQueryHandler is a relatively small wrapper around a regular
@@ -469,6 +472,50 @@ protected:
     virtual void aggregateObserved(AggregatorType* handler, const ObjectID& objid, uint32 nobservers) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
         if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateObserved(this, objid, nobservers);
+    }
+
+
+    typedef typename RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
+    friend class RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+    typedef typename QueryHandlerBaseImpl::NodeIterator<SimulationTraits> NodeIterator;
+
+    virtual NodeIteratorImpl* nodesBeginImpl() {
+        // We only need to list the rebuilding handler nodes if we've got
+        // anything in that tree. We duplicate events when we're in the process
+        // of moving, so this is also an indicator that we must use the
+        // rebuilding handler. Other states, like BEGIN_MOVING_QUERIES and
+        // DELETING_OLD_HANDLER only occur before or after all queries have been
+        // moved.
+        //
+        // Note that in the MOVING_QUERIES stage, both are valid and the
+        // ordering doesn't *really* matter, but we've already swapped the two,
+        // so we list them in the reverse order you'd expect. This also makes it
+        // so that, by the time we get out of that stage, they've already been
+        // swapped and using mPrimaryHandler is the right thing to do.
+        if (mustDuplicate())
+            return new NodeIteratorImpl(
+                mRebuildingHandler->nodesBegin(), mRebuildingHandler->nodesEnd(),
+                mPrimaryHandler->nodesBegin(), mPrimaryHandler->nodesEnd()
+            );
+        else
+            return new NodeIteratorImpl(
+                mPrimaryHandler->nodesBegin(), mPrimaryHandler->nodesEnd(),
+                NodeIterator(), NodeIterator()
+            );
+    }
+    virtual NodeIteratorImpl* nodesEndImpl() {
+        if (mustDuplicate())
+            return new NodeIteratorImpl(
+                mRebuildingHandler->nodesBegin(), mRebuildingHandler->nodesEnd(),
+                mPrimaryHandler->nodesBegin(), mPrimaryHandler->nodesEnd(),
+                true
+            );
+        else
+            return new NodeIteratorImpl(
+                mPrimaryHandler->nodesBegin(), mPrimaryHandler->nodesEnd(),
+                NodeIterator(), NodeIterator(),
+                true
+            );
     }
 
 

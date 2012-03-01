@@ -276,6 +276,8 @@ void GLRendererBase::keyboard(unsigned char key, int x, int y) {
         exit(0);
     if (key == 'd')
         mDisplayMode = (DisplayMode) ( (mDisplayMode+1) % NumDisplayModes );
+    if (key == 'n')
+        mSimulatorBase->printNodes();
 }
 
 void GLRendererBase::drawbb(const BoundingBox3& bb) {

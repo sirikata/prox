@@ -42,6 +42,8 @@
 
 #include <prox/rtree/RTree.hpp>
 
+#include <prox/geom/impl/RTreeNodeIterator.hpp>
+
 namespace Prox {
 
 /** RTreeQueryHandler is a base class for QueryHandlers that use an RTree
@@ -337,6 +339,20 @@ protected:
         mRTree->erase(mObjects[obj_id], t, temporary);
     }
 
+
+
+    typedef typename RTreeQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
+    friend class RTreeQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+
+    virtual NodeIteratorImpl* nodesBeginImpl() {
+        return new NodeIteratorImpl(mRTree->nodesBegin());
+    }
+    virtual NodeIteratorImpl* nodesEndImpl() {
+        return new NodeIteratorImpl(mRTree->nodesEnd());
+    }
+
+
+
     struct QueryState {
         QueryState(uint32 max_size)
          : cache(max_size)
@@ -357,12 +373,14 @@ protected:
         typedef Cut CutType;
     };
 
+public: // Public for the sake of implementation -- node iterators are separate classes
 #if RTREE_DATA == RTREE_DATA_BOUNDS
     typedef BoundingSphereData<SimulationTraits, CutNode> NodeData;
 #elif RTREE_DATA == RTREE_DATA_MAXSIZE
     typedef MaxSphereData<SimulationTraits, CutNode> NodeData;
 #endif
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode> RTree;
+protected:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 
     LocationServiceCacheType* mLocCache;

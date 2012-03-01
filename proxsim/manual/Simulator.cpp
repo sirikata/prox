@@ -6,6 +6,8 @@
 #include <proxsimcore/RandomUtils.hpp>
 #include "CSVLoader.hpp"
 
+#include <iostream>
+
 namespace Prox {
 namespace Simulation {
 
@@ -72,6 +74,12 @@ void Simulator::tick_work(Time last_time, Duration elapsed) {
         (*it)->tick(mTime);
 
     mHandler->tick(mTime);
+}
+
+void Simulator::printNodes() const {
+    for(QueryHandler::NodeIterator nit = mHandler->nodesBegin(); nit != mHandler->nodesEnd(); nit++)
+        std::cout << nit.id().toString() << std::endl;
+    std::cout << std::endl << std::endl;
 }
 
 void Simulator::addListener(SimulatorQueryListener* listener) {

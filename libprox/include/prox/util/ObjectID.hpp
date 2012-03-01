@@ -103,9 +103,16 @@ public:
         }
     };
 
+    static char _toHex(unsigned char c) {
+        if (c < 10) return '0' + c;
+        return 'a' + (c-10);
+    }
     std::string toString() const {
         std::stringstream ss;
-        ss << Hasher()(*this);
+        for(int i = 0; i < UUID_SIZE; i++) {
+            ss << _toHex(mID[i] & 0x0F);
+            ss << _toHex(mID[i] >> 4);
+        }
         return ss.str();
     }
 

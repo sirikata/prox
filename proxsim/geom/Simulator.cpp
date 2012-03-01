@@ -36,6 +36,8 @@
 #include "CSVLoader.hpp"
 #include <proxsimcore/RandomUtils.hpp>
 
+#include <iostream>
+
 #define RATE_APPROX_ITERATIONS 25
 
 namespace Prox {
@@ -178,6 +180,12 @@ void Simulator::tick_work(Time last_time, Duration elapsed) {
         mItsSinceRateApprox = 0;
         mRateApproxStart = elapsed;
     }
+}
+
+void Simulator::printNodes() const {
+    for(QueryHandler::NodeIterator nit = mHandler->nodesBegin(); nit != mHandler->nodesEnd(); nit++)
+        std::cout << nit.id().toString() << std::endl;
+    std::cout << std::endl << std::endl;
 }
 
 void Simulator::addQuery(Querier* query) {
