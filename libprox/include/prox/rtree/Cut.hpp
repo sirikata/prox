@@ -87,7 +87,7 @@ public:
     bool isInResults(const ObjectID& objid) const {
         return getNativeThis()->inResults(objid);
     }
-    bool getResultsSize() const {
+    int getResultsSize() const {
         return getNativeThis()->resultsSize();
     }
     bool checkSatisfiesQuery(RTreeNodeType* node, LocCacheIterator objit, int objidx) const {
@@ -324,6 +324,18 @@ public:
         length = nodes.size();
         //validateCut();
     }
+
+    void validateCut() {
+#ifdef PROXDEBUG
+        assert(length == nodes.size());
+        validateCutNodesInRTreeNodes();
+        validateCutNodesInTree();
+        // Now covered by validateCutOrdere
+        //validateCutNodesUnrelated();
+        validateCutOrdered();
+        validateResultsMatchCut();
+#endif //PROXDEBUG
+    };
 
 protected:
 
@@ -673,18 +685,6 @@ protected:
         }
     };
 
-    void validateCut() {
-#ifdef PROXDEBUG
-        assert(length == nodes.size());
-        validateCutNodesInRTreeNodes();
-        validateCutNodesInTree();
-        // Now covered by validateCutOrdere
-        //validateCutNodesUnrelated();
-        validateCutOrdered();
-        validateResultsMatchCut();
-#endif //PROXDEBUG
-    };
-
     // Rebuild an ordered cut. Works recursively.
     //
     // Note that in PROXDEBUG mode this also verifies, if a cut node was
@@ -900,13 +900,14 @@ protected:
         // Now that we've collected the information, we can report errors.
 
         // Accounted - results = objects that are missing from the results
-        // We can only do this with aggregates since we had to be
-        // conservative with non-aggregates.
-        if (usesAggregates()) { // Why is this blocked off by usesAggregates()?
+        // We can only do this with aggregates because only w/ aggregates are we
+        // forced to have a full cut. Otherwise we'd actually have to retest
+        // everything for membership in the results.
+        if (usesAggregates()) {
+            assert( accounted.size() == getResultsSize() );
             for(typename ResultSet::iterator it = accounted.begin(); it != accounted.end(); it++)
                 assert( isInResults(*it) );
         }
-        assert( accounted.size() == getResultsSize() );
     }
 };
 

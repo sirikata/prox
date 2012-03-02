@@ -433,6 +433,7 @@ private:
         }
     };
 
+    friend class Prox::CutBase<SimulationTraits, RTreeCutQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >;
     class Cut
         : public Prox::CutBase<SimulationTraits, RTreeCutQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >
     {
@@ -449,9 +450,9 @@ private:
         using CutBaseType::nodes;
         using CutBaseType::length;
         using CutBaseType::events;
-
+    public:
         using CutBaseType::validateCut;
-
+    private:
         typedef typename CutBaseType::ResultSet ResultSet;
         ResultSet results;
 

@@ -139,13 +139,13 @@ void GLRendererBase::aggregateObserved(AggregatorType* handler, const ObjectIDTy
 
 void GLRendererBase::validateSeenObjects() {
 #ifdef PROXDEBUG
-    Lock(mAggregateMutex);
+    Lock lck(mAggregateMutex);
     // Validate
     for (ObjectRefCountMap::iterator it = mSeenObjects.begin(); it != mSeenObjects.end(); it++) {
         assert(
             it->second == 0 ||
             mAggregateObjects.find(it->first) != mAggregateObjects.end() ||
-            mSimulator->objectsFind(it->first) != mSimulator->objectsEnd()
+            mSimulatorBase->objectsFind(it->first) != mSimulatorBase->objectsEnd()
         );
     }
 #endif //PROXDEBUG

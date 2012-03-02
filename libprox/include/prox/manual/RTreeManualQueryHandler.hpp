@@ -329,6 +329,7 @@ protected:
         }
     };
 
+    friend class Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >;
     class Cut
         : public Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >
     {
