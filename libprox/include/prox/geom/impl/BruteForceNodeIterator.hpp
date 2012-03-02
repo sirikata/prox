@@ -18,17 +18,21 @@ template<typename SimulationTraits>
 class NodeIteratorImpl : public Prox::QueryHandlerBaseImpl::NodeIteratorImpl<SimulationTraits> {
 public:
     typedef typename Prox::QueryHandlerBaseImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorBase;
-    typedef typename BruteForceQueryHandler<SimulationTraits>::ObjectSetIterator ObjectSetIterator;
+    typedef typename Prox::BruteForceQueryHandler<SimulationTraits> QueryHandler;
+    typedef typename QueryHandler::ObjectSetIterator ObjectSetIterator;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::TimeType Time;
 
-    NodeIteratorImpl(ObjectSetIterator oit)
+    NodeIteratorImpl(QueryHandler* p, ObjectSetIterator oit)
      : NodeIteratorBase(),
+       parent(p),
        it(oit)
     {}
     virtual ~NodeIteratorImpl() {}
 
     virtual NodeIteratorImpl* _clone() {
-        return new NodeIteratorImpl(it);
+        return new NodeIteratorImpl(parent, it);
     }
 
     // Traversal
@@ -47,7 +51,14 @@ public:
     const ObjectID& id() const {
         return it->first;
     }
+    ObjectID parentId() const {
+        return typename SimulationTraits::ObjectIDNullType()();
+    }
+    BoundingSphere bounds(const Time& t) const {
+        return parent->mLocCache->worldCompleteBounds(it->second, t);
+    }
 private:
+    QueryHandler* parent;
     ObjectSetIterator it;
 };
 

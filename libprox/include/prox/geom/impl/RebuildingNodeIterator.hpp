@@ -28,6 +28,8 @@ public:
     typedef typename Prox::QueryHandlerBaseImpl::NodeIterator<SimulationTraits> PublicNodeIterator;
     typedef typename Prox::QueryHandlerBaseImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorBase;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::TimeType Time;
 
     // Regular constructor. This is a meta-iterator that covers (possibly) two
     // ranges. It just tracks those two ranges and a current position in them.
@@ -113,6 +115,12 @@ public:
     // Get data
     const ObjectID& id() const {
         return mCurrent.id();
+    }
+    ObjectID parentId() const {
+        return mCurrent.parentId();
+    }
+    BoundingSphere bounds(const Time& t) const {
+        return mCurrent.bounds(t);
     }
 private:
     PublicNodeIterator mPrimaryBegin;

@@ -61,6 +61,8 @@ public:
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
+    typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
     typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
@@ -298,6 +300,31 @@ public:
             // If we're processing children, we should be at a leaf node
             assert(node->leaf());
             return owner->mLocCache->iteratorID(node->object(idx).object);
+        }
+
+        ObjectID parentId() const {
+            assert(valid());
+            // If we haven't processed the current node yet
+            if (idx == -1) {
+                if (node->parent() != NULL)
+                    return node->parent()->aggregateID();
+                else
+                    return ObjectIDNull()();
+            }
+
+            // If we're processing children, we should be at a leaf node
+            assert(node->leaf());
+            return node->aggregateID();
+        }
+        BoundingSphere bounds(const Time& t) const {
+            assert(valid());
+            // If we haven't processed the current node yet
+            if (idx == -1)
+                return node->data().getBounds();
+
+            // If we're processing children, we should be at a leaf node
+            assert(node->leaf());
+            return owner->mLocCache->worldCompleteBounds(node->object(idx).object, t);
         }
 
         bool operator==(const NodeIteratorBase& rhs) {

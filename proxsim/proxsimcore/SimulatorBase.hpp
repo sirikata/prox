@@ -12,6 +12,8 @@
 #include <proxsimcore/ObjectLocationServiceCache.hpp>
 #include <proxsimcore/Timer.hpp>
 
+#include <iostream>
+
 namespace Prox {
 namespace Simulation {
 
@@ -60,6 +62,32 @@ public:
 protected:
     // Provides last_time and elapsed. Currnet time is available in mTime.
     virtual void tick_work(Time last_time, Duration elapsed);
+
+    // This implements printNodes for implementations. Since they differ in
+    // their handler types, this needs to be templated, but otherwise the data
+    // presented is identical so we can share the implementation
+    template<typename HandlerType>
+    void printNodesImpl(HandlerType* handler) const {
+        typedef std::map<ObjectID, int> IndentMap;
+        IndentMap indents;
+        indents[ObjectID::null()] = 0;
+
+        std::cout << "Nodes:" << std::endl;
+        for(typename HandlerType::NodeIterator nit = handler->nodesBegin(); nit != handler->nodesEnd(); nit++) {
+            // We should have already visited the parent, or it doesn't have a
+            // parent and we should have hit the null ID.
+            assert(indents.find(nit.parentId()) != indents.end());
+            int indent = indents[nit.parentId()] + 1;
+            indents[nit.id()] = indent;
+            for(int i = 0; i < indent; i++)
+                std::cout <<  ' ';
+            std::cout << nit.id().toString()
+                      << " (parent: " << nit.parentId().toString()
+                      << ", bounds: " << "<" << nit.bounds(mTime).center().x << ", " << nit.bounds(mTime).center().y << ", " << nit.bounds(mTime).center().z << "; " << nit.bounds(mTime).radius() << ">"
+                      << ")" << std::endl;
+        }
+        std::cout << std::endl << std::endl;
+    }
 
     // Helper, filters the given list of objects to only add the given number of them.
     void createCSVObjects(std::vector<Object*>& objects, int nobjects);

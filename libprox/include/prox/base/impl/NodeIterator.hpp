@@ -19,6 +19,8 @@ template<typename SimulationTraits>
 class NodeIterator {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::TimeType Time;
     typedef NodeIteratorImpl<SimulationTraits> NodeIteratorImplType;
 
     // We want iterators to have value semantics, so we can't just share a
@@ -89,7 +91,14 @@ public:
         assert(impl != NULL);
         return impl->id();
     }
-
+    ObjectID parentId() const {
+        assert(impl != NULL);
+        return impl->parentId();
+    }
+    BoundingSphere bounds(const Time& t) const {
+        assert(impl != NULL);
+        return impl->bounds(t);
+    }
 private:
     // Move to the next item, cloning underlying iterator if necessary to avoid
     // invalidating other iterators
@@ -115,6 +124,8 @@ template<typename SimulationTraits>
 class NodeIteratorImpl {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::TimeType Time;
 
     NodeIteratorImpl()
      : _ref_count(0)
@@ -141,6 +152,8 @@ public:
     virtual bool _equals(NodeIteratorImpl* rhs) = 0;
     // Get data
     virtual const ObjectID& id() const = 0;
+    virtual ObjectID parentId() const = 0;
+    virtual BoundingSphere bounds(const Time& t) const = 0;
 private:
     int32 _ref_count;
 };

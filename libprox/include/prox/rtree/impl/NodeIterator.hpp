@@ -23,6 +23,8 @@ public:
     typedef RTreeType RTree;
     typedef typename RTree::NodeIterator RTreeNodeIterator;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::TimeType Time;
 
     NodeIteratorImpl(RTreeNodeIterator rit)
      : NodeIteratorBase(),
@@ -45,6 +47,12 @@ public:
     // Get data
     const ObjectID& id() const {
         return it.id();
+    }
+    ObjectID parentId() const {
+        return it.parentId();
+    }
+    BoundingSphere bounds(const Time& t) const {
+        return it.bounds(t);
     }
 protected:
     RTreeNodeIterator it;

@@ -283,10 +283,10 @@ private:
     friend class BruteForceQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
 
     virtual NodeIteratorImpl* nodesBeginImpl() {
-        return new NodeIteratorImpl(mObjects.begin());
+        return new NodeIteratorImpl(this, mObjects.begin());
     }
     virtual NodeIteratorImpl* nodesEndImpl() {
-        return new NodeIteratorImpl(mObjects.end());
+        return new NodeIteratorImpl(this, mObjects.end());
     }
 
 
