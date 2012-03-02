@@ -402,10 +402,15 @@ private:
     struct Cut;
 
 public: // Public for the sake of implementation -- node iterators are separate classes
-#if RTREE_DATA == RTREE_DATA_BOUNDS
+#ifndef LIBPROX_RTREE_DATA
+# error "You must define LIBPROX_RTREE_DATA to either LIBPROX_RTREE_DATA_BOUNDS or LIBPROX_RTREE_DATA_MAXSIZE"
+#endif
+#if LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_BOUNDS
     typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
-#elif RTREE_DATA == RTREE_DATA_MAXSIZE
+#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_MAXSIZE
     typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
+#else
+# error "Invalid setting for LIBPROX_RTREE_DATA"
 #endif
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode<SimulationTraits> > RTree;
 private:
