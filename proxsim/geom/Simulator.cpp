@@ -137,17 +137,16 @@ void Simulator::tick_work(Time last_time, Duration elapsed) {
         mHandler->rebuild();
     }
     else {
-/*
+
         // Object Churn...
         for(int i = 0; !mObjects.empty() && i < mChurn; i++) {
             Object* obj = mObjects.begin()->second;
             removeObject(obj);
         }
-        for(int i = 0; !mRemovedObjects.empty() && i < mChurn; i++) {
-            Object* obj = mRemovedObjects.begin()->second;
+        for(int i = 0; !(mRemovedDynamicObjects.empty() && mRemovedStaticObjects.empty()) && i < mChurn; i++) {
+            Object* obj = (!mRemovedDynamicObjects.empty() ? mRemovedDynamicObjects.begin()->second : mRemovedStaticObjects.begin()->second);
             addObject(obj);
         }
-*/
     }
 
     // Give all queries a chance to update

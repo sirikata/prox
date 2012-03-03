@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
         }
         else if (arg.find(CHURN_RATE_ARG) != std::string::npos) {
             std::string churn_rate_arg = arg.substr(CHURN_RATE_ARG.size());
-            churn_rate = convert_bool(churn_rate_arg);
+            churn_rate = boost::lexical_cast<int>(churn_rate_arg);
         }
         else if (arg.find(FORCE_REBUILD_ARG) != std::string::npos) {
             std::string force_rebuild_arg = arg.substr(FORCE_REBUILD_ARG.size());
