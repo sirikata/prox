@@ -1170,10 +1170,9 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
 
     // Perform recomputation of node data
     n = recompute_start;
-    while(n->parent() != NULL) {
-        RTreeNode<SimulationTraits, NodeData, CutNode>* parent = n->parent();
+    while(n != NULL) {
         n->recomputeData(loc, t, cb);
-        n = parent;
+        n = n->parent();
     }
 
     return root;
