@@ -1080,10 +1080,18 @@ void RTree_verify_no_cut_nodes_in_tree(
 #endif
 }
 
+#ifdef LIBPROX_LIFT_CUTS
 /* Takes a leaf node from which an object has been removed and, if it contains too few nodes,
  *  redistributes the objects it contains and removes the node from the tree.
  *  Returns the new root (which it may create because it might have to reinsert objects, which
  *  can itself cause a new root to appear.
+ *
+ *  The basic approach is to follow collapses up the tree until we
+ *  find the highest node we want to collapse. We then move cuts out
+ *  of the way, collect all objects within that part of the tree, and
+ *  reinsert all the objects. This approach can only work with
+ *  cut-lifting since it has to move everything out of the way and
+ *  rebuild a whole part of the tree.
  */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
@@ -1170,6 +1178,143 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
 
     return root;
 }
+
+#else // not LIBPROX_LIFT_CUTS
+
+/*  Takes a leaf node from which an object has been removed and, if it contains too few nodes,
+ *  redistributes the objects it contains and removes the node from the tree.
+ *  Returns the new root (which it may create because it might have to reinsert objects, which
+ *  can itself cause a new root to appear.
+ */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf,
+    LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    typedef typename RTreeNodeType::Index Index;
+
+    // We'll work our way up the tree looking for parent nodes which
+    // have a total # of grandchildren that fit within the node
+    // itself, i.e. nodes where it doesn't make sense to keep the
+    // children.
+
+    // The current node and its parent
+    RTreeNodeType* n = leaf;
+    RTreeNodeType* parent = n->parent();
+    // Whether we've changed anything, requiring recomputation of
+    // bounds
+    bool dirty_bounds = false;
+    while(parent != NULL) {
+        // Decide whether we have few enough grandchildren to
+        // merge. They also need to all be of the same type (nodes or
+        // objects).
+        int gchildren = 0;
+        bool all_nodes = true, all_objects = true;
+        for(Index ci = 0; ci < parent->size(); ci++) {
+            gchildren += parent->node(ci)->size();
+            all_nodes = all_nodes && !parent->node(ci)->leaf();
+            all_objects = all_objects && parent->node(ci)->leaf();
+        }
+        // We use half capacity to avoid being too aggressive about
+        // splitting/merging. We can only merge if all grandchildren
+        // match types
+        if (gchildren <= parent->capacity()/2 && (all_nodes || all_objects)) {
+            // We're getting rid of all the children. We need to
+            // handle a number of things properly: updating cuts,
+            // making sure aggregates are updated/destroyed properly,
+            // and just the book keeping for moving the objects into
+            // the parent node.
+
+            // We're removing the middle level of nodes. Cuts that are in the
+            // parent or the children should be fine, but any that cut through
+            // these middle nodes will need to be moved. The order of
+            // grandchildren is preserved so that cuts that go through only
+            // grandchildren (or lower nodes) do not have to be adjusted.
+            //
+            // We're technically going to lift the cuts, but this is a very
+            // limited form of lifting: instead of lifting all cuts within the
+            // subtree, we only lift ones that are in affected nodes. This means
+            // we're mostly just shifting cuts up by one level (although it is
+            // possible for this change to be high in the tree, affect a cut
+            // that goes through one middle-level node, and then goes much
+            // deeper in some other branch in this same subtree).
+            for(Index ci = 0; ci < parent->size(); ci++) {
+                RTree_lift_cut_nodes(parent->node(ci), parent, cb);
+            }
+
+            // Remove the children nodes, keeping track of them
+            std::vector<RTreeNodeType*> child_nodes;
+            while(!parent->empty()) {
+                child_nodes.push_back(parent->node( parent->size()-1 ));
+                parent->erase(child_nodes.back(), cb);
+            }
+
+            // Make sure the parent is the right type of node. It
+            // should be empty now. We also explicitly ask for clear()
+            // because this resets the bounds data, which will then be
+            // updated as we insert the objects
+            assert(parent->empty());
+            parent->clear(loc, cb);
+            parent->leaf(all_objects);
+
+            // Then, for each child, remove it's children and add them
+            // to the parent. Destroy the node as it's no longer needed. These
+            // need to remain in the same order as the grandchildren in order to
+            // avoid moving cuts that don't move through the level of RTreeNodes
+            // that are being removed.
+            for(Index ci = 0; ci < child_nodes.size(); ci++) {
+                for(Index gi = 0; gi < child_nodes[ci]->size(); gi++) {
+                    if (child_nodes[ci]->leaf()) {
+                        parent->insert(loc, child_nodes[ci]->object(gi).object, t, cb);
+                    }
+                    else {
+                        parent->insert(child_nodes[ci]->node(gi), cb);
+                    }
+                }
+                child_nodes[ci]->destroy(loc, cb);
+            }
+
+            // Force recomputation of bounds as we move up the rest of
+            // the tree.
+            dirty_bounds = true;
+        }
+        else if (n->empty()) {
+            // Even if we couldn't merge all siblings into the grandparent, this
+            // node might still be empty.
+
+            // Get cuts out of this node. TODO(we could probably improve
+            // efficiency a bit by not lifting this up a node but just telling
+            // the cut to destroy the cutnode in this node
+            RTree_lift_cut_nodes(n, parent, cb);
+
+            // Remove from parent and destroy
+            parent->erase(n, cb);
+            n->destroy(loc, cb);
+
+            // Force bounds recomputation on parents
+            dirty_bounds = true;
+        }
+
+        // Move on to next node
+        n = parent;
+        parent = n->parent();
+
+        // Update bounds if necessary. Do this after moving to the
+        // parent so that when we do merge nodes we don't recompute
+        // the just-computed bounds.
+        if (dirty_bounds && parent != NULL)
+            parent->recomputeData(loc, t, cb);
+    }
+
+    // We need to return the new root. The loop above should have
+    // taken us there, so the current node should be the root.
+    return n;
+}
+
+#endif
 
 /* Update nodes up the tree to fix node information due to a change. */
 template<typename SimulationTraits, typename NodeData, typename CutNode>
