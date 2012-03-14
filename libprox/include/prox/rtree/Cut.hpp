@@ -330,6 +330,7 @@ public:
         assert(length == nodes.size());
         validateCutNodesInRTreeNodes();
         validateCutNodesInTree();
+        validateCutCrossesEntireTree();
         // Now covered by validateCutOrdere
         //validateCutNodesUnrelated();
         validateCutOrdered();
@@ -652,6 +653,34 @@ protected:
             assert(_is_ancestor(node->rtnode, root));
         }
     };
+
+    // Validates that this cut actually crosses the entire RTree, i.e. that we
+    // don't end up with wholes. This doesn't check for overlaps or anything
+    // else, just that we actually have cut nodes across the tree.
+    void validateCutCrossesEntireTree(RTreeNodeType* root = NULL) {
+        // To avoid extra helper methods, we just set to the real root if we call
+        // without a root
+        if (root == NULL)
+            root = parent->mRTree->root();
+
+        // We just need to traverse recursively, stopping when we hit cut
+        // nodes. If we ever hit a leaf without having hit a cut node, we have a
+        // leaky cut.
+
+        // If we hit a cut node, then we can stop. We don't index by anything
+        // useful here from here, so we'll manually run through the cut nodes in
+        // this node and search for a cut node with this cut as a parent.
+        typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(getNativeThis());
+        if (node_its != root->cutNodesEnd())
+            return;
+
+        // Otherwise, if we hit a leaf, then we've hit a leaky cut
+        assert(!root->leaf());
+
+        // And if we're not at a leaf, then we just need to recurse
+        for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
+            validateCutCrossesEntireTree(root->node(i));
+    }
 
     // Validates that cut nodes are not through RTree nodes that are
     // ancestors of each other.
