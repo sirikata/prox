@@ -31,6 +31,8 @@ public:
     typedef CutTypeT CutType;
     typedef CutNodeTypeT CutNodeType;
 
+    typedef std::vector<typename CutNodeType::RangeType> CutRangeVector;
+
     typedef typename Prox::RTree<SimulationTraits, NodeDataType, CutNodeType>::RTreeNodeType RTreeNodeType;
 
 public:
@@ -118,6 +120,29 @@ public:
     // Handle a split of orig_node into orig_node and new_node. cnode is the
     // CutNode that was (and remains) at orig_node.
     void handleSplit(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+        // Split into two parts. The first part always has to happen -- it's
+        // just making sure the cut crosses the tree since a new node has been
+        // inserted.
+        //
+        // The second part handles the result set changes. For example, if you
+        // aren't using aggregates, then maybe nothing has to happen -- just
+        // having the new node in the cut will force it to consider things
+        // properly in the future. If you *are* using aggregates, then you might
+        // care that a) there's a new node and b) that children have been
+        // rearranged, are split across 2 nodes, etc. You might need to add the
+        // new node as an aggregate, or you might need to add the new child that
+        // was added (for a leaf object), e.g. if you had the cut through the
+        // node A, but all its children were in the result, then when split to A
+        // and B, at least one child (the new one) would have been left out of
+        // the result incorrectly.
+
+        // By default we just add the cut node.
+        handleSplitAddCutNode(cnode, orig_node, new_node);
+        handleSplitResolveAdditions(cnode, orig_node, new_node);
+    }
+
+    // Helper that does the addition of the cut node.
+    void handleSplitAddCutNode(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
         // Add a new CutNode to new_node and insert it in our cut list.
         // Future updates will take care of any additional changes (push up
         // or down) that still need to be applied to the tree.
@@ -128,17 +153,77 @@ public:
         CutNodeListIterator after_orig_list_it = orig_list_it; after_orig_list_it++;
 
         CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), new_node, getAggregateListener());
-        if (usesAggregates()) {
-            QueryEventType evt;
-            evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
-            addToResults(new_cnode->rtnode->aggregateID());
-            events.push_back(evt);
-        }
         nodes.insert(after_orig_list_it, new_cnode);
         length++;
 
         // Mid-operation, no validation
     }
+
+    // After a cut node has been added because a new RTreeNode was added, this
+    // handles adding/removing objects or aggregates from the result set based
+    // on which were previously in the result set. Either the new node needs to
+    // be added, or the additional child that caused the split needs to be
+    // added.
+    void handleSplitResolveAdditions(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+        // We only care about this if we are using aggregates. Otherwise at
+        // worst we miss some stuff until the next reevaluation.
+        if (!usesAggregates()) return;
+        // The split can result in one of two cases:
+        // In both cases, we should be generating an event of some kind.
+        QueryEventType evt;
+        // If the original node is in the result set, then none of the
+        // children were in the result set. This means we can just add the
+        // new node to the result set.
+        if (isInResults(orig_node->aggregateID())) {
+            evt.additions().push_back( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
+            addToResults(new_node->aggregateID());
+        }
+        else {
+            // Otherwise, the children must be in the result set. In that
+            // case, the new object (and only the new object) isn't in the
+            // result set yet.
+            // This should only happen if this is a leaf
+            assert(orig_node->leaf());
+            assert(new_node->leaf());
+            // And we don't know where we inserted the object, so just cycle
+            // through all of both nodes looking for the missing item.
+            // TODO(ewencp). Currently, notifications are sent during
+            // addition/removals for cuts with these results. Since this cut
+            // went through the original, we'll actually have everything in
+            // orig_node (everything was removed from orig_node, then those
+            // items were added back) and we'll be missing everything from
+            // new_node. We shouldn't generate these additions/removals. This
+            // code, and when used with the commented assertion below, should
+            // handle that case properly once we stop generating those events
+            // when we're splitting nodes while keeping cuts in place. Currently
+            // it works without the assertion since the end goal is to just add
+            // all the children as results anyway.
+            int32 nadded = 0;
+            for(typename RTreeNodeType::Index ci = 0; ci < orig_node->size(); ci++) {
+                ObjectID child_id = getLocCache()->iteratorID(orig_node->object(ci).object);
+                if (!isInResults(child_id)) {
+                    nadded++;
+                    evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, orig_node->aggregateID()) );
+                    addToResults(child_id);
+                }
+            }
+            for(typename RTreeNodeType::Index ci = 0; ci < new_node->size(); ci++) {
+                ObjectID child_id = getLocCache()->iteratorID(new_node->object(ci).object);
+                if (!isInResults(child_id)) {
+                    nadded++;
+                    evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, new_node->aggregateID()) );
+                    addToResults(child_id);
+                }
+            }
+            // But we should end up having added just one (and at least one)
+            // See note above about why this assertion isn't currently true.
+            // assert(nadded == 1);
+        }
+        events.push_back(evt);
+
+        // mid operation (addition causing split), no validation
+    }
+
 
     void handleLiftCut(CutNodeType* cnode, RTreeNodeType* to_node) {
         validateCut();
@@ -191,6 +276,51 @@ public:
             events.push_back(evt);
 
         validateCut();
+    }
+
+    void handleReorderCut(const CutRangeVector& ranges) {
+        // This kind of sucks and could probably be improved by passing more
+        // information into this method about the beginning and end positions of
+        // the rearranged part of the cut before rearranging the parts of the
+        // cut. For now, we have to manually run through the cut and list of
+        // nodes to find the beginning and end of the subsection we're going to
+        // modify.
+        typename CutNodeList::iterator rearrange_begin = nodes.begin();
+        while(rearrange_begin != nodes.end()) {
+            bool hit = false;
+            for(typename CutRangeVector::const_iterator range_it = ranges.begin(); range_it != ranges.end(); range_it++) {
+                if (range_it->first == *rearrange_begin) {
+                    hit = true;
+                    break;
+                }
+            }
+            if (!hit)
+                rearrange_begin++;
+            else
+                break;
+        }
+        assert(rearrange_begin != nodes.end());
+
+        // Now splice together the new list
+        CutNodeList new_nodes;
+        // The nodes before those being rearranged
+        new_nodes.splice(new_nodes.end(), nodes, nodes.begin(), rearrange_begin);
+        // The rearranged nodes
+        for(typename CutRangeVector::const_iterator range_it = ranges.begin(); range_it != ranges.end(); range_it++) {
+            typename CutNodeList::iterator beg_it = std::find(nodes.begin(), nodes.end(), range_it->first);
+            assert(beg_it != nodes.end());
+            typename CutNodeList::iterator end_it = std::find(nodes.begin(), nodes.end(), range_it->second);
+            assert(end_it != nodes.end());
+            end_it++; // Doesn't include last item, but the end node in the
+                      // range is the last node that should be included.
+            new_nodes.splice(new_nodes.end(), nodes, beg_it, end_it);
+        }
+        // And the ones after the set being rearranged (all remaining ones)
+        new_nodes.splice(new_nodes.end(), nodes, nodes.begin(), nodes.end());
+
+        // And swap it into place. The old list should be empty at this point
+        // since we've spliced everything out of it.
+        nodes.swap(new_nodes);
     }
 
     void handleObjectInserted(CutNodeType* cnode, const LocCacheIterator& objit, int objidx) {
@@ -631,7 +761,6 @@ protected:
         evt.removals().push_back( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Transient) );
         events.push_back(evt);
     }
-
 
 
     void validateCutNodesInRTreeNodes() const {

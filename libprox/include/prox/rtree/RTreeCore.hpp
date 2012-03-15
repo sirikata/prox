@@ -120,6 +120,11 @@ public:
 
     typedef RTreeLeafNode<SimulationTraits, CutNode> LeafNode;
 
+    typedef typename CutNode::RangeType CutNodeRange;
+    typedef typename CutNode::CutType Cut;
+    typedef std::vector<typename CutNode::RangeType> CutRangeVector;
+    typedef std::map<typename CutNode::CutType*, CutRangeVector> CutRangeMap;
+
     typedef std::tr1::function<void(const LocCacheIterator&, RTreeNode*)> ObjectLeafChangedCallback;
     typedef std::tr1::function<RTreeNode*(const ObjectID&)> GetObjectLeafCallback;
 
@@ -130,6 +135,10 @@ public:
     // CutNode that split occurred at, the node that was split, the new node.
     typedef std::tr1::function<void(CutNode*, RTreeNode*, RTreeNode*)> NodeSplitCallback;
     typedef std::tr1::function<void(CutNode*, RTreeNode*)> LiftCutCallback;
+    // Reorder the cut by reorganizing the ranges in the vector into the order
+    // they appear in the vector. They'll be adjacent, so the remainder of the
+    // cut on the left and right of these ranges should remain as is.
+    typedef std::tr1::function<void(typename CutNode::CutType*, const CutRangeVector&)> ReorderCutCallback;
     typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, int)> ObjectInsertedCallback;
     typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, bool permanent)> ObjectRemovedCallback;
 
@@ -143,6 +152,7 @@ public:
         RootReplacedByChildCallback rootReplaced;
         NodeSplitCallback nodeSplit;
         LiftCutCallback liftCut;
+        ReorderCutCallback reorderCut;
         ObjectInsertedCallback objectInserted;
         ObjectRemovedCallback objectRemoved;
     };
@@ -373,11 +383,30 @@ public:
         }
     }
 
-    void insert(RTreeNode* node, const Callbacks& cb) {
+    /** Insert node as a child and invoke callbacks if necessary. If
+     *  provided, after indicates where in the list the node should
+     *  appear. The order of existing items are preserved (everything
+     *  is shifted rather than using swaps); this operation is safe
+     *  for cuts as long as you take care of handling the inserted
+     *  node. If not specified, the node is added at the end of the
+     *  current list.
+     */
+    void insert(RTreeNode* node, const Callbacks& cb, RTreeNode* after = NULL) {
         assert (count < max_elements);
         assert (leaf() == false);
+        assert (after == NULL || (after->parent() == this && contains(after)));
+
         node->parent(this);
-        elements.nodes[count] = node;
+
+        // Figure out the index where this item will appear
+        Index idx = (after == NULL ? count : (indexOf(after)+1));
+        // Shift items out of the way. Be careful with the loop
+        // variables and conditions since we need to avoid negative
+        // numbers since Index is unsigned
+        for(Index shift_idx = count; shift_idx > idx; shift_idx--)
+            elements.nodes[shift_idx] = elements.nodes[shift_idx-1];
+        // And insert the node and update stats
+        elements.nodes[idx] = node;
         count++;
         mData.mergeIn( node->data() );
 
@@ -445,9 +474,32 @@ public:
     }
 
     bool contains(const LocCacheIterator& obj) const {
+        assert(leaf());
         for(Index obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx] == obj) return true;
         return false;
+    }
+    bool contains(RTreeNode* node) const {
+        assert(!leaf());
+        for(Index idx = 0; idx < count; idx++)
+            if (elements.nodes[idx] == node) return true;
+        return false;
+    }
+
+
+    Index indexOf(const LocCacheIterator& obj) const {
+        assert(contains(obj));
+        assert(leaf());
+        for(Index idx = 0; idx < count; idx++)
+            if (elements.objects[idx] == obj) return idx;
+        return -1;
+    }
+    Index indexOf(RTreeNode* node) const {
+        assert(contains(node));
+        assert(!leaf());
+        for(Index idx = 0; idx < count; idx++)
+            if (elements.nodes[idx] == node) return idx;
+        return -1;
     }
 
     RTreeNode* selectBestChildNode(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t) {
@@ -843,6 +895,7 @@ void RTree_pick_next_child(std::vector<NodeData>& split_data, SplitGroups& split
     return;
 }
 
+#ifdef LIBPROX_LIFT_CUTS
 // Splits a node, inserting the given node, and returns the second new node
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
@@ -983,6 +1036,294 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
 
     return new_root;
 }
+
+#else // LIBPROX_LIFT_CUTS
+
+// Splits a node, inserting the given node, and returns the second new node. In
+// this version, we avoid dealing with cuts and leave that work up to other,
+// follow-up methods. In other words, this *only* does the splitting up of
+// children + allocation of new node.
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    ChildType to_insert,
+    LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    ChildOperations child_ops;
+
+    // collect the info for the children
+    std::vector<ChildType> split_children;
+    std::vector<NodeData> split_data;
+    SplitGroups split_groups;
+
+    // add all the children to the split vectors
+    for(int i = 0; i < node->size(); i++) {
+        split_children.push_back( child_ops.childData(node, i) );
+        split_data.push_back( node->childData(i,loc,t) );
+        split_groups.push_back(UnassignedGroup);
+    }
+    split_children.push_back( to_insert );
+    split_data.push_back( child_ops.data(loc, to_insert, t) );
+    split_groups.push_back(UnassignedGroup);
+
+    // find the initial seeds
+    NodeData group_data_0, group_data_1;
+    RTree_quadratic_pick_seeds(split_data, split_groups, group_data_0, group_data_1);
+
+    // group the remaining ones
+    for(uint32 i = 0; i < split_children.size()-2; i++)
+        RTree_pick_next_child(split_data, split_groups, group_data_0, group_data_1);
+
+    // copy data into the correct nodes
+    node->clear(loc, cb);
+    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity(), cb);
+    nn->leaf(node->leaf());
+    for(uint32 i = 0; i < split_children.size(); i++) {
+        RTreeNode<SimulationTraits, NodeData, CutNode>* newparent = (split_groups[i] == 0) ? node : nn;
+        child_ops.insert( newparent, loc, split_children[i], t, cb);
+    }
+
+    return nn;
+}
+
+// Extract segments of cuts under the given node. The output is a map of vectors
+// of ranges so you can build up lists of ranges for each cut
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_extract_cut_segments(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    std::map<typename CutNode::CutType*, std::vector<typename CutNode::RangeType> >* segments_out
+)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    // A contiguous range within a cut. Used to record contiguous segments of a
+    // cut that are being moved.
+    typedef typename CutNode::RangeType CutNodeRange;
+    typedef typename CutNode::CutType Cut;
+    typedef std::vector<typename CutNode::RangeType> CutRangeVector;
+    typedef std::map<typename CutNode::CutType*, CutRangeVector> CutRangeMap;
+
+    // This assumes that the structure of the cut in the subtree is valid. A cut
+    // must start and end on the left and right edges of the tree to be valid,
+    // so we just need to traverse those edges. But since cuts may start and end
+    // at different heights, we traverse looking for starting cut nodes, then
+    // traverse the other side, looking for ending cut nodes.
+
+    // The left (starting) edge
+    RTreeNodeType* n = node;
+    while(true) {
+        // Add new entries for each cut node found here
+        for(typename RTreeNodeType::CutNodeListConstIterator cut_it = n->cutNodesBegin(); cut_it != n->cutNodesEnd(); cut_it++) {
+            CutNode* cutnode = cut_it->second;
+            Cut* cut = cutnode->getParent();
+            CutRangeVector& cut_ranges = (*segments_out)[cut];
+            // If we have any items in here already, they should be completed
+            assert(cut_ranges.empty() || (cut_ranges.back().first != NULL && cut_ranges.back().second != NULL));
+            // Insert a new item
+            cut_ranges.push_back( CutNodeRange(cutnode, NULL) );
+        }
+
+        if (n->leaf()) break;
+        assert(!n->empty());
+        n = n->node(0);
+    }
+
+    // The right (ending) edge
+    n = node;
+    while(true) {
+        // Add new entries for each cut node found here
+        for(typename RTreeNodeType::CutNodeListConstIterator cut_it = n->cutNodesBegin(); cut_it != n->cutNodesEnd(); cut_it++) {
+            CutNode* cutnode = cut_it->second;
+            Cut* cut = cutnode->getParent();
+            CutRangeVector& cut_ranges = (*segments_out)[cut];
+            // We better have a last entry that's half complete
+            assert(!cut_ranges.empty() && (cut_ranges.back().first != NULL && cut_ranges.back().second == NULL));
+            // Insert a new item
+            cut_ranges.back().second = cutnode;
+        }
+
+        if (n->leaf()) break;
+        assert(!n->empty());
+        n = n->node( n->size()-1 );
+    }
+}
+
+// Walks up the tree, dealing with cascading insertions due to an inserted
+// object and recomputing aggregate info as necessary. Returns the new root node
+// (or existing one if it remains the same)
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* L,
+    RTreeNode<SimulationTraits, NodeData, CutNode>* LL,
+    LocationServiceCache<SimulationTraits>* loc,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+ {
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    // A contiguous range within a cut. Used to record contiguous segments of a
+    // cut that are being moved.
+    typedef typename CutNode::RangeType CutNodeRange;
+    typedef typename CutNode::CutType Cut;
+    typedef std::vector<typename CutNode::RangeType> CutRangeVector;
+    typedef std::map<typename CutNode::CutType*, CutRangeVector> CutRangeMap;
+
+    assert(L->leaf());
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node = L;
+    RTreeNode<SimulationTraits, NodeData, CutNode>* nn = LL;
+
+    while(true) { // loop until root, enter for root as well so we recompute its bounds
+        RTreeNode<SimulationTraits, NodeData, CutNode>* parent = node->parent();
+
+        // FIXME this is inefficient
+        node->recomputeData(loc, t, cb);
+
+        RTreeNode<SimulationTraits, NodeData, CutNode>* pp = NULL;
+        if (nn != NULL) {
+            if (cb.nodeSplit) {
+                assert(cb.nodeSplit && cb.reorderCut);
+                // If we saw a split, we need to deal with cleaning up
+                // cuts. First, we need to get new cut nodes into cuts for the
+                // newly generated node. We only need to insert these for cuts
+                // going through the node that we split into two. Cuts that pass
+                // through the tree lower down should have already been taken
+                // care of and should alrady span the entire width of the tree.
+                for(typename RTreeNodeType::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd(); cut_it++) {
+                    CutNode* cutnode = cut_it->second;
+                    cb.nodeSplit(cutnode, node, nn);
+                }
+
+                // Now we should have all the parts of the cut that should be in
+                // the tree. Now we need to patch up the order of things since
+                // the split rearranged cuts. This rearrangement can't just
+                // apply to cuts passing through these nodes: any cut lower in
+                // the tree could have become jumbled. However, we only need to
+                // deal with "blocks" of the cuts under each child since we only
+                // jumble things around one layer down (the children).
+                if (!node->leaf()) {
+                    // Only need to do (and only can do) rearrangement if we're
+                    // not at leaves.
+                    assert(!nn->leaf());
+
+                    // Extract a segment of the cut for each cut
+                    CutRangeMap segments_out;
+                    for(typename RTreeNodeType::Index ci = 0; ci < node->size(); ci++) {
+                        int nsegments_before = segments_out.size();
+                        RTree_extract_cut_segments(node->node(ci), &segments_out);
+                        int nsegments_after = segments_out.size();
+                        // Because we are only examining siblings, it shouldn't
+                        // be possible for the number of cuts to change (aside
+                        // from the initial 0 -> total number of cuts through
+                        // subtree).
+                        assert(nsegments_before == 0 || nsegments_before == nsegments_after);
+                    }
+                    for(typename RTreeNodeType::Index ci = 0; ci < nn->size(); ci++) {
+                        int nsegments_before = segments_out.size();
+                        RTree_extract_cut_segments(nn->node(ci), &segments_out);
+                        int nsegments_after = segments_out.size();
+                        // Because we are only examining siblings, it shouldn't
+                        // be possible for the number of cuts to change (aside
+                        // from the initial 0 -> total number of cuts through
+                        // subtree).
+                        assert(nsegments_before == 0 || nsegments_before == nsegments_after);
+                    }
+
+                    // And rearrange those parts of the cut. The order in the
+                    // list of segments is the order we want them to now appear.
+                    for(typename CutRangeMap::iterator cut_it = segments_out.begin(); cut_it != segments_out.end(); cut_it++) {
+                        Cut* cut = cut_it->first;
+                        CutRangeVector& range_vec = cut_it->second;
+                        cb.reorderCut(cut, range_vec);
+                    }
+                }
+            }
+
+            // We need to deal with cuts whether we're at the root or
+            // not, so we have to break out of the loop after we get
+            // into this section where we process cuts and deal with
+            // further splits. If we don't have a parent, we're going
+            // to take care of generating a new root for the now two
+            // roots later on (and there can't be any cut management
+            // there since it's an entirely new layer).
+            if (parent != NULL) {
+                if (parent->full()) {
+                    pp = RTree_split_node<SimulationTraits, NodeData, CutNode, RTreeNode<SimulationTraits, NodeData, CutNode>*, typename RTreeNode<SimulationTraits, NodeData, CutNode>::NodeChildOperations>(parent, nn, loc, t, cb);
+                }
+                else {
+                    // We need to be careful about insertion. If the
+                    // node we're splitting isn't the last node in the
+                    // parent, we could screw up the order of the cut
+                    // if we just insert it at the end since the
+                    // nodeSplit callback just tells it that we're
+                    // splitting that node, and that code assumes
+                    // (since there's no other reasonable approach)
+                    // that the new node is next to the old one.
+                    //
+                    // So, to handle this properly, we need to insert
+                    // right after the node we split into two. We
+                    // specify this to the insert call, which shifts
+                    // the other elements over.
+                    // insert(new_node=nn, callbacks=cb, optional after=node)
+                    parent->insert(nn, cb, node);
+                }
+            }
+        }
+
+        if (parent == NULL) break;
+
+        node = parent;
+        nn = pp;
+    }
+
+    // if we have a leftover split node, the root was split and we need to create
+    // a new root one level higher
+    if (nn != NULL) {
+        RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->capacity(), cb);
+        new_root->leaf(false);
+        new_root->insert(node, cb);
+        new_root->insert(nn, cb);
+
+        node = new_root;
+        nn = NULL;
+    }
+
+    return node;
+}
+
+// Inserts a new object into the tree, updating any nodes as necessary. Returns the new root node.
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    LocationServiceCache<SimulationTraits>* loc,
+    const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
+    const typename SimulationTraits::TimeType& t,
+    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+    RTreeNodeType* leaf_node = RTree_choose_leaf(root, loc, obj_id, t);
+
+    RTreeNode<SimulationTraits, NodeData, CutNode>* split_node = NULL;
+    if (leaf_node->full()) {
+        split_node = RTree_split_node<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData, CutNode>::ObjectChildOperations>(leaf_node, obj_id, loc, t, cb);
+        // This leaves the new split_node without a parent and without any cuts
+        // passing through it. adjust_tree will take care of cleaning that up as
+        // it also deals with additional, cascading splits.
+    }
+    else {
+        leaf_node->insert(loc, obj_id, t, cb);
+    }
+
+    RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_adjust_tree(leaf_node, split_node, loc, t, cb);
+
+    return new_root;
+}
+
+#endif
+
 
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 int32 RTree_count(RTreeNode<SimulationTraits, NodeData, CutNode>* root) {

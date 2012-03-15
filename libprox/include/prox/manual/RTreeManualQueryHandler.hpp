@@ -93,6 +93,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
+            std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
@@ -317,6 +318,8 @@ protected:
         public Prox::CutNodeBase<SimulationTraits, QueryHandlerType, NodeData, Cut, CutNode<SimulationTraits> >
     {
         typedef Prox::CutNodeBase<SimulationTraits, QueryHandlerType, NodeData, Cut, CutNode<SimulationTraits> > CutNodeBaseType;
+        typedef typename CutNodeBaseType::CutType CutType;
+        typedef typename CutNodeBaseType::RangeType RangeType;
 
         CutNode(QueryHandlerType* handler, Cut* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
          : CutNodeBaseType(handler, _parent, _rt, listener)
@@ -334,6 +337,7 @@ protected:
         : public Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> >
     {
         typedef Prox::CutBase<SimulationTraits, RTreeManualQueryHandler, NodeData, Cut, CutNode<SimulationTraits> > CutBaseType;
+        typedef typename CutBaseType::CutNodeType CutNodeType;
         typedef typename CutBaseType::CutNodeList CutNodeList;
         typedef typename CutBaseType::CutNodeListIterator CutNodeListIterator;
         typedef typename CutBaseType::CutNodeListConstIterator CutNodeListConstIterator;

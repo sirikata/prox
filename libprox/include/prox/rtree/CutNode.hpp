@@ -23,6 +23,7 @@ struct CutNodeBase {
     typedef NodeDataTypeT NodeDataType;
     typedef CutTypeT CutType;
     typedef CutNodeTypeT CutNodeType;
+    typedef std::pair<CutNodeType*, CutNodeType*> RangeType;
 
     CutType* parent;
     typedef typename Prox::RTree<SimulationTraits, NodeDataType, CutNodeType>::RTreeNodeType RTreeNodeType;
@@ -37,6 +38,8 @@ struct CutNodeBase {
         rtnode->insertCutNode(getNativeThis());
         if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize());
     }
+
+    CutType* getParent() const { return parent; }
 
     void destroy(QueryHandlerType* handler, AggregateListenerType* listener) {
         rtnode->eraseCutNode(getNativeThis());

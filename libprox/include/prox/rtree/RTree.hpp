@@ -73,6 +73,8 @@ public:
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
 
     typedef typename RTreeNodeType::LiftCutCallback LiftCutCallback;
+    typedef typename RTreeNodeType::ReorderCutCallback ReorderCutCallback;
+
     typedef typename RTreeNodeType::ObjectInsertedCallback ObjectInsertedCallback;
     typedef typename RTreeNodeType::ObjectRemovedCallback ObjectRemovedCallback;
 
@@ -84,7 +86,8 @@ public:
         AggregatorType* aggregator = NULL,
         AggregateListenerType* agg = NULL,
         RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
-        LiftCutCallback lift_cut_cb = 0, ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
+        LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
+        ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
      : mLocCache(loccache),
        mStaticObjects(static_objects),
@@ -101,6 +104,7 @@ public:
         mCallbacks.rootReplaced = root_replaced_cb;
         mCallbacks.nodeSplit = node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
+        mCallbacks.reorderCut = reorder_cut_cb;
         mCallbacks.objectInserted = obj_ins_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
 

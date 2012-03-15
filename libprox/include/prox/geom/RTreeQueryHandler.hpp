@@ -371,6 +371,9 @@ protected:
     };
     struct CutNode {
         typedef Cut CutType;
+        typedef std::pair<CutNode*, CutNode*> RangeType;
+
+        Cut* getParent() const { return (Cut*)0xdeadbeef; }
     };
 
 public: // Public for the sake of implementation -- node iterators are separate classes
