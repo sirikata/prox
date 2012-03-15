@@ -130,14 +130,15 @@ public:
 
     virtual uint32 numObjects() const = 0;
     virtual uint32 numQueries() const = 0;
+    virtual uint32 numNodes() const = 0;
 
     virtual LocationServiceCacheType* locationCache() const = 0;
 
     // Iterators over 'nodes', which are whatever internal representation is
     // used for objects and collections of objects. Sometimes this is just the
     // same as the set of all objects, other times it may include aggregates.
-    NodeIterator nodesBegin() { return NodeIterator(nodesBeginImpl()); };
-    NodeIterator nodesEnd() { return NodeIterator(nodesEndImpl()); };
+    NodeIterator nodesBegin() const { return NodeIterator(nodesBeginImpl()); };
+    NodeIterator nodesEnd() const { return NodeIterator(nodesEndImpl()); };
 
     // LocationUpdateListener
     virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) = 0;
@@ -156,8 +157,8 @@ public:
 protected:
 
     // Implementation of iterators
-    virtual NodeIteratorImpl* nodesBeginImpl() = 0;
-    virtual NodeIteratorImpl* nodesEndImpl() = 0;
+    virtual NodeIteratorImpl* nodesBeginImpl() const = 0;
+    virtual NodeIteratorImpl* nodesEndImpl() const = 0;
 }; // class QueryHandlerBase
 
 } // namespace Prox

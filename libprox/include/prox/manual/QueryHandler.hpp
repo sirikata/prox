@@ -69,8 +69,8 @@ protected:
     virtual bool coarsen(QueryType* query, const ObjectID& objid) = 0;
 
     // Implementation of iterators
-    virtual NodeIteratorImpl* nodesBeginImpl() = 0;
-    virtual NodeIteratorImpl* nodesEndImpl() = 0;
+    virtual NodeIteratorImpl* nodesBeginImpl() const = 0;
+    virtual NodeIteratorImpl* nodesEndImpl() const = 0;
 
     QueryID mQueryIDSource;
 }; // class QueryHandler

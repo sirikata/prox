@@ -19,12 +19,12 @@ class NodeIteratorImpl : public Prox::QueryHandlerBaseImpl::NodeIteratorImpl<Sim
 public:
     typedef typename Prox::QueryHandlerBaseImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorBase;
     typedef typename Prox::BruteForceQueryHandler<SimulationTraits> QueryHandler;
-    typedef typename QueryHandler::ObjectSetIterator ObjectSetIterator;
+    typedef typename QueryHandler::ObjectSetConstIterator ObjectSetConstIterator;
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::TimeType Time;
 
-    NodeIteratorImpl(QueryHandler* p, ObjectSetIterator oit)
+    NodeIteratorImpl(const QueryHandler* p, ObjectSetConstIterator oit)
      : NodeIteratorBase(),
        parent(p),
        it(oit)
@@ -58,8 +58,8 @@ public:
         return parent->mLocCache->worldCompleteBounds(it->second, t);
     }
 private:
-    QueryHandler* parent;
-    ObjectSetIterator it;
+    const QueryHandler* parent;
+    ObjectSetConstIterator it;
 };
 
 

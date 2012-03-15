@@ -81,6 +81,8 @@ public:
 
     typedef typename std::tr1::function<RTreeCutQueryHandler*()> QueryHandlerCreator;
 
+    typedef typename QueryHandlerType::NodeIterator NodeIterator;
+
     static RTreeCutQueryHandler* construct(uint16 elements_per_node, bool with_aggregates) {
         return new RTreeCutQueryHandler(elements_per_node, with_aggregates);
     }
@@ -234,6 +236,17 @@ public:
     }
     virtual uint32 numQueries() const {
         return (uint32)mQueries.size();
+    }
+    virtual uint32 numNodes() const {
+        // This is inefficient, but the RTree doesn't track number of nodes
+        // internally.
+        uint32 count = 0;
+        NodeIterator it = QueryHandlerType::nodesBegin();
+        NodeIterator end_it = QueryHandlerType::nodesEnd();
+        while(it != end_it) {
+            count++; it++;
+        }
+        return count;
     }
 
     virtual LocationServiceCacheType* locationCache() const {
@@ -834,10 +847,10 @@ private:
     typedef typename RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
     friend class RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
 
-    virtual NodeIteratorImpl* nodesBeginImpl() {
+    virtual NodeIteratorImpl* nodesBeginImpl() const {
         return new NodeIteratorImpl(mRTree->nodesBegin());
     }
-    virtual NodeIteratorImpl* nodesEndImpl() {
+    virtual NodeIteratorImpl* nodesEndImpl() const {
         return new NodeIteratorImpl(mRTree->nodesEnd());
     }
 

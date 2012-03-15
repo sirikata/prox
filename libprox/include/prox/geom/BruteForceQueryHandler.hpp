@@ -159,6 +159,9 @@ public:
     virtual uint32 numQueries() const {
         return (uint32)mQueries.size();
     }
+    virtual uint32 numNodes() const {
+        return numObjects();
+    }
 
     virtual LocationServiceCacheType* locationCache() const {
         return mLocCache;
@@ -282,10 +285,10 @@ private:
     typedef typename BruteForceQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
     friend class BruteForceQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
 
-    virtual NodeIteratorImpl* nodesBeginImpl() {
+    virtual NodeIteratorImpl* nodesBeginImpl() const {
         return new NodeIteratorImpl(this, mObjects.begin());
     }
-    virtual NodeIteratorImpl* nodesEndImpl() {
+    virtual NodeIteratorImpl* nodesEndImpl() const {
         return new NodeIteratorImpl(this, mObjects.end());
     }
 
@@ -300,6 +303,7 @@ private:
 
     typedef std::tr1::unordered_map<ObjectID, LocCacheIterator, ObjectIDHasher> ObjectSet;
     typedef typename ObjectSet::iterator ObjectSetIterator;
+    typedef typename ObjectSet::const_iterator ObjectSetConstIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
 

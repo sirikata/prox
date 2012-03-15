@@ -55,6 +55,8 @@ public:
 
     typedef typename std::tr1::function<RTreeManualQueryHandler*()> QueryHandlerCreator;
 
+    typedef typename QueryHandlerType::NodeIterator NodeIterator;
+
     RTreeManualQueryHandler(uint16 elements_per_node)
      : QueryHandlerType(),
        mLocCache(NULL),
@@ -129,6 +131,17 @@ public:
     }
     virtual uint32 numQueries() const {
         return (uint32)mQueries.size();
+    }
+    virtual uint32 numNodes() const {
+        // This is inefficient, but the RTree doesn't track number of nodes
+        // internally.
+        uint32 count = 0;
+        NodeIterator it = QueryHandlerType::nodesBegin();
+        NodeIterator end_it = QueryHandlerType::nodesEnd();
+        while(it != end_it) {
+            count++; it++;
+        }
+        return count;
     }
 
     virtual LocationServiceCacheType* locationCache() const {
@@ -518,10 +531,10 @@ protected:
     typedef typename RTreeManualQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
     friend class RTreeManualQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
 
-    virtual NodeIteratorImpl* nodesBeginImpl() {
+    virtual NodeIteratorImpl* nodesBeginImpl() const {
         return new NodeIteratorImpl(mRTree->nodesBegin());
     }
-    virtual NodeIteratorImpl* nodesEndImpl() {
+    virtual NodeIteratorImpl* nodesEndImpl() const {
         return new NodeIteratorImpl(mRTree->nodesEnd());
     }
 

@@ -211,6 +211,10 @@ public:
     virtual uint32 numQueries() const {
         return mPrimaryHandler->numQueries() + (mustDuplicate() ? mRebuildingHandler->numQueries() : 0);
     }
+    virtual uint32 numNodes() const {
+        return mPrimaryHandler->numNodes() + (mustDuplicate() ? mRebuildingHandler->numNodes() : 0);
+    }
+
 
     virtual LocationServiceCacheType* locationCache() const {
         return mLocCache;
@@ -479,7 +483,7 @@ protected:
     friend class RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
     typedef typename QueryHandlerBaseImpl::NodeIterator<SimulationTraits> NodeIterator;
 
-    virtual NodeIteratorImpl* nodesBeginImpl() {
+    virtual NodeIteratorImpl* nodesBeginImpl() const {
         // We only need to list the rebuilding handler nodes if we've got
         // anything in that tree. We duplicate events when we're in the process
         // of moving, so this is also an indicator that we must use the
@@ -503,7 +507,7 @@ protected:
                 NodeIterator(), NodeIterator()
             );
     }
-    virtual NodeIteratorImpl* nodesEndImpl() {
+    virtual NodeIteratorImpl* nodesEndImpl() const {
         if (mustDuplicate())
             return new NodeIteratorImpl(
                 mRebuildingHandler->nodesBegin(), mRebuildingHandler->nodesEnd(),
