@@ -348,6 +348,11 @@ public:
             }
         }
         else {
+            // If we're removing child nodes, we don't need to notify
+            // of object removal, but we do need to notify of
+            // aggregate child removal
+            for(Index i = 0; i < count; i++)
+                if (cb.aggregate != NULL) cb.aggregate->aggregateChildRemoved(cb.aggregator, aggregate, node(i)->aggregate, mData.getBounds());
             count = 0;
         }
 
@@ -1458,7 +1463,10 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
         RTreeNodeType* parent = n->parent();
         int child_count = last_removed ? n->size()-1 : n->size();
         last_removed = false;
-        if (child_count < 1) { // FIXME should be some larger value
+        if (child_count < 1) { // FIXME should be some larger value,
+                               // but note warning below about how
+                               // changing this could break the code
+                               // below
             highest_removed = n;
             recompute_start = parent;
             last_removed = true;
@@ -1488,6 +1496,15 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             RTreeNode<SimulationTraits, NodeData, CutNode>* removed = removedNodes.front();
             removedNodes.pop();
 
+            // BEWARE that this ordering only currently works because
+            // leaves are guaranteed to be empty because of the
+            // condition in the initial loop finding what to
+            // remove. The aggregateChildRemoved/aggregateChildAdded
+            // order is broken here because the object should be
+            // cleared out of the old node before being
+            // reinserted. This works for nodes because they are
+            // queued up for processing later, so the addition for
+            // them doesn't happen immediately here.
             if (removed->leaf()) {
                 for(Index idx = 0; idx < removed->size(); idx++)
                     root = RTree_insert_object(root, loc, removed->object(idx).object, t, cb);
@@ -1535,6 +1552,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     typedef typename RTreeNodeType::Index Index;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
     // We'll work our way up the tree looking for parent nodes which
     // have a total # of grandchildren that fit within the node
@@ -1606,12 +1625,20 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             // avoid moving cuts that don't move through the level of RTreeNodes
             // that are being removed.
             for(Index ci = 0; ci < child_nodes.size(); ci++) {
-                for(Index gi = 0; gi < child_nodes[ci]->size(); gi++) {
+                // Note that we need correct remove -> add ordering so
+                // aggregate listeners don't get confused. We need to
+                // copy each entry out, remove it, then add it to the
+                // parent.
+                while(!child_nodes[ci]->empty()) {
                     if (child_nodes[ci]->leaf()) {
-                        parent->insert(loc, child_nodes[ci]->object(gi).object, t, cb);
+                        LocCacheIterator gchild_object = child_nodes[ci]->object(0).object;
+                        child_nodes[ci]->erase(loc, gchild_object, true, cb);
+                        parent->insert(loc, gchild_object, t, cb);
                     }
                     else {
-                        parent->insert(child_nodes[ci]->node(gi), cb);
+                        RTreeNodeType* gchild_node = child_nodes[ci]->node(0);
+                        child_nodes[ci]->erase(gchild_node, cb);
+                        parent->insert(gchild_node, cb);
                     }
                 }
                 child_nodes[ci]->destroy(loc, cb);
