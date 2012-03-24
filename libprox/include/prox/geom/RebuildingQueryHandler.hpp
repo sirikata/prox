@@ -139,6 +139,10 @@ public:
         mPrimaryHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
     }
 
+    virtual bool staticOnly() const {
+        return mStaticObjects;
+    }
+
     virtual void addObject(const ObjectID& obj_id) {
         using std::tr1::placeholders::_1;
         mPrimaryHandler->addObject(obj_id);

@@ -70,6 +70,11 @@ public:
      */
     virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
 
+    /** Returns true if this query handler is configured to only handle static
+     *  objects.
+     */
+    virtual bool staticOnly() const = 0;
+
     /** Add an object to be considered in the result set.  This method, along
      *  with ShouldTrackCallback and removeObject, allows the user to control
      *  which subset of objects from the location service cache are candidate

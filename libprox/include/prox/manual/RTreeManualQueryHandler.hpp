@@ -101,6 +101,10 @@ public:
         );
     }
 
+    virtual bool staticOnly() const {
+        return mRTree->staticObjects();
+    }
+
     void tick(const Time& t, bool report) {
         mRTree->update(t);
         mRTree->verifyConstraints(t);

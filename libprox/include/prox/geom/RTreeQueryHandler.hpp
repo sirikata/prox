@@ -117,6 +117,10 @@ public:
         );
     }
 
+    virtual bool staticOnly() const {
+        return mRTree->staticObjects();
+    }
+
     void tick(const Time& t, bool report) {
         // Implementations should override this, but make sure to call preTick
         // and postTick

@@ -138,6 +138,10 @@ public:
         );
     }
 
+    virtual bool staticOnly() const {
+        return mRTree->staticObjects();
+    }
+
     void validateCuts() const {
 #ifdef PROXDEBUG
         for(QueryMapConstIterator it = mQueries.begin(); it != mQueries.end(); it++) {

@@ -110,6 +110,11 @@ public:
         mLocUpdateProvider = loc_up_provider;
         mLocUpdateProvider->addUpdateListener(this);
         mShouldTrackCB = should_track_cb;
+        mStaticObjects = static_objects;
+    }
+
+    virtual bool staticOnly() const {
+        return mStaticObjects;
     }
 
     void tick(const Time& t, bool report) {
@@ -310,6 +315,7 @@ private:
     LocationServiceCacheType* mLocCache;
     LocationUpdateProviderType* mLocUpdateProvider;
     ShouldTrackCallback mShouldTrackCB;
+    bool mStaticObjects;
     ObjectSet mObjects;
     ObjectIDSetType mRemovedObjects;
     QueryMap mQueries;
