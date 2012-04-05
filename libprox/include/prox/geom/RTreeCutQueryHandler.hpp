@@ -136,6 +136,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
+        mRTree->initialize();
     }
 
     virtual bool staticOnly() const {
@@ -220,6 +221,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
+        mRTree->initialize();
         mRTree->bulkLoad(objects, mLastTime);
 
         mRebuilding = false;

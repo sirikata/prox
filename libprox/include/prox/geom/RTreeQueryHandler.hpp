@@ -115,6 +115,7 @@ public:
             mElementsPerNode, mLocCache, static_objects,
             std::tr1::bind(&RTreeQueryHandler::reportRestructures, this)
         );
+        mRTree->initialize();
     }
 
     virtual bool staticOnly() const {
@@ -144,6 +145,7 @@ public:
             mElementsPerNode, mLocCache, static_objects,
             std::tr1::bind(&RTreeQueryHandler::reportRestructures, this)
         );
+        mRTree->initialize();
         mRTree->bulkLoad(objects, mLastTime);
     }
 

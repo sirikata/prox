@@ -89,7 +89,8 @@ public:
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
         ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
-     : mLocCache(loccache),
+     : mElementsPerNode(elements_per_node),
+       mLocCache(loccache),
        mStaticObjects(static_objects),
        mRestructureMightHaveEffect(false),
        mReportRestructures(report_restructures_cb)
@@ -108,7 +109,14 @@ public:
         mCallbacks.objectInserted = obj_ins_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
 
-        mRoot = new RTreeNodeType(elements_per_node, mCallbacks);
+        mRoot = NULL;
+    }
+
+    // Split into constructor + initialize because callbacks in the constructor
+    // can cause problems (e.g. caller not having the pointer back to the RTree
+    // yet).
+    void initialize() {
+        mRoot = new RTreeNodeType(mElementsPerNode, mCallbacks);
     }
 
     ~RTree() {
@@ -409,6 +417,7 @@ private:
     }
 
     LocationServiceCacheType* mLocCache;
+    Index mElementsPerNode;
     RTreeNodeType* mRoot;
     typename RTreeNodeType::Callbacks mCallbacks;
     ObjectLeafIndex mObjectLeaves;
