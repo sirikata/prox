@@ -217,6 +217,15 @@ public:
             addObject(obj_id);
     }
 
+    void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+        // This query handler ignores parents
+        locationConnected(obj_id, local, pos, region, ms);
+    }
+
+    void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
+        // Nothing to be done, we use values directly from the object
+    }
+
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         // Nothing to be done, we use values directly from the object
     }

@@ -233,6 +233,25 @@ public:
         else if (mustDuplicate())
             mRebuildingHandler->locationConnected(obj_id, local, pos, region, maxSize);
     }
+    virtual void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
+        // This probably doesn't make much sense as you really only want the
+        // parent to copy a tree, so getting these calls in a rebuilding tree
+        // probably doesn't make sense...
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationConnectedWithParent(obj_id, parent, local, pos, region, maxSize);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnectedWithParent, _1, obj_id, parent, local, pos, region, maxSize));
+        else if (mustDuplicate())
+            mRebuildingHandler->locationConnectedWithParent(obj_id, parent, local, pos, region, maxSize);
+    }
+    virtual void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->locationParentUpdated(obj_id, old_par, new_par);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationParentUpdated, _1, obj_id, old_par, new_par));
+        else if (mustDuplicate())
+            mRebuildingHandler->locationParentUpdated(obj_id, old_par, new_par);
+    }
     virtual void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         using std::tr1::placeholders::_1;
         mPrimaryHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
@@ -240,7 +259,6 @@ public:
             mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationPositionUpdated, _1, obj_id, old_pos, new_pos));
         else if (mustDuplicate())
             mRebuildingHandler->locationPositionUpdated(obj_id, old_pos, new_pos);
-
     }
     virtual void locationRegionUpdated(const ObjectID& obj_id, const BoundingSphere& old_region, const BoundingSphere& new_region) {
         using std::tr1::placeholders::_1;

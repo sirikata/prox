@@ -238,7 +238,20 @@ public:
             addObject(obj_id);
     }
 
+    void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+        assert(mObjects.find(obj_id) == mObjects.end());
+
+        bool do_track = true;
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+
+        if (do_track)
+            addObject(obj_id);
+    }
+
     // LocationUpdateListener Implementation
+    void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
+    }
+
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
         updateObj(obj_id, mLastTime); // FIXME new time?
     }

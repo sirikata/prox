@@ -89,8 +89,8 @@ public:
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
         ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
-     : mElementsPerNode(elements_per_node),
-       mLocCache(loccache),
+     : mLocCache(loccache),
+       mElementsPerNode(elements_per_node),
        mStaticObjects(static_objects),
        mRestructureMightHaveEffect(false),
        mReportRestructures(report_restructures_cb)
