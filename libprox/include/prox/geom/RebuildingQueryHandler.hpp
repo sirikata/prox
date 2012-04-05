@@ -225,24 +225,24 @@ public:
     }
 
     // LocationUpdateListener
-    virtual void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
+    virtual void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
         using std::tr1::placeholders::_1;
-        mPrimaryHandler->locationConnected(obj_id, local, pos, region, maxSize);
+        mPrimaryHandler->locationConnected(obj_id, aggregate, local, pos, region, maxSize);
         if (mustDefer())
-            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnected, _1, obj_id, local, pos, region, maxSize));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnected, _1, obj_id, aggregate, local, pos, region, maxSize));
         else if (mustDuplicate())
-            mRebuildingHandler->locationConnected(obj_id, local, pos, region, maxSize);
+            mRebuildingHandler->locationConnected(obj_id, aggregate, local, pos, region, maxSize);
     }
-    virtual void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
+    virtual void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize) {
         // This probably doesn't make much sense as you really only want the
         // parent to copy a tree, so getting these calls in a rebuilding tree
         // probably doesn't make sense...
         using std::tr1::placeholders::_1;
-        mPrimaryHandler->locationConnectedWithParent(obj_id, parent, local, pos, region, maxSize);
+        mPrimaryHandler->locationConnectedWithParent(obj_id, parent, aggregate, local, pos, region, maxSize);
         if (mustDefer())
-            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnectedWithParent, _1, obj_id, parent, local, pos, region, maxSize));
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::locationConnectedWithParent, _1, obj_id, parent, aggregate, local, pos, region, maxSize));
         else if (mustDuplicate())
-            mRebuildingHandler->locationConnectedWithParent(obj_id, parent, local, pos, region, maxSize);
+            mRebuildingHandler->locationConnectedWithParent(obj_id, parent, aggregate, local, pos, region, maxSize);
     }
     virtual void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
         using std::tr1::placeholders::_1;

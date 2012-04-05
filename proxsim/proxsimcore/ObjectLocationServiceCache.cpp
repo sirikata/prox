@@ -144,7 +144,7 @@ void ObjectLocationServiceCache::objectCreated(const Object* obj, const MotionVe
     Lock lck(mMutex);
 
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationConnected(obj->id(), true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
+        (*it)->locationConnected(obj->id(), false, true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::objectPositionUpdated(Object* obj, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -178,7 +178,7 @@ void ObjectLocationServiceCache::simulatorAddedObject(Object* obj, const MotionV
     Lock lck(mMutex);
 
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        (*it)->locationConnected(obj->id(), true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
+        (*it)->locationConnected(obj->id(), false, true, pos, BoundingSphere(bounds.center(), 0), bounds.radius());
 }
 
 void ObjectLocationServiceCache::simulatorRemovedObject(Object* obj) {

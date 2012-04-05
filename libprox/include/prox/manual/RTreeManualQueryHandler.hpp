@@ -205,7 +205,7 @@ public:
     }
 
 
-    void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+    void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
@@ -215,7 +215,7 @@ public:
             addObject(obj_id);
     }
 
-    void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+    void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;

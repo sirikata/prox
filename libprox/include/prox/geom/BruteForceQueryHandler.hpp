@@ -209,7 +209,7 @@ public:
         return retval;
     }
 
-    void locationConnected(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+    void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         bool do_track = true;
         if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
 
@@ -217,9 +217,9 @@ public:
             addObject(obj_id);
     }
 
-    void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
+    void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         // This query handler ignores parents
-        locationConnected(obj_id, local, pos, region, ms);
+        locationConnected(obj_id, aggregate, local, pos, region, ms);
     }
 
     void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
