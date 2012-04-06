@@ -151,6 +151,14 @@ public:
         else if (mustDuplicate())
             mRebuildingHandler->addObject(obj_id);
     }
+    virtual void addObject(const ObjectID& obj_id, const ObjectID& parent_id) {
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->addObject(obj_id, parent_id);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addObjectByIDWithParent, _1, obj_id, parent_id));
+        else if (mustDuplicate())
+            mRebuildingHandler->addObject(obj_id, parent_id);
+    }
     virtual void addObject(const LocCacheIterator& obj_loc_it) {
         using std::tr1::placeholders::_1;
         mPrimaryHandler->addObject(obj_loc_it);
@@ -182,6 +190,32 @@ public:
             results.insert(results.begin(), second_results.begin(), second_results.end());
         }
         return results;
+    }
+
+    virtual void addNode(const ObjectID& obj_id, const ObjectID& parent_id) {
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->addNode(obj_id, parent_id);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::addNode, _1, obj_id, parent_id));
+        else if (mustDuplicate())
+            mRebuildingHandler->addNode(obj_id, parent_id);
+    }
+    virtual void removeNode(const ObjectID& obj_id, bool temporary = false) {
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->removeNode(obj_id, temporary);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::removeNode, _1, obj_id, temporary));
+        else if (mustDuplicate())
+            mRebuildingHandler->removeNode(obj_id, temporary);
+    }
+
+    virtual void reparent(const ObjectID& objid, const ObjectID& parentid) {
+        using std::tr1::placeholders::_1;
+        mPrimaryHandler->reparent(objid, parentid);
+        if (mustDefer())
+            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::reparent, _1, objid, parentid));
+        else if (mustDuplicate())
+            mRebuildingHandler->reparent(objid, parentid);
     }
 
     virtual void tick(const Time& t, bool report = true) {

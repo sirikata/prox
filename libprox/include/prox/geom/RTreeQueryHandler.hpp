@@ -113,9 +113,9 @@ public:
 
         mRTree = new RTree(
             mElementsPerNode, mLocCache, static_objects,
-            std::tr1::bind(&RTreeQueryHandler::reportRestructures, this)
+            std::tr1::bind(&RTreeQueryHandler::reportRestructures, this),
+            std::tr1::bind(&RTreeQueryHandler::handleRootCreated, this)
         );
-        mRTree->initialize();
     }
 
     virtual bool staticOnly() const {
@@ -143,9 +143,9 @@ public:
         // Build new tree
         mRTree = new RTree(
             mElementsPerNode, mLocCache, static_objects,
-            std::tr1::bind(&RTreeQueryHandler::reportRestructures, this)
+            std::tr1::bind(&RTreeQueryHandler::reportRestructures, this),
+            std::tr1::bind(&RTreeQueryHandler::handleRootCreated, this)
         );
-        mRTree->initialize();
         mRTree->bulkLoad(objects, mLastTime);
     }
 
@@ -179,12 +179,27 @@ public:
     void addObject(const ObjectID& obj_id) {
         addObject(mLocCache->startTracking(obj_id));
     }
+    void addObject(const ObjectID& obj_id, const ObjectID& parent_id) {
+        addObject(mLocCache->startTracking(obj_id), parent_id);
+    }
+    void addObject(const LocCacheIterator& obj_loc_it, const ObjectID& parent_id) {
+        ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
+        assert(mObjects.find( obj_id) == mObjects.end());
+
+        mObjects[obj_id] = obj_loc_it;
+        mRTree->insert(mObjects[obj_id], mLastTime);
+
+        // If the object had disconnected and reconnected, make sure we don't
+        // mark it as permanently gone.
+        typename ObjectIDSetType::iterator del_obj_it = mRemovedObjects.find(obj_id);
+        if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
+    }
     void addObject(const LocCacheIterator& obj_loc_it) {
         ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
         assert(mObjects.find( obj_id) == mObjects.end());
 
         mObjects[obj_id] = obj_loc_it;
-        insertObj(obj_id, mLastTime);
+        mRTree->insert(mObjects[obj_id], mLastTime);
 
         // If the object had disconnected and reconnected, make sure we don't
         // mark it as permanently gone.
@@ -216,6 +231,37 @@ public:
         return retval;
     }
 
+    void addNode(const ObjectID& nodeid, const ObjectID& parent) {
+        addNode(mLocCache->startTracking(nodeid), parent);
+    }
+    void addNode(const LocCacheIterator& node_loc_it, const ObjectID& parent) {
+        ObjectID node_id = mLocCache->iteratorID(node_loc_it);
+        assert(mNodes.find(node_id) == mNodes.end());
+
+        mNodes[node_id] = node_loc_it;
+        mRTree->insertNode(node_loc_it, parent, mLastTime);
+
+        // If the object had disconnected and reconnected, make sure we don't
+        // mark it as permanently gone.
+        typename ObjectIDSetType::iterator del_node_it = mRemovedObjects.find(node_id);
+        if (del_node_it != mRemovedObjects.end()) mRemovedObjects.erase(del_node_it);
+    }
+    void removeNode(const ObjectID& nodeid, bool temporary = false) {
+        typename ObjectSet::iterator it = mNodes.find(nodeid);
+        if (it == mNodes.end()) return;
+
+        LocCacheIterator node_loc_it = it->second;
+        mRTree->eraseNode(node_loc_it, mLastTime, temporary);
+        mLocCache->stopTracking(node_loc_it);
+        mNodes.erase(it);
+        mRemovedNodes.insert(nodeid);
+    }
+
+
+    void reparent(const ObjectID& objid, const ObjectID& parentid) {
+    }
+
+
     virtual void bulkLoad(const ObjectList& objects) {
         bool static_objects = mRTree->staticObjects();
         assert(mObjects.size() == 0);
@@ -232,7 +278,7 @@ public:
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
         if (do_track)
             addObject(obj_id);
@@ -242,7 +288,7 @@ public:
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
         if (do_track)
             addObject(obj_id);
@@ -250,6 +296,7 @@ public:
 
     // LocationUpdateListener Implementation
     void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
+        reparent(obj_id, new_par);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -355,10 +402,6 @@ protected:
         mObjects.clear();
     }
 
-    void insertObj(const ObjectID& obj_id, const Time& t) {
-        mRTree->insert(mObjects[obj_id], t);
-    }
-
     void updateObj(const ObjectID& obj_id, const Time& t) {
         typename ObjectSet::iterator it = mObjects.find(obj_id);
         if (it == mObjects.end()) return;
@@ -381,6 +424,13 @@ protected:
     }
     virtual NodeIteratorImpl* nodesEndImpl() const {
         return new NodeIteratorImpl(mRTree->nodesEnd());
+    }
+
+
+    void handleRootCreated() {
+        // We don't care about this because we just start from the root and
+        // reevaluate each time. Not having a root just means we didn't have any
+        // results before.
     }
 
 
@@ -430,6 +480,8 @@ protected:
     RTree* mRTree;
     ObjectSet mObjects;
     ObjectIDSetType mRemovedObjects;
+    ObjectSet mNodes;
+    ObjectIDSetType mRemovedNodes;
     QueryMap mQueries;
     Time mLastTime;
     uint8 mElementsPerNode;

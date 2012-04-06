@@ -42,7 +42,11 @@ public:
        mRebuildingEnd(re),
        mCurrent(mPrimaryBegin),
        mPhase(PHASE_PRIMARY)
-    {}
+    {
+        // The iterator we start out on might not be useful (e.g. if the primary
+        // handler is empty). Move forward as long as we can.
+        reevaluatePhase();
+    }
     // end() constructor. Takes same parameters as begin() constructor, plus a
     // tag indicating that this should set the current position at the end
     NodeIteratorImpl(
@@ -83,18 +87,7 @@ public:
         assert(mPhase != PHASE_DONE);
 
         mCurrent++;
-        // Check whether we need to move into new phases. The ordering allows
-        // stages that require no work to be processed immediately, allowing,
-        // e.g., to go from the primary's last element direction to PHASE_DONE
-        // if no rebuilding nodes exist.
-        if (mPhase == PHASE_PRIMARY && mCurrent == mPrimaryEnd) {
-            mCurrent = mRebuildingBegin;
-            mPhase = PHASE_REBUILDING;
-        }
-        if (mPhase == PHASE_REBUILDING && mCurrent == mRebuildingEnd) {
-            mCurrent = mRebuildingEnd;
-            mPhase = PHASE_DONE;
-        }
+        reevaluatePhase();
     }
 
     // Comparison
@@ -123,6 +116,22 @@ public:
         return mCurrent.bounds(t);
     }
 private:
+
+    void reevaluatePhase() {
+        // Check whether we need to move into new phases. The ordering allows
+        // stages that require no work to be processed immediately, allowing,
+        // e.g., to go from the primary's last element direction to PHASE_DONE
+        // if no rebuilding nodes exist.
+        if (mPhase == PHASE_PRIMARY && mCurrent == mPrimaryEnd) {
+            mCurrent = mRebuildingBegin;
+            mPhase = PHASE_REBUILDING;
+        }
+        if (mPhase == PHASE_REBUILDING && mCurrent == mRebuildingEnd) {
+            mCurrent = mRebuildingEnd;
+            mPhase = PHASE_DONE;
+        }
+    }
+
     PublicNodeIterator mPrimaryBegin;
     PublicNodeIterator mPrimaryEnd;
     PublicNodeIterator mRebuildingBegin;

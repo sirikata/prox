@@ -128,6 +128,7 @@ public:
             mElementsPerNode, mLocCache,
             static_objects,
             std::tr1::bind(&RTreeCutQueryHandler::reportRestructures, this),
+            std::tr1::bind(&RTreeCutQueryHandler::handleRootCreated, this),
             this, aggregateListener(),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
@@ -136,7 +137,6 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
-        mRTree->initialize();
     }
 
     virtual bool staticOnly() const {
@@ -213,6 +213,7 @@ public:
             mElementsPerNode, mLocCache,
             static_objects,
             std::tr1::bind(&RTreeCutQueryHandler::reportRestructures, this),
+            std::tr1::bind(&RTreeCutQueryHandler::handleRootCreated, this),
             this, aggregateListener(),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
@@ -221,7 +222,6 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
-        mRTree->initialize();
         mRTree->bulkLoad(objects, mLastTime);
 
         mRebuilding = false;
@@ -268,7 +268,20 @@ public:
         assert(mObjects.find(obj_id) == mObjects.end());
 
         mObjects[obj_id] = obj_loc_it;
-        insertObj(obj_id, mLastTime);
+        mRTree->insert(mObjects[obj_id], mLastTime);
+
+        mRTree->verifyConstraints(mLastTime);
+        validateCuts();
+    }
+    void addObject(const ObjectID& obj_id, const ObjectID& parent) {
+        addObject(mLocCache->startTracking(obj_id), parent);
+    }
+    void addObject(const LocCacheIterator& obj_loc_it, const ObjectID& parent) {
+        ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
+        assert(mObjects.find(obj_id) == mObjects.end());
+
+        mObjects[obj_id] = obj_loc_it;
+        mRTree->insert(mObjects[obj_id], parent, mLastTime);
 
         mRTree->verifyConstraints(mLastTime);
         validateCuts();
@@ -303,28 +316,69 @@ public:
     }
 
 
+    void addNode(const ObjectID& nodeid) {
+        // Nodes (aggregates) that don't have parents specified are just treated
+        // like objects. This should only work if we are getting aggregate loc
+        // info and we're not trying to reconstruct the tree exactly
+        // (i.e. aggregates and objects are treated as a soup of normal objects
+        // with which we can do whatever we want).
+        addObject(nodeid);
+    }
+    void addNode(const ObjectID& nodeid, const ObjectID& parent) {
+        addNode(mLocCache->startTracking(nodeid), parent);
+    }
+    void addNode(const LocCacheIterator& node_loc_it, const ObjectID& parent) {
+        ObjectID node_id = mLocCache->iteratorID(node_loc_it);
+        assert(mNodes.find(node_id) == mNodes.end());
+
+        mNodes[node_id] = node_loc_it;
+        mRTree->insertNode(node_loc_it, parent, mLastTime);
+    }
+    void removeNode(const ObjectID& nodeid, bool temporary = false) {
+        typename ObjectSet::iterator it = mNodes.find(nodeid);
+        if (it == mNodes.end()) return;
+
+        LocCacheIterator node_loc_it = it->second;
+        mRTree->eraseNode(node_loc_it, mLastTime, temporary);
+        mLocCache->stopTracking(node_loc_it);
+        mNodes.erase(it);
+    }
+
+    void reparent(const ObjectID& objid, const ObjectID& parentid) {
+    }
+
+
     void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
-        if (do_track)
-            addObject(obj_id);
+        if (do_track) {
+            if (!aggregate)
+                addObject(obj_id);
+            else
+                addNode(obj_id);
+        }
     }
 
     void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
-        if (do_track)
-            addObject(obj_id);
+        if (do_track) {
+            if (!aggregate)
+                addObject(obj_id, parent);
+            else
+                addNode(obj_id, parent);
+        }
     }
 
     // LocationUpdateListener Implementation
     void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
+        reparent(obj_id, new_par);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -415,10 +469,6 @@ private:
         mObjects.clear();
     }
 
-    void insertObj(const ObjectID& obj_id, const Time& t) {
-        mRTree->insert(mObjects[obj_id], t);
-    }
-
     void updateObj(const ObjectID& obj_id, const Time& t) {
         typename ObjectSet::iterator it = mObjects.find(obj_id);
         if (it == mObjects.end()) return;
@@ -430,6 +480,17 @@ private:
         assert(mObjects.find(obj_id) != mObjects.end());
         mRTree->erase(mObjects[obj_id], t, temporary);
     }
+
+
+
+    void handleRootCreated() {
+        assert(mRTree->root() != NULL);
+        // Initialize any cuts that haven't been initialized yet (never got
+        // past, or dropped to, cut length 0)
+        for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++)
+            if (it->second->cut->cutSize() == 0) it->second->cut->init(mRTree->root());
+    }
+
 
     ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
     template <class XSimulationTraits> struct CutNode;
@@ -901,6 +962,7 @@ private:
 
     RTree* mRTree;
     ObjectSet mObjects;
+    ObjectSet mNodes;
     QueryMap mQueries;
     Time mLastTime;
     uint16 mElementsPerNode;

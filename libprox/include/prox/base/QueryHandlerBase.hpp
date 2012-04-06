@@ -38,7 +38,7 @@ public:
 
     // Signature for callback allowing the user to control whether an object is
     // actually added or not.
-    typedef std::tr1::function<bool(const ObjectID& obj_id, bool local, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
+    typedef std::tr1::function<bool(const ObjectID& obj_id, bool local, bool aggregate, const MotionVector3& pos, const BoundingSphere& region, Real maxSize)> ShouldTrackCallback;
 
     typedef std::vector<LocCacheIterator> ObjectList;
 
@@ -88,10 +88,14 @@ public:
      *  added back again.
      */
     virtual void addObject(const ObjectID& obj_id) = 0;
+    virtual void addObject(const ObjectID& obj_id, const ObjectID& parent_id) = 0;
     virtual void addObject(const LocCacheIterator& obj_loc_it) = 0;
     // These versions allow use to get bind() to disambiguate
     void addObjectByID(const ObjectID& obj_id) {
         addObject(obj_id);
+    }
+    void addObjectByIDWithParent(const ObjectID& obj_id, const ObjectID& parent_id) {
+        addObject(obj_id, parent_id);
     }
     void addObjectByLocCacheIt(const LocCacheIterator& obj_loc_it) {
         addObject(obj_loc_it);
@@ -117,6 +121,11 @@ public:
      * use and the caller is responsible for calling stopTracking.
      */
     virtual ObjectList allObjects() = 0;
+
+    virtual void addNode(const ObjectID& objid, const ObjectID& parentid) = 0;
+    virtual void removeNode(const ObjectID& objid, bool temporary = false) = 0;
+
+    virtual void reparent(const ObjectID& objid, const ObjectID& parentid) = 0;
 
     /** Bulk load objects. MUST NOT start tracking the objects in the location
      *  cache -- a requirement of calling this method is that that should have

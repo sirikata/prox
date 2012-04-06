@@ -45,6 +45,28 @@ public:
         return static_cast<const CutType*>(this);
     }
 
+
+    // Always call after creation. Required because we need the
+    // parent class to initialize before we can do operations (like
+    // addToResults, which may depend on the parent's data).
+    void init(RTreeNodeType* root) {
+        // When replicating trees, we might register queries before we have any
+        // nodes replicated yet.
+        if (root == NULL) return;
+
+        if (usesAggregates()) {
+            QueryEventType evt;
+            evt.additions().push_back( typename QueryEventType::Addition(root, QueryEventType::Imposter) );
+            addToResults(root->aggregateID());
+            events.push_back(evt);
+        }
+        nodes.push_back(new CutNodeType(parent, getNativeThis(), root, getAggregateListener()));
+
+        length = 1;
+        validateCut();
+    }
+
+
     // NOTE that this class is a bit weird. It doesn't use virtual functions but
     // requires that a class that inherits from it has a certain set of methods:
     //  bool withAggregates() const; // Whether to use aggregates
@@ -494,21 +516,6 @@ protected:
        length(0),
        events()
     {
-    }
-    // Always call after creation. Required because we need the
-    // parent class to initialize before we can do operations (like
-    // addToResults, which may depend on the parent's data).
-    void init(RTreeNodeType* root) {
-        if (usesAggregates()) {
-            QueryEventType evt;
-            evt.additions().push_back( typename QueryEventType::Addition(root, QueryEventType::Imposter) );
-            addToResults(root->aggregateID());
-            events.push_back(evt);
-        }
-        nodes.push_back(new CutNodeType(parent, getNativeThis(), root, getAggregateListener()));
-
-        length = 1;
-        validateCut();
     }
     ~CutBase() {
         for(CutNodeListIterator it = nodes.begin(); it != nodes.end(); it++) {

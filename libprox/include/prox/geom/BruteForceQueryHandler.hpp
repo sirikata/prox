@@ -175,6 +175,9 @@ public:
     void addObject(const ObjectID& obj_id) {
         addObject(mLocCache->startTracking(obj_id));
     }
+    void addObject(const ObjectID& obj_id, const ObjectID& parent_id) {
+        addObject(mLocCache->startTracking(obj_id));
+    }
     void addObject(const LocCacheIterator& obj_loc_it) {
         ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
         mObjects[obj_id] = obj_loc_it;
@@ -209,9 +212,20 @@ public:
         return retval;
     }
 
+    void addNode(const ObjectID& objid, const ObjectID& parentid) {
+        assert(false && "Brute force handler doesn't support replicating internal nodes.");
+    }
+    void removeNode(const ObjectID& objid, bool temporary = false) {
+        assert(false && "Brute force handler doesn't support replicating internal nodes.");
+    }
+
+    void reparent(const ObjectID& objid, const ObjectID& parentid) {
+        assert(false && "Brute force handler doesn't support replicating internal nodes.");
+    }
+
     void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
         if (do_track)
             addObject(obj_id);

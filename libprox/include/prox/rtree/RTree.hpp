@@ -69,6 +69,7 @@ public:
 
     typedef typename std::tr1::function<bool()> ReportRestructuresCallback;
 
+    typedef typename std::tr1::function<void()> RootCreatedCallback;
     typedef typename RTreeNodeType::RootReplacedByChildCallback RootReplacedByChildCallback;
     typedef typename RTreeNodeType::NodeSplitCallback NodeSplitCallback;
 
@@ -83,9 +84,11 @@ public:
     RTree(Index elements_per_node, LocationServiceCacheType* loccache,
         bool static_objects,
         ReportRestructuresCallback report_restructures_cb,
+        RootCreatedCallback root_created_cb,
         AggregatorType* aggregator = NULL,
         AggregateListenerType* agg = NULL,
-        RootReplacedByChildCallback root_replaced_cb = 0, NodeSplitCallback node_split_cb = 0,
+        RootReplacedByChildCallback root_replaced_cb = 0,
+        NodeSplitCallback node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
         ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
@@ -108,19 +111,15 @@ public:
         mCallbacks.reorderCut = reorder_cut_cb;
         mCallbacks.objectInserted = obj_ins_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
+        mRootCreatedCallback = root_created_cb;
 
+        // If we're replicating a tree, we don't want our own root, we just want
+        // to create root(s) as requested by the incoming update stream
         mRoot = NULL;
     }
 
-    // Split into constructor + initialize because callbacks in the constructor
-    // can cause problems (e.g. caller not having the pointer back to the RTree
-    // yet).
-    void initialize() {
-        mRoot = new RTreeNodeType(mElementsPerNode, mCallbacks);
-    }
-
     ~RTree() {
-        RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
+        if (mRoot != NULL) RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
     }
 
 
@@ -134,16 +133,50 @@ public:
         return mRoot;
     }
 
-    int size() const { return mRoot->treeSize(); }
+    int size() const { return mRoot != NULL ? mRoot->treeSize() : 0; }
 
     void insert(const LocCacheIterator& obj, const Time& t) {
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
 
+        ensureHaveRoot();
         mRoot = RTree_insert_object(mRoot, mLocCache, obj, t, mCallbacks);
 
         mRestructureMightHaveEffect = true;
+    }
+
+    void insert(const LocCacheIterator& obj, const ObjectID& parent, const Time& t) {
+        const ObjectID& objid = mLocCache->iteratorID(obj);
+        assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
+        mObjectLeaves[objid] = NULL;
+
+        assert(mRTreeNodes.find(parent) != mRTreeNodes.end());
+        RTreeNodeType* at_node = mRTreeNodes[parent];
+        mRoot = RTree_insert_object_at_node(at_node, mLocCache, obj, t, mCallbacks);
+
+        mRestructureMightHaveEffect = true;
+    }
+
+    void insertNode(const LocCacheIterator& node, const ObjectID& parent, const Time& t) {
+        const ObjectID& nodeid = mLocCache->iteratorID(node);
+        assert(mRTreeNodes.find(nodeid) == mRTreeNodes.end());
+
+        assert(parent == ObjectIDNull()() || mRTreeNodes.find(parent) != mRTreeNodes.end());
+
+        RTreeNodeType* new_node = RTree_create_new_node<SimulationTraits, NodeData, CutNode>(mElementsPerNode, mLocCache, node, t, mCallbacks);
+        mRTreeNodes[nodeid] = new_node;
+
+        if (parent == ObjectIDNull()()) {
+            // This is a root node
+            assert(mRoot == NULL);
+            mRoot = new_node;
+            if (mRootCreatedCallback != 0) mRootCreatedCallback();
+        }
+        else {
+            RTreeNodeType* at_node = mRTreeNodes[parent];
+            RTree_insert_new_node_at_node(new_node, at_node, mCallbacks);
+        }
     }
 
     void update(const LocCacheIterator& obj, const Time& t) {
@@ -156,7 +189,7 @@ public:
     }
 
     void update(const Time& t) {
-        if (!mStaticObjects)
+        if (!mStaticObjects && mRoot != NULL)
             mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
     }
 
@@ -188,9 +221,21 @@ public:
         mRestructureMightHaveEffect = true;
     }
 
+    void eraseNode(const LocCacheIterator& node, const Time& t, bool temporary) {
+        const ObjectID& nodeid = mLocCache->iteratorID(node);
+        typename ObjectIDNodeMap::const_iterator nodeit = mRTreeNodes.find(nodeid);
+        assert(nodeit != mRTreeNodes.end());
+        RTreeNodeType* rtnode = nodeit->second;
+
+        mRoot = RTree_delete_node(mRoot, rtnode, mLocCache, t, temporary, mCallbacks);
+        mRTreeNodes.erase(nodeid);
+
+        mRestructureMightHaveEffect = true;
+    }
+
     /** If in debug mode, verify the constraints on the data structure. */
     void verifyConstraints(const Time& t) {
-        RTree_verify_constraints(mRoot, mLocCache, t);
+        if (mRoot != NULL) RTree_verify_constraints(mRoot, mLocCache, t);
     }
 
     void bulkLoad(const std::vector<LocCacheIterator>& object_iterators, const Time& t) {
@@ -199,6 +244,7 @@ public:
             mObjectLeaves[mLocCache->iteratorID(*objit)] = NULL;
 
         // Then do the actual computation
+        ensureHaveRoot();
         mRoot = RTree_rebuild(
             mRoot, mLocCache, t,
             object_iterators,
@@ -208,7 +254,7 @@ public:
     }
 
     float cost(const Time& t) {
-        return RTree_cost(mRoot, mLocCache, t);
+        return (mRoot != NULL) ? RTree_cost(mRoot, mLocCache, t) : 0.f;
     }
 
 
@@ -364,7 +410,18 @@ public:
     NodeIterator nodesEnd() { return NodeIterator(this, NULL); }
 
 private:
-    typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectLeafIndex;
+    // Ensure we have a root node. Should only be used for non-replicating-tree
+    // operations since this will create missing root nodes, which would be
+    // incorrect for replication.
+    void ensureHaveRoot() {
+        if (mRoot == NULL) {
+            mRoot = new RTreeNodeType(mElementsPerNode, mCallbacks);
+            if (mRootCreatedCallback != 0) mRootCreatedCallback();
+        }
+    }
+
+    typedef std::tr1::unordered_map<ObjectID, RTreeNodeType*, ObjectIDHasher> ObjectIDNodeMap;
+    typedef ObjectIDNodeMap ObjectLeafIndex;
 
     // Iteration over objects
     template<class InternalIterator>
@@ -421,9 +478,11 @@ private:
     RTreeNodeType* mRoot;
     typename RTreeNodeType::Callbacks mCallbacks;
     ObjectLeafIndex mObjectLeaves;
+    ObjectIDNodeMap mRTreeNodes;
     bool mStaticObjects;
     bool mRestructureMightHaveEffect;
     ReportRestructuresCallback mReportRestructures;
+    RootCreatedCallback mRootCreatedCallback;
 }; // class RTree
 
 } // namespace Prox

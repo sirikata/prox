@@ -43,6 +43,7 @@ public:
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDHasherType ObjectIDHasher;
+    typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
     typedef typename SimulationTraits::TimeType Time;
     typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::Vector3Type Vector3;
@@ -91,6 +92,7 @@ public:
 
         mRTree = new RTree(
             mElementsPerNode, mLocCache, static_objects, /*report_restructures_cb*/0,
+            std::tr1::bind(&RTreeManualQueryHandler::handleRootCreated, this),
             this, QueryHandlerType::mAggregateListener,
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
@@ -99,7 +101,6 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
         );
-        mRTree->initialize();
     }
 
     virtual bool staticOnly() const {
@@ -157,6 +158,9 @@ public:
     void addObject(const ObjectID& obj_id) {
         addObject(mLocCache->startTracking(obj_id));
     }
+    void addObject(const ObjectID& obj_id, const ObjectID& parent) {
+        addObject(mLocCache->startTracking(obj_id), parent);
+    }
     void addObject(const LocCacheIterator& obj_loc_it) {
         ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
         assert(mObjects.find( obj_id) == mObjects.end());
@@ -168,6 +172,42 @@ public:
         // mark it as permanently gone.
         typename ObjectIDSetType::iterator del_obj_it = mRemovedObjects.find(obj_id);
         if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
+    }
+    void addObject(const LocCacheIterator& obj_loc_it, const ObjectID& parent) {
+        ObjectID obj_id = mLocCache->iteratorID(obj_loc_it);
+        assert(mObjects.find( obj_id) == mObjects.end());
+
+        mObjects[obj_id] = obj_loc_it;
+        insertObj(obj_id, parent, mLastTime);
+
+        // If the object had disconnected and reconnected, make sure we don't
+        // mark it as permanently gone.
+        typename ObjectIDSetType::iterator del_obj_it = mRemovedObjects.find(obj_id);
+        if (del_obj_it != mRemovedObjects.end()) mRemovedObjects.erase(del_obj_it);
+    }
+
+    void addNode(const ObjectID& nodeid) {
+        // Nodes (aggregates) that don't have parents specified are just treated
+        // like objects. This should only work if we are getting aggregate loc
+        // info and we're not trying to reconstruct the tree exactly
+        // (i.e. aggregates and objects are treated as a soup of normal objects
+        // with which we can do whatever we want).
+        addObject(nodeid);
+    }
+    void addNode(const ObjectID& nodeid, const ObjectID& parent) {
+        addNode(mLocCache->startTracking(nodeid), parent);
+    }
+    void addNode(const LocCacheIterator& node_loc_it, const ObjectID& parent) {
+        ObjectID node_id = mLocCache->iteratorID(node_loc_it);
+        assert(mNodes.find(node_id) == mNodes.end());
+
+        mNodes[node_id] = node_loc_it;
+        mRTree->insertNode(node_loc_it, parent, mLastTime);
+
+        // If the object had disconnected and reconnected, make sure we don't
+        // mark it as permanently gone.
+        typename ObjectIDSetType::iterator del_node_it = mRemovedObjects.find(node_id);
+        if (del_node_it != mRemovedObjects.end()) mRemovedObjects.erase(del_node_it);
     }
 
     void removeObject(const ObjectID& obj_id, bool temporary = false) {
@@ -181,6 +221,17 @@ public:
         mRemovedObjects.insert(obj_id);
     }
 
+    void removeNode(const ObjectID& nodeid, bool temporary = false) {
+        typename ObjectSet::iterator it = mNodes.find(nodeid);
+        if (it == mNodes.end()) return;
+
+        LocCacheIterator node_loc_it = it->second;
+        mRTree->eraseNode(node_loc_it, mLastTime, temporary);
+        mLocCache->stopTracking(node_loc_it);
+        mNodes.erase(it);
+        mRemovedNodes.insert(nodeid);
+    }
+
     bool containsObject(const ObjectID& obj_id) {
         return (mObjects.find(obj_id) != mObjects.end());
     }
@@ -191,6 +242,9 @@ public:
         for(typename ObjectSet::iterator it = mObjects.begin(); it != mObjects.end(); it++)
             retval.push_back(mLocCache->startTracking(it->first));
         return retval;
+    }
+
+    void reparent(const ObjectID& objid, const ObjectID& parentid) {
     }
 
     virtual void bulkLoad(const ObjectList& objects) {
@@ -209,24 +263,33 @@ public:
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
-        if (do_track)
-            addObject(obj_id);
+        if (do_track) {
+            if (!aggregate)
+                addObject(obj_id);
+            else
+                addNode(obj_id);
+        }
     }
 
     void locationConnectedWithParent(const ObjectID& obj_id, const ObjectID& parent, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
 
         bool do_track = true;
-        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, pos, region, ms);
+        if (mShouldTrackCB) do_track = mShouldTrackCB(obj_id, local, aggregate, pos, region, ms);
 
-        if (do_track)
-            addObject(obj_id);
+        if (do_track) {
+            if (!aggregate)
+                addObject(obj_id, parent);
+            else
+                addNode(obj_id, parent);
+        }
     }
 
     // LocationUpdateListener Implementation
     void locationParentUpdated(const ObjectID& obj_id, const ObjectID& old_par, const ObjectID& new_par) {
+        reparent(obj_id, new_par);
     }
 
     void locationPositionUpdated(const ObjectID& obj_id, const MotionVector3& old_pos, const MotionVector3& new_pos) {
@@ -242,7 +305,9 @@ public:
     }
 
     void locationDisconnected(const ObjectID& obj_id, bool permanent = false) {
+        // Works for objects or internal nodes
         removeObject(obj_id, permanent);
+        removeNode(obj_id, permanent);
     }
 
     // QueryChangeListener Implementation
@@ -312,6 +377,10 @@ protected:
         mRTree->insert(mObjects[obj_id], t);
     }
 
+    void insertObj(const ObjectID& obj_id, const ObjectID& parent, const Time& t) {
+        mRTree->insert(mObjects[obj_id], parent, t);
+    }
+
     void updateObj(const ObjectID& obj_id, const Time& t) {
         typename ObjectSet::iterator it = mObjects.find(obj_id);
         if (it == mObjects.end()) return;
@@ -324,6 +393,14 @@ protected:
         mRTree->erase(mObjects[obj_id], t, temporary);
     }
 
+
+    void handleRootCreated() {
+        assert(mRTree->root() != NULL);
+        // Initialize any cuts that haven't been initialized yet (never got
+        // past, or dropped to, cut length 0)
+        for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++)
+            if (it->second->cut->cutSize() == 0) it->second->cut->init(mRTree->root());
+    }
 
     ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.
     template <class XSimulationTraits> struct CutNode;
@@ -564,6 +641,8 @@ protected:
     RTree* mRTree;
     ObjectSet mObjects;
     ObjectIDSetType mRemovedObjects;
+    ObjectSet mNodes;
+    ObjectIDSetType mRemovedNodes;
     QueryMap mQueries;
     Time mLastTime;
     uint8 mElementsPerNode;
