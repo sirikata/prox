@@ -137,13 +137,14 @@ public:
     int size() const { return mRoot->treeSize(); }
 
     void insert(const LocCacheIterator& obj, const Time& t) {
+       
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
 
         mRoot = RTree_insert_object(mRoot, mLocCache, obj, t, mCallbacks);
 
-        mRestructureMightHaveEffect = true;
+        mRestructureMightHaveEffect = true;                
     }
 
     void update(const LocCacheIterator& obj, const Time& t) {

@@ -35,6 +35,7 @@
 
 #include <prox/util/Platform.hpp>
 #include <prox/base/LocationUpdateListener.hpp>
+#include <prox/base/ZernikeDescriptor.hpp>
 
 namespace Prox {
 
@@ -109,7 +110,10 @@ public:
         BoundingSphere reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() );
     }
+
     virtual float32 maxSize(const Iterator& id) = 0;
+    virtual ZernikeDescriptor& zernikeDescriptor(const Iterator& id) = 0;
+    virtual String mesh(const Iterator& id) = 0;
     virtual BoundingSphere worldCompleteBounds(const Iterator& id, const Time& t) {
         BoundingSphere reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );

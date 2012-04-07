@@ -110,7 +110,9 @@ public:
        mRebuildRequest(),
        mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this),
        mMaxQueriesTransitionedPerIteration(batch_size)
-    {}
+    {
+      
+    }
 
     virtual ~RebuildingQueryHandler() {
         // Allow other thread to exit

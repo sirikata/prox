@@ -41,6 +41,12 @@
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
 
+// Currently the following two are arbitrarily selected parameters.
+// Need to explore this parameter space.
+    
+#define kShapeParameter 0.1f
+#define kGeometryParameter (1.0 - kShapeParameter)
+
 namespace Prox {
 
 template<typename CutNode>
@@ -250,8 +256,8 @@ public:
     bool empty() const {
         return (count == 0);
     }
-    bool full() const {
-        return (count == max_elements);
+    bool full() const {      
+      return (count >= max_elements);
     }
     Index size() const {
         return count;
@@ -314,7 +320,7 @@ public:
         BoundingSphere orig = mData.getBounds();
         mData = NodeData();
         for(int i = 0; i < size(); i++)
-            mData.mergeIn( childData(i, loc, t) );
+          mData.mergeIn( childData(i, loc, t), size() );
         BoundingSphere updated = mData.getBounds();
         if (cb.aggregate != NULL && updated != orig)
             cb.aggregate->aggregateBoundsUpdated(cb.aggregator, aggregate, mData.getBounds());
@@ -368,7 +374,7 @@ public:
 
     void insert(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t, const Callbacks& cb) {
         assert (count < max_elements);
-        assert (leaf() == true);
+        assert (leaf() == true);        
 
         int idx = count;
         // Use placement new to get the constructor called without using
@@ -378,7 +384,7 @@ public:
         new (&(elements.objects[idx])) LeafNode(obj);
         cb.objectLeafChanged(obj, this);
         count++;
-        mData.mergeIn( NodeData(loc, obj, t) );
+        mData.mergeIn( NodeData(loc, obj, t), size() );
 
         if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.aggregator, aggregate, loc->iteratorID(obj), mData.getBounds());
 
@@ -413,7 +419,7 @@ public:
         // And insert the node and update stats
         elements.nodes[idx] = node;
         count++;
-        mData.mergeIn( node->data() );
+        mData.mergeIn( node->data(), size() );
 
         if (cb.aggregate != NULL) cb.aggregate->aggregateChildAdded(cb.aggregator, aggregate, node->aggregate, mData.getBounds());
     }
@@ -534,16 +540,17 @@ public:
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     BoundingSphereDataBase()
-     : bounding_sphere(Vector3(0,0,0), -1.f) // Invalid, should merge properly
+      : bounding_sphere(Vector3(0,0,0), -1.f) // Invalid, should merge properly        
     {
     }
 
-    BoundingSphereDataBase(LocationServiceCacheType* loc, const LocCacheIterator& obj, const Time& t)
-     : bounding_sphere( loc->worldCompleteBounds(obj, t) )
+
+    BoundingSphereDataBase(LocationServiceCacheType* loc, const LocCacheIterator& obj,  const Time& t)
+      : bounding_sphere( loc->worldCompleteBounds(obj, t) )
     {
         // Note use of worldCompleteBounds above instead of worldRegion because
         // we need to take into account the size of the objects as well as their
-        // locations.
+        // locations.      
     }
 
     // Return the result of merging this info with the given info
@@ -554,15 +561,14 @@ public:
     }
 
     // Merge the given info into this info
-    void mergeIn(const NodeData& other) {
-        bounding_sphere.mergeIn(other.bounding_sphere);
+    void mergeIn(const NodeData& other, uint32 currentChildrenCount) {
+      bounding_sphere.mergeIn(other.bounding_sphere);        
     }
 
     // Check if this data satisfies the query constraints given
     bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
         Vector3 obj_pos = bounding_sphere.center();
         float obj_radius = bounding_sphere.radius();
-
         return (satisfiesConstraintsBounds<SimulationTraits>(obj_pos, obj_radius, qpos, qregion, qmaxsize, qangle, qradius) != -1);
     }
     // Get the score (or -1) for this data, given the query constraints
@@ -577,20 +583,20 @@ public:
     static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
-
+      
         BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
-
+        
         for(int i = 0; i < node->size(); i++) {
-            RTreeNodeType* child_node = node->node(i);
-            BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
-            float increase = merged.volume() - child_node->data().bounding_sphere.volume();
-            if (min_increase_node == NULL || increase < min_increase) {
-                min_increase = increase;
-                min_increase_node = child_node;
-            }
+          RTreeNodeType* child_node = node->node(i);
+          BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+          float increase = merged.volume() - child_node->data().bounding_sphere.volume();
+          if (min_increase_node == NULL || increase < min_increase) {
+            min_increase = increase;
+            min_increase_node = child_node;
+          }
         }
-
-        return min_increase_node;
+      
+        return min_increase_node;                  
     }
 
     // Given a list of child data, choose two seeds for the splitting process in quadratic time
@@ -609,11 +615,13 @@ public:
                     *seed1 = idx1;
                 }
             }
-        }
+        }                                
+        
     }
 
     // Given list of split data and current group assignments as well as current group data, select the next child to be added and its group
-    static void pickNextChild(std::vector<NodeData>& split_data, const SplitGroups& split_groups, const NodeData& group_data_0, const NodeData& group_data_1, int32* next_child, int32* selected_group) {
+    static void pickNextChild(std::vector<NodeData>& split_data, const SplitGroups& split_groups, const NodeData& group_data_0, const NodeData& group_data_1, int32* next_child, int32* selected_group)  {
+      
         float max_preference = -1.0f;
         *next_child = -1;
         *selected_group = -1;
@@ -633,7 +641,7 @@ public:
                 *next_child = i;
                 *selected_group = (diff0 < diff1) ? 0 : 1;
             }
-        }
+        }      
     }
 
     void verifyChild(const NodeData& child) const {
@@ -661,7 +669,7 @@ public:
 
     float surfaceArea() const {
         return getBounds().surfaceArea();
-    }
+    }    
 
     /** Get the radius within which a querier asking for the given minimum solid
      *  angle will get this data as a result, i.e. the radius within which this
@@ -684,7 +692,7 @@ public:
     }
 
 protected:
-    BoundingSphere bounding_sphere;
+    BoundingSphere bounding_sphere;        
 };
 
 
@@ -733,10 +741,11 @@ public:
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
        mMaxRadius(0.f)
     {
+      
     }
 
     MaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-     : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
+      : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(loc, obj_id, t),
        mMaxRadius( loc->maxSize(obj_id) )
     {
         // Note: we override this here because we need worldCompleteBounds for
@@ -753,10 +762,10 @@ public:
     }
 
     // Merge the given info into this info
-    void mergeIn(const NodeData& other) {
-        BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::mergeIn(other);
-        mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
-    }
+  void mergeIn(const NodeData& other, uint32 currentChildrenCount) {      
+    BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::mergeIn(other, currentChildrenCount);
+    mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
+  }
 
     // Check if this data satisfies the query constraints given
     bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
@@ -783,7 +792,7 @@ public:
         RTreeNodeType* min_increase_node = NULL;
 
         BoundingSphere obj_bounds = loc->worldRegion(obj_id, t);
-        float obj_max_size = loc->maxSize(obj_id);
+        float obj_max_size = loc->maxSize(obj_id);        
 
         for(int i = 0; i < node->size(); i++) {
             RTreeNodeType* child_node = node->node(i);
@@ -851,6 +860,254 @@ private:
     float mMaxRadius;
 };
 
+
+/* Maintains the largest bounding sphere radius as well as the hierarchical bounding sphere.
+   But it also tries to group similar objects together as much as it can based on their zernike 
+   descriptors.
+*/
+template<typename SimulationTraits, typename CutNode>
+class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits, CutNode>, CutNode> {
+  public:
+    typedef SimilarMaxSphereData NodeData; // For convenience/consistency
+    typedef BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
+
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::Vector3Type Vector3;
+    typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
+    typedef typename SimulationTraits::SolidAngleType SolidAngle;
+    typedef typename SimulationTraits::TimeType Time;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
+    typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
+
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    SimilarMaxSphereData()
+      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>(),
+        mMaxRadius(0.f), zernike_descriptor(ZernikeDescriptor::null()),
+        mesh("")
+    {
+      
+    }
+
+    SimilarMaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>(loc, obj_id, t),
+        mMaxRadius( loc->maxSize(obj_id) ), zernike_descriptor(loc->zernikeDescriptor(obj_id)),
+        mesh(loc->mesh(obj_id))
+    {
+      // Note: we override this here because we need worldCompleteBounds for
+      // just the bounds data, but with the max size values, we can use the
+      // smaller worldRegion along with the maximum size object.  Note
+      // difference in satisfiesConstraints
+      ThisBase::bounding_sphere = loc->worldRegion(obj_id, t);
+    }
+
+    NodeData merge(const NodeData& other) const {
+      NodeData result = BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>::merge(other);
+      result.mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
+      return result;
+    }
+
+    // Merge the given info into this info
+    void mergeIn(const NodeData& other, uint32 currentChildrenCount) {      
+      BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>::mergeIn(other, currentChildrenCount);
+      mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
+
+      zernike_descriptor = zernike_descriptor.multiply(currentChildrenCount-1).plus(other.zernike_descriptor).divide(currentChildrenCount);
+    }
+
+    // Check if this data satisfies the query constraints given
+    bool satisfiesConstraints(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
+      // We create a virtual stand in object which is the worst case object that could be in this subtree.
+      // It's centered at the closest point on the hierarchical bounding sphere to the query, and has the
+      // largest radius of any objects in the subtree.
+
+      Vector3 obj_pos = ThisBase::bounding_sphere.center();
+      float obj_radius = ThisBase::bounding_sphere.radius();
+
+      return (satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_pos, obj_radius, mMaxRadius, qpos, qregion, qmaxsize, qangle, qradius) != -1);
+    }
+    // Get the score (or -1) for this data, given the query constraints
+    float32 score(const Vector3& qpos, const BoundingSphere& qregion, const float qmaxsize, const SolidAngle& qangle, const float qradius) const {
+      Vector3 obj_pos = ThisBase::bounding_sphere.center();
+      float obj_radius = ThisBase::bounding_sphere.radius();
+
+      return satisfiesConstraintsBoundsAndMaxSize<SimulationTraits>(obj_pos, obj_radius, mMaxRadius, qpos, qregion, qmaxsize, qangle, qradius);
+    }
+
+    // Given an object and a time, select the best child node to put the object in
+    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+      //the metric used to choose the best child node.
+      float min_metric = FLT_MAX;
+
+      RTreeNodeType* chosen_node = NULL;
+
+      BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
+      const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+      
+      //trying to balance between choosing far-away objects for grouping and choosing
+      //similar objects for grouping.
+      for (int i=0; i<node->size(); i++) {
+        RTreeNodeType* child_node = node->node(i);
+
+
+        BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+        float ns_minus_os =  (merged.radius() - child_node->data().bounding_sphere.radius())
+          / child_node->data().bounding_sphere.radius();
+
+        ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
+  
+        float nz_minus_mz = median_zd.minus(new_zd).l2Norm()/median_zd.l2Norm();
+
+        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;        
+
+        if (chosen_node == NULL || metric < min_metric) {
+          min_metric = metric;
+          chosen_node = child_node;
+        }
+      }
+
+      return chosen_node;
+    }
+
+    // Given a list of child data, choose two seeds for the splitting process in quadratic time
+    static void pickSeedsQuadratic(const std::vector<NodeData>& split_data, int32* seed0, int32* seed1) {
+      float THRESHOLD_PARAMETER = 0.8f;
+
+      *seed0 = -1; *seed1 = -1;
+      float max_waste = -FLT_MAX;
+      float zernike_difference_for_max_waste_pair = -FLT_MAX;
+
+      for(uint32 idx0 = 0; idx0 < split_data.size(); idx0++) {
+            for(uint32 idx1 = idx0+1; idx1 < split_data.size(); idx1++) {
+                BoundingSphere merged = split_data[idx0].bounding_sphere.merge(split_data[idx1].bounding_sphere);
+
+                float waste = merged.volume() - split_data[idx0].bounding_sphere.volume() - split_data[idx1].bounding_sphere.volume();                
+
+                if (waste > max_waste) {
+                    max_waste = waste;
+                    *seed0 = idx0;
+                    *seed1 = idx1;
+
+                    zernike_difference_for_max_waste_pair = split_data[idx0].zernike_descriptor.
+                                                            minus(split_data[idx1].zernike_descriptor).l2Norm();
+
+                    zernike_difference_for_max_waste_pair /= split_data[idx0].zernike_descriptor.l2Norm();
+                }
+            }
+      }
+        
+      for(uint32 idx0 = 0; idx0 < split_data.size(); idx0++) {
+            for(uint32 idx1 = idx0+1; idx1 < split_data.size(); idx1++) {
+                BoundingSphere merged = split_data[idx0].bounding_sphere.merge(split_data[idx1].bounding_sphere);
+
+                float waste = merged.volume() - split_data[idx0].bounding_sphere.volume() - split_data[idx1].bounding_sphere.volume();
+                
+                float zernike_difference = split_data[idx0].zernike_descriptor.
+                                                            minus(split_data[idx1].zernike_descriptor).l2Norm();
+
+                zernike_difference /= split_data[idx0].zernike_descriptor.l2Norm();
+                
+                if (waste > max_waste*THRESHOLD_PARAMETER 
+                    && zernike_difference > zernike_difference_for_max_waste_pair)
+                {
+                    *seed0 = idx0;
+                    *seed1 = idx1;
+                    zernike_difference_for_max_waste_pair = zernike_difference;
+                }
+            }
+      }
+
+    }
+
+    // Given list of split data and current group assignments as well as current group data, select the next child to be added and its group
+    static void pickNextChild(std::vector<NodeData>& split_data, const SplitGroups& split_groups, const NodeData& group_data_0, const NodeData& group_data_1, int32* next_child, int32* selected_group)  {
+        float max_metric = -1.0;
+        *next_child = -1;
+        *selected_group = -1;
+
+        for(uint32 i = 0; i < split_data.size(); i++) {
+            if (split_groups[i] != UnassignedGroup) continue;
+
+            BoundingSphere merged0 = group_data_0.bounding_sphere.merge(split_data[i].bounding_sphere);
+            BoundingSphere merged1 = group_data_1.bounding_sphere.merge(split_data[i].bounding_sphere);
+
+            float diff0 = (merged0.radius() - group_data_0.bounding_sphere.radius()) / (group_data_0.bounding_sphere.radius() + 1);
+            float diff1 = (merged1.radius() - group_data_1.bounding_sphere.radius()) / (group_data_1.bounding_sphere.radius() + 1);
+
+            float zdiff0 = group_data_0.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() / group_data_0.zernike_descriptor.l2Norm();
+            float zdiff1 = group_data_1.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() / group_data_1.zernike_descriptor.l2Norm();
+
+            float metric0 = kShapeParameter * zdiff0 + kGeometryParameter * diff0;
+            float metric1 = kShapeParameter * zdiff1 + kGeometryParameter * diff1;
+
+            float metric = fabs(metric0-metric1);  
+
+            if (metric > max_metric) {
+                max_metric = metric;
+                *next_child = i;
+                *selected_group = (metric0 < metric1) ? 0 : 1;                
+            }
+        }
+
+    }
+
+    void verifyChild(const NodeData& child) const {
+      BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>::verifyChild(child);
+
+      if ( child.mMaxRadius > mMaxRadius) {
+        printf(
+               "Child radius greater than recorded maximum child radius: %f > %f\n",
+               child.mMaxRadius, mMaxRadius
+               );
+      }
+    }
+
+    /** Gets the current bounds of the node.  This should be the true,
+     *  static bounds of the objects, not just the region they cover.
+     *  Use of this method (to generate aggregate object Loc
+     *  information) currently assumes we're not making aggregates be
+     *  moving objects.
+     */
+    BoundingSphere getBounds() const {
+      return BoundingSphere( ThisBase::bounding_sphere.center(), ThisBase::bounding_sphere.radius() + mMaxRadius );
+    }
+
+    /** Gets the volume of this bounds of this region. */
+    float volume() const {
+      return getBounds().volume();
+    }
+
+    String getMesh() const {
+      return mesh;
+    }
+
+    /** Get the radius within which a querier asking for the given minimum solid
+     *  angle will get this data as a result, i.e. the radius within which this
+     *  node will satisfy the given query.
+     */
+    float getValidRadius(const SolidAngle& min_sa) const {
+      // There's a minimum value based on when we end up *inside* the volume
+      float bounds_max = getBounds().radius() + mMaxRadius;
+      // Otherwise, we just invert the solid angle formula
+      float sa_max = min_sa.maxDistance(mMaxRadius) + getBounds().radius();
+      return std::max( bounds_max, sa_max );
+    }
+
+    static float hitProbability(const NodeData& parent, const NodeData& child) {
+      static SolidAngle rep_sa(.01); // FIXME
+      float parent_max_rad = parent.getValidRadius(rep_sa);
+      float child_max_rad = child.getValidRadius(rep_sa);
+      float ratio = child_max_rad / parent_max_rad;
+      return ratio*ratio;
+    }
+
+  private:
+    float mMaxRadius;
+    ZernikeDescriptor zernike_descriptor;    
+    String mesh;
+    
+};
+
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_choose_leaf(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
@@ -877,7 +1134,8 @@ void RTree_quadratic_pick_seeds(const std::vector<NodeData>& split_data, SplitGr
     assert( seed0 != -1 && seed1 != -1 );
 
     split_groups[seed0] = 0;
-    split_groups[seed1] = 1;
+    split_groups[seed1] = 1;    
+
     group_data_0 = split_data[seed0];
     group_data_1 = split_data[seed1];
 }
@@ -892,10 +1150,12 @@ void RTree_pick_next_child(std::vector<NodeData>& split_data, SplitGroups& split
     assert(selected_group != -1);
 
     split_groups[next_child] = selected_group;
-    if (selected_group == 0)
-        group_data_0.mergeIn(split_data[next_child]);
-    else
-        group_data_1.mergeIn(split_data[next_child]);
+    if (selected_group == 0) {
+      group_data_0.mergeIn(split_data[next_child], split_data.size());
+    }
+    else {
+      group_data_1.mergeIn(split_data[next_child], split_data.size());
+    }
 
     return;
 }
@@ -946,8 +1206,9 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
     RTree_quadratic_pick_seeds(split_data, split_groups, group_data_0, group_data_1);
 
     // group the remaining ones
-    for(uint32 i = 0; i < split_children.size()-2; i++)
+    for(uint32 i = 0; i < split_children.size()-2; i++) {
         RTree_pick_next_child(split_data, split_groups, group_data_0, group_data_1);
+    }
 
     // copy data into the correct nodes
     node->clear(loc, cb);
@@ -967,7 +1228,6 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
             cb.nodeSplit(cutnode, node, nn);
         }
     }
-
 
     return nn;
 }
@@ -1032,10 +1292,13 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
     RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_node = RTree_choose_leaf(root, loc, obj_id, t);
 
     RTreeNode<SimulationTraits, NodeData, CutNode>* split_node = NULL;
-    if (leaf_node->full())
+    
+
+    if (leaf_node->full()) {
         split_node = RTree_split_node<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData, CutNode>::ObjectChildOperations>(leaf_node, obj_id, loc, t, cb);
+    }
     else
-        leaf_node->insert(loc, obj_id, t, cb);
+        leaf_node->insert(loc, obj_id, t, cb); 
 
     RTreeNode<SimulationTraits, NodeData, CutNode>* new_root = RTree_adjust_tree(leaf_node, split_node, loc, t, cb);
 

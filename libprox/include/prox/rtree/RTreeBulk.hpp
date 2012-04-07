@@ -163,7 +163,7 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
         NodeData leftCurrent;
         for(int i = 0; i < (int)range.size()-1; i++) {
             assert(objects[i].data.getBounds().center().x > -2.65716055e+37);
-            leftCurrent.mergeIn(objects[ range.start + i ].data);
+            leftCurrent.mergeIn(objects[ range.start + i ].data, i);
             sweep[i].left = leftCurrent;
         }
 
@@ -171,7 +171,7 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
         // decide whether we have a better split.
         NodeData rightCurrent;
         for(int i = range.size()-2; i > 0; i--) {
-            rightCurrent.mergeIn(objects[ range.start + i ].data);
+          rightCurrent.mergeIn(objects[ range.start + i ].data, i);
             sweep[i].right = rightCurrent;
 
             float
@@ -309,7 +309,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
         LocCacheIterator loc_it = object_iterators[i];
         ObjectID objid = loc->iteratorID(loc_it);
         objects[idx] = BulkLoadElementType(loc_it, NodeData(loc, loc_it, t));
-        root_data.mergeIn(objects[idx].data);
+        root_data.mergeIn(objects[idx].data, object_iterators.size());
         assert(objects[idx].data.getBounds().center().x > -2.65716055e+37);
         idx++;
     }
