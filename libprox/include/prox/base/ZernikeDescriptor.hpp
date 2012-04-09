@@ -22,13 +22,13 @@ class ZernikeDescriptor {
    }
 
   ZernikeDescriptor(uint32 length, float init_value) {
-    for (uint32_t i=0; i<length; i++) {
+    for (uint32 i=0; i<length; i++) {
        mZernikeMoments.push_back(init_value); 
      }
   }
 
    ZernikeDescriptor(const ZernikeDescriptor& z) {
-     for (uint32_t i=0; i<z.mZernikeMoments.size(); i++) {
+     for (uint32 i=0; i<z.mZernikeMoments.size(); i++) {
        mZernikeMoments.push_back(z.mZernikeMoments[i]); 
      }
    }
@@ -55,7 +55,7 @@ class ZernikeDescriptor {
    String toString() const {     
      std::ostringstream os;
      os << "[";
-     for (uint32_t i = 0; i <  mZernikeMoments.size(); i++) {
+     for (uint32 i = 0; i <  mZernikeMoments.size(); i++) {
        os << mZernikeMoments[i] <<" , ";       
      }
      os << "]";
@@ -68,7 +68,7 @@ class ZernikeDescriptor {
 
    float l2Norm() const {
      float l2norm = 0;
-     for (uint32_t i = 0; i <  mZernikeMoments.size(); i++) {
+     for (uint32 i = 0; i <  mZernikeMoments.size(); i++) {
        l2norm += (mZernikeMoments[i] * mZernikeMoments[i]);
      }
 
@@ -81,7 +81,7 @@ class ZernikeDescriptor {
        new_zd = ZernikeDescriptor(zd.size(), 0);
      }
 
-     for (uint32_t i = 0; i < zd.size() && i < new_zd.size(); i++) {
+     for (uint32 i = 0; i < zd.size() && i < new_zd.size(); i++) {
        new_zd.mZernikeMoments[i] -= zd.mZernikeMoments[i];
      }
 
@@ -94,7 +94,7 @@ class ZernikeDescriptor {
        new_zd = ZernikeDescriptor(zd.size(), 0);
      }
 
-     for (uint32_t i = 0; i < zd.size() && i < new_zd.size(); i++) {
+     for (uint32 i = 0; i < zd.size() && i < new_zd.size(); i++) {
        new_zd.mZernikeMoments[i] += zd.mZernikeMoments[i];
      }
 
@@ -104,7 +104,7 @@ class ZernikeDescriptor {
    ZernikeDescriptor multiply(float multiplier) const{
      ZernikeDescriptor new_zd = *this;
 
-     for (uint32_t i = 0; i <  new_zd.size(); i++) {
+     for (uint32 i = 0; i <  new_zd.size(); i++) {
        new_zd.mZernikeMoments[i] *= multiplier;
      }
 
@@ -116,7 +116,7 @@ class ZernikeDescriptor {
      
      ZernikeDescriptor new_zd = *this;
 
-     for (uint32_t i = 0; i <  new_zd.size(); i++) {
+     for (uint32 i = 0; i <  new_zd.size(); i++) {
        new_zd.mZernikeMoments[i] /= divisor;
      }
 
