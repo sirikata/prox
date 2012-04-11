@@ -17,7 +17,7 @@ BuildOption = collections.namedtuple('BuildOption', ['name', 'values'])
 build_options = [
     BuildOption(name='CMAKE_BUILD_TYPE', values=['Debug', 'Release']),
     BuildOption(name='LIBPROX_BUILD_PROXSIM', values=['FALSE', 'TRUE']),
-    BuildOption(name='LIBPROX_RTREE_DATA', values=['BOUNDS', 'MAXSIZE']),
+    BuildOption(name='LIBPROX_RTREE_DATA', values=['BOUNDS', 'MAXSIZE', 'SIMILARMAXSIZE']),
     BuildOption(name='LIBPROX_DEBUG_VALIDATE', values=['ON', 'OFF']),
     BuildOption(name='LIBPROX_RTREE_LIFT_CUTS', values=['OFF', 'ON'])
 ]
