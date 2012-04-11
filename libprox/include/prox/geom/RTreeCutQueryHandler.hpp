@@ -430,6 +430,8 @@ public: // Public for the sake of implementation -- node iterators are separate 
     typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_MAXSIZE
     typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
+#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_SIMILARMAXSIZE
+    typedef SimilarMaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
 #else
 # error "Invalid setting for LIBPROX_RTREE_DATA"
 #endif
