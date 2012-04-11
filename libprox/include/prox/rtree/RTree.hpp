@@ -136,6 +136,7 @@ public:
     int size() const { return mRoot != NULL ? mRoot->treeSize() : 0; }
 
     void insert(const LocCacheIterator& obj, const Time& t) {
+       
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
@@ -143,7 +144,7 @@ public:
         ensureHaveRoot();
         mRoot = RTree_insert_object(mRoot, mLocCache, obj, t, mCallbacks);
 
-        mRestructureMightHaveEffect = true;
+        mRestructureMightHaveEffect = true;                
     }
 
     void insert(const LocCacheIterator& obj, const ObjectID& parent, const Time& t) {

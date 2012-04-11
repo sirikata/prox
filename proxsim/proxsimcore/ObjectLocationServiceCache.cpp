@@ -115,6 +115,17 @@ float32 ObjectLocationServiceCache::maxSize(const Iterator& id) {
     return obj->bounds().radius();
 }
 
+ZernikeDescriptor& ObjectLocationServiceCache::zernikeDescriptor(const Iterator& id) {
+    // This test code doesn't currently support meshes/zernike descriptors
+    static ZernikeDescriptor dummy_zd;
+    return dummy_zd;
+}
+
+String ObjectLocationServiceCache::mesh(const Iterator& id) {
+    // This test code doesn't currently support meshes/zernike descriptors
+    return "";
+}
+
 bool ObjectLocationServiceCache::isLocal(const Iterator& id) {
     return true; // We don't deal with replicas in the simulation
 }

@@ -57,6 +57,8 @@ public:
     virtual MotionVector3 location(const Iterator& id);
     virtual BoundingSphere region(const Iterator& id);
     virtual float32 maxSize(const Iterator& id);
+    virtual ZernikeDescriptor& zernikeDescriptor(const Iterator& id);
+    virtual String mesh(const Iterator& id);
     virtual bool isLocal(const Iterator& id);
 
     virtual const ObjectID& iteratorID(const Iterator& id);
