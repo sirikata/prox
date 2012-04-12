@@ -47,7 +47,6 @@ namespace Prox {
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 float RTree_traverse_cost(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t
 ) {
 
@@ -68,9 +67,9 @@ float RTree_traverse_cost(
 
     NodeData this_data = node->data();
     for(typename RTreeNodeType::Index i = 0; i < node->size(); i++) {
-        NodeData child_data = node->childData(i, loc, t);
+        NodeData child_data = node->childData(i, t);
         float p = NodeData::hitProbability(this_data, child_data);
-        float child_cost = (node->leaf() ? COST_LEAF_TEST : RTree_traverse_cost(node->node(i), loc, t));
+        float child_cost = (node->leaf() ? COST_LEAF_TEST : RTree_traverse_cost(node->node(i), t));
         cost += COST_NODE_TEST + p * child_cost;
     }
 
@@ -84,10 +83,9 @@ float RTree_traverse_cost(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 float RTree_cost(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t
 ) {
-    return COST_NODE_TEST + RTree_traverse_cost(node, loc, t);
+    return COST_NODE_TEST + RTree_traverse_cost(node, t);
 }
 
 } // namespace Prox

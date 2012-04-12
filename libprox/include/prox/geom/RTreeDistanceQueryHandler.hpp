@@ -141,7 +141,7 @@ public:
                 if (node->leaf()) {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
-                        float32 score = scoreDistance( node->childData(i,mLocCache,t), qpos, qregion, qmaxsize, qradius );
+                        float32 score = scoreDistance( node->childData(i,t), qpos, qregion, qmaxsize, qradius );
                         if (score != -1)
                             newcache.add(mLocCache->iteratorID(node->object(i).object), score);
                         else
@@ -151,7 +151,7 @@ public:
                 else {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
-                        float32 score = scoreDistance( node->childData(i,mLocCache,t), qpos, qregion, qmaxsize, qradius );
+                        float32 score = scoreDistance( node->childData(i,t), qpos, qregion, qmaxsize, qradius );
                         if (score != -1) {
                             node_heap.push_back(NodeHeapElement(node->node(i), score));
                             if (capped) std::push_heap(node_heap.begin(), node_heap.end());

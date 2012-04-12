@@ -613,7 +613,7 @@ private:
             float qradius = query->radius();
 
             ObjectID child_id = this->getLocCache()->iteratorID(objit);
-            bool child_satisfies = node->childData(objidx, this->getLocCache(), t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+            bool child_satisfies = node->childData(objidx, t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
             return child_satisfies;
         }
     private:
@@ -726,7 +726,7 @@ private:
                         if (node->leaf()) {
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                                checkMembership(child_id, node->rtnode->childData(i, loc, t), qpos, qregion, qmaxsize, qangle, qradius);
+                                checkMembership(child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
                                 visited++;
                             }
                         }
@@ -865,7 +865,7 @@ private:
                         bool any_child_satisfied = false;
                         for(int i = 0; i < node->rtnode->size(); i++) {
                             ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                            bool child_satisfies = node->rtnode->childData(i,loc,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
+                            bool child_satisfies = node->rtnode->childData(i,t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
                             visited++;
                             if (child_satisfies) {
                                 any_child_satisfied = true;
@@ -903,7 +903,7 @@ private:
                         // membership is correct.
                         for(int i = 0; i < node->rtnode->size(); i++) {
                             ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                            checkMembership(child_id, node->rtnode->childData(i, loc, t), qpos, qregion, qmaxsize, qangle, qradius);
+                            checkMembership(child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
                             visited++;
                         }
                     }

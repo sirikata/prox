@@ -100,19 +100,18 @@ public:
 // and converts them into a subtree.
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree_from_list(
-    const BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode>& subtree_list,
-    int branching,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb
+    RTree<SimulationTraits, NodeData, CutNode>* owner,
+    const BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode>& subtree_list
 )
 {
-    assert((int)subtree_list.children.size() <= branching);
+    assert((int)subtree_list.children.size() <= owner->elementsPerNode());
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
-    RTreeNodeType* parent = new RTreeNodeType(branching, cb);
+    RTreeNodeType* parent = new RTreeNodeType(owner);
     parent->leaf(false);
 
     for(int i = 0; i < (int)subtree_list.children.size(); i++)
-        parent->insert(subtree_list.children[i].node, cb);
+        parent->insert(subtree_list.children[i].node);
 
     return parent;
 }
@@ -131,13 +130,11 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree_from
 // binary tree.
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_subtree(
-    LocationServiceCache<SimulationTraits>* loc,
+    RTree<SimulationTraits, NodeData, CutNode>* owner,
     const typename SimulationTraits::TimeType& t,
     std::vector< BulkLoadElement<SimulationTraits, NodeData> >& objects,
-    int branching,
     Range range,
-    NodeData parent_data,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb
+    NodeData parent_data
 )
 {
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
@@ -191,12 +188,12 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
 
 
     float no_split_cost = range.size() * COST_LEAF_TEST;
-    if ((int)range.size() < branching && (no_split_cost < bestCost || bestCost < 0.f)) {
+    if ((int)range.size() < owner->elementsPerNode() && (no_split_cost < bestCost || bestCost < 0.f)) {
         // Make a leaf since we can't seem to do any better
-        RTreeNodeType* node = new RTreeNodeType(branching, cb);
+        RTreeNodeType* node = new RTreeNodeType(owner);
         node->leaf(true);
         for(typename ObjectVector::iterator it = objects.begin() + range.start; it != objects.begin() + range.end + 1; it++)
-            node->insert(loc, it->iterator, t, cb);
+            node->insert(it->iterator, t);
         BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;
         retval.append(node, no_split_cost);
         return retval;
@@ -211,11 +208,11 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
 
         BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> left_nodes =
             RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(
-                loc, t, objects, branching, Range(range.start, range.start + bestEvent), bestLeftData, cb
+                owner, t, objects, Range(range.start, range.start + bestEvent), bestLeftData
             );
         BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> right_nodes =
             RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(
-                loc, t, objects, branching, Range(range.start + bestEvent + 1, range.end), bestRightData, cb
+                owner, t, objects, Range(range.start + bestEvent + 1, range.end), bestRightData
             );
 
 
@@ -250,7 +247,7 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
         // If we can do better by handling the nodes we got back directly, then
         // do it
         if (
-            (int)(left_nodes.size() + right_nodes.size()) <= branching &&
+            (int)(left_nodes.size() + right_nodes.size()) <= owner->elementsPerNode() &&
             merged_cost < split_cost
         ) {
             BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;
@@ -262,8 +259,8 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
         }
         else { // Otherwise, build nodes out of them and continue
             BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;
-            retval.append( RTree_rebuild_build_subtree_from_list(left_nodes, branching, cb), left_split_cost );
-            retval.append( RTree_rebuild_build_subtree_from_list(right_nodes, branching, cb), right_split_cost );
+            retval.append( RTree_rebuild_build_subtree_from_list(owner, left_nodes), left_split_cost );
+            retval.append( RTree_rebuild_build_subtree_from_list(owner, right_nodes), right_split_cost );
             return retval;
         }
     }
@@ -275,10 +272,8 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const std::vector<typename LocationServiceCache<SimulationTraits>::Iterator>& object_iterators,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb
+    const std::vector<typename LocationServiceCache<SimulationTraits>::Iterator>& object_iterators
 )
 {
     if (object_iterators.empty()) return root;
@@ -297,7 +292,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     typedef std::vector<BulkLoadElementType> ObjectVector;
 
     // Use the same branching factor
-    Index branching = root->capacity();
+    RTree<SimulationTraits, NodeData, CutNode>* owner = root->owner();
+    LocationServiceCacheType* loc = root->loc();
 
     // Collect all the information we need about the objects, specifying that we
     // are now tracking them and getting our own iterators to them. This will
@@ -315,8 +311,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild(
     }
 
     BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> root_children =
-        RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(loc, t, objects, branching, Range(object_iterators.size()), root_data, cb);
-    return RTree_rebuild_build_subtree_from_list(root_children, branching, cb);
+        RTree_rebuild_build_subtree<SimulationTraits, NodeData, CutNode>(owner, t, objects, Range(object_iterators.size()), root_data);
+    return RTree_rebuild_build_subtree_from_list(owner, root_children);
 }
 
 } // namespace Prox

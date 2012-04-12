@@ -119,12 +119,14 @@ public:
     }
 
     ~RTree() {
-        if (mRoot != NULL) RTree_destroy_tree(mRoot, mLocCache, mCallbacks);
+        if (mRoot != NULL) RTree_destroy_tree(mRoot);
     }
 
 
     bool staticObjects() const { return mStaticObjects; }
-
+    typename RTreeNodeType::Index elementsPerNode() const { return mElementsPerNode; }
+    LocationServiceCacheType* loc() const { return mLocCache; }
+    const typename RTreeNodeType::Callbacks& callbacks() const { return mCallbacks; };
 
     RTreeNodeType* root() {
         return mRoot;
@@ -136,15 +138,15 @@ public:
     int size() const { return mRoot != NULL ? mRoot->treeSize() : 0; }
 
     void insert(const LocCacheIterator& obj, const Time& t) {
-       
+
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
 
         ensureHaveRoot();
-        mRoot = RTree_insert_object(mRoot, mLocCache, obj, t, mCallbacks);
+        mRoot = RTree_insert_object(mRoot, obj, t);
 
-        mRestructureMightHaveEffect = true;                
+        mRestructureMightHaveEffect = true;
     }
 
     void insert(const LocCacheIterator& obj, const ObjectID& parent, const Time& t) {
@@ -154,7 +156,7 @@ public:
 
         assert(mRTreeNodes.find(parent) != mRTreeNodes.end());
         RTreeNodeType* at_node = mRTreeNodes[parent];
-        mRoot = RTree_insert_object_at_node(at_node, mLocCache, obj, t, mCallbacks);
+        mRoot = RTree_insert_object_at_node(at_node, obj, t);
 
         mRestructureMightHaveEffect = true;
     }
@@ -165,7 +167,7 @@ public:
 
         assert(parent == ObjectIDNull()() || mRTreeNodes.find(parent) != mRTreeNodes.end());
 
-        RTreeNodeType* new_node = RTree_create_new_node<SimulationTraits, NodeData, CutNode>(mElementsPerNode, mLocCache, node, t, mCallbacks);
+        RTreeNodeType* new_node = RTree_create_new_node<SimulationTraits, NodeData, CutNode>(this, node, t);
         mRTreeNodes[nodeid] = new_node;
 
         if (parent == ObjectIDNull()()) {
@@ -176,7 +178,7 @@ public:
         }
         else {
             RTreeNodeType* at_node = mRTreeNodes[parent];
-            RTree_insert_new_node_at_node(new_node, at_node, mCallbacks);
+            RTree_insert_new_node_at_node(new_node, at_node);
         }
     }
 
@@ -184,18 +186,18 @@ public:
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
-        mRoot = RTree_update_object(mRoot, mLocCache, objid, t, mCallbacks);
+        mRoot = RTree_update_object(mRoot, objid, t);
 
         mRestructureMightHaveEffect = true;
     }
 
     void update(const Time& t) {
         if (!mStaticObjects && mRoot != NULL)
-            mRoot = RTree_update_tree(mRoot, mLocCache, t, mCallbacks);
+            mRoot = RTree_update_tree(mRoot, t);
     }
 
     void reportBounds(const Time& t) {
-        RTree_report_bounds(stdout, mRoot, mLocCache, t);
+        RTree_report_bounds(stdout, mRoot, t);
         fprintf(stdout, "\n");
     }
 
@@ -203,7 +205,7 @@ public:
         // Only restructure if we're dealing with dynamic objects or if
         // something has changed/the last restructure pass did something
         if (!mStaticObjects || mRestructureMightHaveEffect) {
-            RestructureInfo info = RTree_restructure_tree(mRoot, mLocCache, t, mCallbacks);
+            RestructureInfo info = RTree_restructure_tree(mRoot, t);
             if (mReportRestructures && mReportRestructures())
                 printf("{ \"time\" : %d, \"count\" : %d, \"cuts-rebuilt\" : %d }\n", (int)(t-Time::null()).milliseconds(), info.restructures, info.cutRebuilds);
             // Without any additions/removals, a restructure pass can only have
@@ -216,7 +218,7 @@ public:
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) != mObjectLeaves.end());
 
-        mRoot = RTree_delete_object(mRoot, mLocCache, obj, t, temporary, mCallbacks);
+        mRoot = RTree_delete_object(mRoot, obj, t, temporary);
         mObjectLeaves.erase(objid);
 
         mRestructureMightHaveEffect = true;
@@ -228,7 +230,7 @@ public:
         assert(nodeit != mRTreeNodes.end());
         RTreeNodeType* rtnode = nodeit->second;
 
-        mRoot = RTree_delete_node(mRoot, rtnode, mLocCache, t, temporary, mCallbacks);
+        mRoot = RTree_delete_node(mRoot, rtnode, t, temporary);
         mRTreeNodes.erase(nodeid);
 
         mRestructureMightHaveEffect = true;
@@ -236,7 +238,7 @@ public:
 
     /** If in debug mode, verify the constraints on the data structure. */
     void verifyConstraints(const Time& t) {
-        if (mRoot != NULL) RTree_verify_constraints(mRoot, mLocCache, t);
+        if (mRoot != NULL) RTree_verify_constraints(mRoot, t);
     }
 
     void bulkLoad(const std::vector<LocCacheIterator>& object_iterators, const Time& t) {
@@ -247,15 +249,14 @@ public:
         // Then do the actual computation
         ensureHaveRoot();
         mRoot = RTree_rebuild(
-            mRoot, mLocCache, t,
-            object_iterators,
-            mCallbacks
+            mRoot, t,
+            object_iterators
         );
         mRestructureMightHaveEffect = true;
     }
 
     float cost(const Time& t) {
-        return (mRoot != NULL) ? RTree_cost(mRoot, mLocCache, t) : 0.f;
+        return (mRoot != NULL) ? RTree_cost(mRoot, t) : 0.f;
     }
 
 
@@ -416,7 +417,7 @@ private:
     // incorrect for replication.
     void ensureHaveRoot() {
         if (mRoot == NULL) {
-            mRoot = new RTreeNodeType(mElementsPerNode, mCallbacks);
+            mRoot = new RTreeNodeType(this);
             if (mRootCreatedCallback != 0) mRootCreatedCallback();
         }
     }

@@ -68,9 +68,7 @@ struct ChildInfo {
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
 void RTree_restructure_split_children(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    const LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
     std::vector<ChildInfo<ChildType, NodeData> >& children,
     uint32 child_begin,
     uint32 child_end)
@@ -117,9 +115,7 @@ void RTree_restructure_split_children(
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename ChildType, typename ChildOperations>
 void RTree_restructure_nodes_children(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
-    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
     std::tr1::unordered_set<typename CutNode::CutType*>* affected_cuts)
 {
     typedef typename SimulationTraits::Vector3Type Vector3;
@@ -147,8 +143,8 @@ void RTree_restructure_nodes_children(
     for(int i = 0; i < node->size(); i++) {
         RTreeNodeType* child_node = node->node(i);
         for(int j = 0; j < child_node->size(); j++)
-            split_children.push_back( ChildInfoType( child_ops.childData(child_node, j), child_node->childData(j,loc,t) ) );
-        child_node->clear(loc, cb);
+            split_children.push_back( ChildInfoType( child_ops.childData(child_node, j), child_node->childData(j,t) ) );
+        child_node->clear();
     }
 
     //printf("Restructuring %d %d\n", (int)node->size(), (int)split_children.size());
@@ -167,11 +163,11 @@ void RTree_restructure_nodes_children(
         if (ranges.singleDiv()) {
             // Map the children in the range back into the child
             for(uint32 i = ranges.grandchildStart(); i <= ranges.grandchildEnd(); i++)
-                child_ops.insert( node->node(ranges.child()), loc, split_children[i].child, t, cb);
+                child_ops.insert( node->node(ranges.child()), split_children[i].child, t);
         }
         else {
             RTree_restructure_split_children<SimulationTraits, NodeData, CutNode, ChildType, ChildOperations>(
-                node, loc, t, cb, split_children, ranges.grandchildStart(), ranges.grandchildEnd()
+                node, t, split_children, ranges.grandchildStart(), ranges.grandchildEnd()
             );
             childRangesStack.push(ranges.bottomHalf());
             childRangesStack.push(ranges.topHalf());
@@ -208,9 +204,7 @@ struct RestructureInfo {
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RestructureInfo RTree_restructure_tree_work(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    LocationServiceCache<SimulationTraits>* loc,
     const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb,
     std::tr1::unordered_set<typename CutNode::CutType*>* affected_cuts)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
@@ -225,11 +219,11 @@ RestructureInfo RTree_restructure_tree_work(
 
     // Allow children to restructure first
     for(int i = 0; i < root->size(); i++) {
-        RestructureInfo child_restructured = RTree_restructure_tree_work(root->node(i), loc, t, cb, affected_cuts);
+        RestructureInfo child_restructured = RTree_restructure_tree_work(root->node(i), t, affected_cuts);
         result += child_restructured;
     }
     if (result.restructures > 0) // some descendent restructured
-        root->recomputeData(loc, t, cb);
+        root->recomputeData(t);
 
     // A node is considered inefficient if there is a lot of overlap between its
     // children.  We can tell if there's a lot of overlap by comparing the sum
@@ -244,13 +238,13 @@ RestructureInfo RTree_restructure_tree_work(
         return result;
 
     if (root->node(0)->leaf())
-        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, loc, t, cb, affected_cuts);
+        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, t, affected_cuts);
     else
-        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, loc, t, cb, affected_cuts);
+        RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, t, affected_cuts);
 
     result.restructures += 1;
 
-    root->recomputeData(loc, t, cb);
+    root->recomputeData(t);
 
     return result;
 }
@@ -260,9 +254,7 @@ RestructureInfo RTree_restructure_tree_work(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RestructureInfo RTree_restructure_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
-    LocationServiceCache<SimulationTraits>* loc,
-    const typename SimulationTraits::TimeType& t,
-    const typename RTreeNode<SimulationTraits, NodeData, CutNode>::Callbacks& cb)
+    const typename SimulationTraits::TimeType& t)
 {
     // This is just the driver which runs the process and then takes care of the
     // last step of cleaning up cuts.
@@ -271,7 +263,7 @@ RestructureInfo RTree_restructure_tree(
     typedef typename CutNode::CutType Cut;
     typedef std::tr1::unordered_set<Cut*> CutSet;
     CutSet affected_cuts;
-    result = RTree_restructure_tree_work(root, loc, t, cb, &affected_cuts);
+    result = RTree_restructure_tree_work(root, t, &affected_cuts);
 
     // Finally, we take our list of cuts we compiled at the beginning and have
     // them reorganize their cut node list.  All the *cut nodes* should have
