@@ -82,7 +82,7 @@ public:
     typedef typename RTreeNodeType::Index Index;
 
     RTree(Index elements_per_node, LocationServiceCacheType* loccache,
-        bool static_objects,
+        bool static_objects, bool replicated,
         ReportRestructuresCallback report_restructures_cb,
         RootCreatedCallback root_created_cb,
         AggregatorType* aggregator = NULL,
@@ -95,6 +95,7 @@ public:
      : mLocCache(loccache),
        mElementsPerNode(elements_per_node),
        mStaticObjects(static_objects),
+       mReplicated(replicated),
        mRestructureMightHaveEffect(false),
        mReportRestructures(report_restructures_cb)
     {
@@ -125,6 +126,7 @@ public:
 
     bool staticObjects() const { return mStaticObjects; }
     typename RTreeNodeType::Index elementsPerNode() const { return mElementsPerNode; }
+    bool replicated() const { return mReplicated; }
     LocationServiceCacheType* loc() const { return mLocCache; }
     const typename RTreeNodeType::Callbacks& callbacks() const { return mCallbacks; };
 
@@ -138,6 +140,7 @@ public:
     int size() const { return mRoot != NULL ? mRoot->treeSize() : 0; }
 
     void insert(const LocCacheIterator& obj, const Time& t) {
+        assert(!replicated());
 
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
@@ -150,6 +153,8 @@ public:
     }
 
     void insert(const LocCacheIterator& obj, const ObjectID& parent, const Time& t) {
+        assert(replicated());
+
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
@@ -162,6 +167,8 @@ public:
     }
 
     void insertNode(const LocCacheIterator& node, const ObjectID& parent, const Time& t) {
+        assert(replicated());
+
         const ObjectID& nodeid = mLocCache->iteratorID(node);
         assert(mRTreeNodes.find(nodeid) == mRTreeNodes.end());
 
@@ -225,6 +232,8 @@ public:
     }
 
     void eraseNode(const LocCacheIterator& node, const Time& t, bool temporary) {
+        assert(replicated());
+
         const ObjectID& nodeid = mLocCache->iteratorID(node);
         typename ObjectIDNodeMap::const_iterator nodeit = mRTreeNodes.find(nodeid);
         assert(nodeit != mRTreeNodes.end());
@@ -242,6 +251,8 @@ public:
     }
 
     void bulkLoad(const std::vector<LocCacheIterator>& object_iterators, const Time& t) {
+        assert(!replicated());
+
         // Bulk loading requires we initialize as with inserting
         for(typename std::vector<LocCacheIterator>::const_iterator objit = object_iterators.begin(); objit != object_iterators.end(); objit++)
             mObjectLeaves[mLocCache->iteratorID(*objit)] = NULL;
@@ -482,6 +493,7 @@ private:
     ObjectLeafIndex mObjectLeaves;
     ObjectIDNodeMap mRTreeNodes;
     bool mStaticObjects;
+    const bool mReplicated;
     bool mRestructureMightHaveEffect;
     ReportRestructuresCallback mReportRestructures;
     RootCreatedCallback mRootCreatedCallback;

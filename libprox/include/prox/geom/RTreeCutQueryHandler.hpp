@@ -114,7 +114,7 @@ public:
         mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb) {
+    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, bool replicated, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
         mLocUpdateProvider = loc_up_provider;
         mLocUpdateProvider->addUpdateListener(this);
@@ -126,7 +126,7 @@ public:
 
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
-            static_objects,
+            static_objects, replicated,
             std::tr1::bind(&RTreeCutQueryHandler::reportRestructures, this),
             std::tr1::bind(&RTreeCutQueryHandler::handleRootCreated, this),
             this, aggregateListener(),
@@ -201,6 +201,7 @@ public:
 
         ObjectList objects = allObjects();
         bool static_objects = mRTree->staticObjects();
+        bool replicated = mRTree->replicated();
 
         // Destroy current tree
         destroyCurrentTree();
@@ -211,7 +212,7 @@ public:
         using std::tr1::placeholders::_3;
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
-            static_objects,
+            static_objects, replicated,
             std::tr1::bind(&RTreeCutQueryHandler::reportRestructures, this),
             std::tr1::bind(&RTreeCutQueryHandler::handleRootCreated, this),
             this, aggregateListener(),

@@ -20,7 +20,7 @@ Simulator::~Simulator() {
 
 void Simulator::initialize(int churnrate) {
     SimulatorBase::initialize(churnrate);
-    mHandler->initialize(mLocCache, mLocCache, !mHaveMovingObjects);
+    mHandler->initialize(mLocCache, mLocCache, !mHaveMovingObjects, false);
 }
 
 void Simulator::shutdown() {

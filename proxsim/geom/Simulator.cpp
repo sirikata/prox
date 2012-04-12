@@ -82,7 +82,7 @@ void Simulator::initialize(int churnrate, const SolidAngle& min_qangle, const So
     mQueryDistance = dist;
     mQueryMaxResults = max_results;
 
-    mHandler->initialize(mLocCache, mLocCache, !mHaveMovingObjects);
+    mHandler->initialize(mLocCache, mLocCache, !mHaveMovingObjects, false);
 }
 
 void Simulator::createRandomQueries(int nqueries, bool static_queries) {

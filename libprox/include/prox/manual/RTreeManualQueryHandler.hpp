@@ -80,7 +80,7 @@ public:
         mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb) {
+    void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, bool replicated, ShouldTrackCallback should_track_cb) {
         mLocCache = loc_cache;
         mLocUpdateProvider = loc_up_provider;
         mLocUpdateProvider->addUpdateListener(this);
@@ -91,7 +91,7 @@ public:
         using std::tr1::placeholders::_3;
 
         mRTree = new RTree(
-            mElementsPerNode, mLocCache, static_objects, /*report_restructures_cb*/0,
+            mElementsPerNode, mLocCache, static_objects, replicated, /*report_restructures_cb*/0,
             std::tr1::bind(&RTreeManualQueryHandler::handleRootCreated, this),
             this, QueryHandlerType::mAggregateListener,
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),

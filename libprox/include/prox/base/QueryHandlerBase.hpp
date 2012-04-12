@@ -57,6 +57,8 @@ public:
      *  \param loc_up_provider LocationUpdateProvider for location updates.
      *  \param static_objects if true, disables processing necessary for
      *                        supporting dynamic objects.
+     *  \param replicated if true, this query handler will use a data structure
+     *                    replicated from another node.
      *  \param should_track_cb if non-NULL, invoked when new objects are
      *                         discovered to decide whether to track them and
      *                         return them to queriers.
@@ -68,7 +70,7 @@ public:
      *  LocationUpdateListener subscriptions and always passes events onto its
      *  child handlers.
      */
-    virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb = 0) = 0;
+    virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, bool replicated, ShouldTrackCallback should_track_cb = 0) = 0;
 
     /** Returns true if this query handler is configured to only handle static
      *  objects.

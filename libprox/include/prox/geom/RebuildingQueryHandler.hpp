@@ -111,7 +111,7 @@ public:
        mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this),
        mMaxQueriesTransitionedPerIteration(batch_size)
     {
-      
+
     }
 
     virtual ~RebuildingQueryHandler() {
@@ -126,7 +126,10 @@ public:
         mLocUpdateProvider->removeUpdateListener(this);
     }
 
-    virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, ShouldTrackCallback should_track_cb = 0) {
+    virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, bool replicated, ShouldTrackCallback should_track_cb = 0) {
+        // Rebuilding doesn't make sense if you're using replicated data.
+        assert(!replicated);
+
         // Save for rebuilding
         mLocCache = loc_cache;
         mLocUpdateProvider = loc_up_provider;
@@ -138,7 +141,7 @@ public:
         mPrimaryHandler = mImplConstructor();
         // And pass along
         mPrimaryHandler->setAggregateListener(this);
-        mPrimaryHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
+        mPrimaryHandler->initialize(mLocCache, this, mStaticObjects, false, mShouldTrackCB);
     }
 
     virtual bool staticOnly() const {
@@ -419,7 +422,7 @@ protected:
 
             mRebuildingHandler = mImplConstructor();
             mRebuildingHandler->setAggregateListener(this);
-            mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, mShouldTrackCB);
+            mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, false, mShouldTrackCB);
             mRebuildingHandler->bulkLoad(mRebuildObjectList);
             mRebuildObjectList.clear();
 
