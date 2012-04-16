@@ -133,6 +133,8 @@ public:
 
             for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++) {
                 QueryEventType evt;
+                // Query caches are only used for result sets (not tree
+                // replication) so we only need to consider that case here.
                 typename QueryEventType::ObjectEventPermanence perm = QueryEventType::Transient;
                 if (permanent_removals.find(*it) != permanent_removals.end()) perm = QueryEventType::Permanent;
                 evt.removals().push_back( typename QueryEventType::Removal(*it, perm) );

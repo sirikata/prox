@@ -67,9 +67,25 @@ public:
         Normal,
         Imposter
     };
-    /** The permanence of a change. Currently only indicates whether a
-     * removal is permanent (e.g. a disconnect) or temporary (e.g. tree
-     * rearranging, fell out of the result set naturally, etc).
+    /** The permanence of a change. The meaning of this depends on
+     *  whether you're querying for a cut or for a subtree.
+     *
+     *  Querying for a cut:
+     *   * Transient - the cut moved around so that the object isn't
+     *       in the cut anymore, but the object is still in the
+     *       tree. It could reappear in the cut soon.
+     *   * Permanent - the object was actually deleted from the tree.
+     *
+     *  Querying for a subtree for replication:
+     *   * Transient - the cut moved around so that the object isn't
+     *       in the cut anymore, but the object is still in the
+     *       tree. It could reappear in the cut soon.
+     *   * Permanent - the object was actually deleted from the tree
+     *       or the cut moved up and the object/node doesn't need to
+     *       be maintained in the replicated tree anymore. This works
+     *       because replication performed so an additional layer of
+     *       querying can be performed. That layer can worry about
+     *       transient removals for individual queries.
      */
     enum ObjectEventPermanence {
         Transient,

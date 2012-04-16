@@ -95,7 +95,10 @@ public:
             std::tr1::bind(&RTreeManualQueryHandler::handleRootCreated, this),
             this, QueryHandlerType::mAggregateListener,
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleRootCreatedAboveCut, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleRootDestroyedAboveCut, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleSplitAboveCut, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
@@ -451,6 +454,7 @@ protected:
         typedef typename CutBaseType::CutNodeList CutNodeList;
         typedef typename CutBaseType::CutNodeListIterator CutNodeListIterator;
         typedef typename CutBaseType::CutNodeListConstIterator CutNodeListConstIterator;
+        typedef typename CutBaseType::ChangeReason ChangeReason;
 
     private:
         Cut();
@@ -466,7 +470,10 @@ protected:
         typedef typename CutBaseType::ResultSet ResultSet;
         ResultSet results;
 
-
+        using CutBaseType::Change_Deleted;
+        using CutBaseType::Change_Inserted;
+        using CutBaseType::Change_Refined;
+        using CutBaseType::Change_Coarsened;
     public:
 
         /** Regular constructor.  A new cut simply starts with the root node and
@@ -521,6 +528,46 @@ protected:
             // will ensure that if other children are being observed, this one
             // will be as well.
             return true;
+        }
+        bool includeAddition(ChangeReason act) const {
+            // In this query handler we want tree replication. Real insertions
+            // and deletions are included, refinement removals are ignored since
+            // we want the replicated internal nodes to remain, and coarsening
+            // is included because either the querier requested it or it's
+            // happening because the tree in that area needs rearranging.
+            switch(act) {
+              case Change_Inserted:
+                return true;
+              case Change_Deleted:
+                return true;
+              case Change_Refined:
+                return true;
+              case Change_Coarsened:
+                return false;
+              default:
+                assert(false && "Encountered unknown removal reason in includeAddition");
+                return false;
+            }
+        }
+        bool includeRemoval(ChangeReason act) const {
+            // In this query handler we want tree replication. Real insertions
+            // and deletions are included, refinement removals are ignored since
+            // we want the replicated internal nodes to remain, and coarsening
+            // is included because either the querier requested it or it's
+            // happening because the tree in that area needs rearranging.
+            switch(act) {
+              case Change_Inserted:
+                return true;
+              case Change_Deleted:
+                return true;
+              case Change_Refined:
+                return false;
+              case Change_Coarsened:
+                return true;
+              default:
+                assert(false && "Encountered unknown removal reason in includeRemoval");
+                return false;
+            }
         }
 
         // Push events if there are any queued up.

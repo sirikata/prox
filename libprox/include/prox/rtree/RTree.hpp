@@ -88,7 +88,10 @@ public:
         AggregatorType* aggregator = NULL,
         AggregateListenerType* agg = NULL,
         RootReplacedByChildCallback root_replaced_cb = 0,
+        RootReplacedByChildCallback replicated_root_created_cb = 0,
+        RootReplacedByChildCallback replicated_root_destroyed_cb = 0,
         NodeSplitCallback node_split_cb = 0,
+        NodeSplitCallback replicated_node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
         ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
     )
@@ -107,7 +110,10 @@ public:
         mCallbacks.objectLeafChanged = std::tr1::bind(&RTree::onObjectLeafChanged, this, _1, _2);
         mCallbacks.getObjectLeaf = std::tr1::bind(&RTree::getObjectLeaf, this, _1);
         mCallbacks.rootReplaced = root_replaced_cb;
+        mCallbacks.replicatedRootCreated = replicated_root_created_cb;
+        mCallbacks.replicatedRootDestroyed = replicated_root_destroyed_cb;
         mCallbacks.nodeSplit = node_split_cb;
+        mCallbacks.replicatedNodeSplit = replicated_node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
         mCallbacks.reorderCut = reorder_cut_cb;
         mCallbacks.objectInserted = obj_ins_cb;

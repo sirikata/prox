@@ -131,7 +131,11 @@ public:
             std::tr1::bind(&RTreeCutQueryHandler::handleRootCreated, this),
             this, aggregateListener(),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
+            0, 0, /* handleRootCreated/DestroyedAboveCut, not relevant for
+                   * result-generating query handler */
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            0, /* handleSplitAboveCut, not relevant for result-generating query
+                * handler */
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
@@ -217,7 +221,11 @@ public:
             std::tr1::bind(&RTreeCutQueryHandler::handleRootCreated, this),
             this, aggregateListener(),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootReplaced, _1, _2, _3),
+            0, 0, /* handleRootReplacedAboveCut, not relevant for
+                   * result-generating query handler */
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            0, /* handleSplitAboveCut, not relevant for result-generating query
+                * handler */
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
@@ -545,6 +553,7 @@ private:
         typedef typename CutBaseType::CutNodeList CutNodeList;
         typedef typename CutBaseType::CutNodeListIterator CutNodeListIterator;
         typedef typename CutBaseType::CutNodeListConstIterator CutNodeListConstIterator;
+        typedef typename CutBaseType::ChangeReason ChangeReason;
 
         using CutBaseType::parent;
         using CutBaseType::query;
@@ -617,6 +626,17 @@ private:
             bool child_satisfies = node->childData(objidx, t).satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
             return child_satisfies;
         }
+        bool includeAddition(ChangeReason act) const {
+            // In this query handler we want regular cut maintainence. All
+            // removal events should be forwarded.
+            return true;
+        }
+        bool includeRemoval(ChangeReason act) const {
+            // In this query handler we want regular cut maintainence. All
+            // removal events should be forwarded.
+            return true;
+        }
+
     private:
         // Struct which keeps track of how many children do not satisfy the
         // constraint so they can be collapsed.
@@ -709,6 +729,9 @@ private:
                             // If this change allows merging to the parent node of
                             // this node, that'll happen upon push-up
                             QueryEventType evt;
+                            // No need to check like Cut code does for whether
+                            // to includeAddition() because we know it always
+                            // returns true
                             evt.additions().push_back( typename QueryEventType::Addition(node->rtnode, QueryEventType::Imposter) );
                             results.insert( node->rtnode->aggregateID() );
                             for(int i = 0; i < node->rtnode->size(); i++) {
@@ -716,6 +739,9 @@ private:
                                 typename ResultSet::iterator result_it = results.find(child_id);
                                 assert(result_it != results.end());
                                 results.erase(result_it);
+                                // No need to check like Cut code does for
+                                // whether to includeRemoval() because we know
+                                // it always returns true
                                 evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
                             }
                             events.push_back(evt);

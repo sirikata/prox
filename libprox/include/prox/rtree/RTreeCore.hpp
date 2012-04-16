@@ -161,7 +161,13 @@ public:
         ObjectLeafChangedCallback objectLeafChanged;
         GetObjectLeafCallback getObjectLeaf;
         RootReplacedByChildCallback rootReplaced;
+        RootReplacedByChildCallback replicatedRootCreated;
+        RootReplacedByChildCallback replicatedRootDestroyed;
         NodeSplitCallback nodeSplit;
+        // For tree replication, called back for cuts which have been refined
+        // past the node that split, but which are tracking it still and so need
+        // to know about the new node.
+        NodeSplitCallback replicatedNodeSplit;
         LiftCutCallback liftCut;
         ReorderCutCallback reorderCut;
         ObjectInsertedCallback objectInserted;
@@ -358,10 +364,8 @@ public:
 private:
     void notifyRemoved(const LocCacheIterator& obj, bool permanent) {
         ObjectID obj_id = loc()->iteratorID(obj);
-        if (callbacks().objectRemoved) {
-            for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
-                callbacks().objectRemoved(cut_it->second, obj, permanent);
-        }
+        if (callbacks().objectRemoved)
+            RTree_notify_cuts(this, callbacks().objectRemoved, obj, permanent);
 
         if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildRemoved(callbacks().aggregator, aggregate, obj_id, mData.getBounds());
     }
@@ -417,10 +421,8 @@ public:
 
         if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildAdded(callbacks().aggregator, aggregate, loc()->iteratorID(obj), mData.getBounds());
 
-        if (callbacks().objectInserted) {
-            for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = this->cutNodesBegin(); cut_it != this->cutNodesEnd(); cut_it++)
-                callbacks().objectInserted(cut_it->second, obj, idx);
-        }
+        if (callbacks().objectInserted)
+            RTree_notify_cuts(this, callbacks().objectInserted, obj, idx);
     }
 
     /** Insert node as a child and invoke callbacks if necessary. If
@@ -1137,6 +1139,44 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
 };
 
+
+
+// Cut notification utilities.
+// Notify all cuts passing through the given node by calling the method with the
+// CutNode and the given parameters.
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1, typename P2>
+void RTree_notify_cuts(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    F func, const P1& p1, const P2& p2
+)
+{
+    for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd();) {
+        CutNode* cutnode = cut_it->second;
+        cut_it++; // Advance now to avoid invalidating iterator in callback
+        func(cutnode, p1, p2);
+    }
+}
+
+// Notify cuts *below* node with the given call. This is useful if you have an
+// event at a node (e.g. the root) which is relevant to cuts that have refined
+// past it. The cuts through the specified node *are not* notified.
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1, typename P2>
+void RTree_notify_descendant_cuts(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    F func, const P1& p1, const P2& p2
+)
+{
+    // Just follow one path until we hit the leaf nodes, notifying all cuts we
+    // encounter along the way
+    RTreeNode<SimulationTraits, NodeData, CutNode>* n = node;
+    while(n != NULL && !n->leaf() && !n->empty()) {
+        n = n->node(0);
+        RTree_notify_cuts(n, func, p1, p2);
+    }
+}
+
+
+
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_choose_leaf(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
@@ -1252,12 +1292,10 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
     // lifted up to this node if its the root or there are none because they
     // have been lifted to the parent.  There should be no cuts in the children
     // nodes.
-    if (cb.nodeSplit) {
-        for(typename RTreeNodeType::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd(); cut_it++) {
-            CutNode* cutnode = cut_it->second;
-            cb.nodeSplit(cutnode, node, nn);
-        }
-    }
+    if (cb.nodeSplit)
+        RTree_notify_cuts(node, cb.nodeSplit, node, nn);
+    // No replicatedNodeSplit notification because we lifted cuts -- there's
+    // nothing in the descendant nodes to notify
 
     return nn;
 }
@@ -1300,6 +1338,10 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
         new_root->leaf(false);
         new_root->insert(node);
         new_root->insert(nn);
+
+        // All replicated tree cuts will want to know that there's a new root node
+        if (node->callbacks().replicatedRootCreated)
+            RTree_notify_descendant_cuts(new_root, node->callbacks().replicatedRootCreated, node, new_root);
 
         node = new_root;
         nn = NULL;
@@ -1462,10 +1504,13 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
                 // going through the node that we split into two. Cuts that pass
                 // through the tree lower down should have already been taken
                 // care of and should alrady span the entire width of the tree.
-                for(typename RTreeNodeType::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd(); cut_it++) {
-                    CutNode* cutnode = cut_it->second;
-                    cb.nodeSplit(cutnode, node, nn);
-                }
+                RTree_notify_cuts(node, node->callbacks().nodeSplit, node, nn);
+                // And notify cuts through descendant nodes of the
+                // split. The split should have taken care of making sure there
+                // are cut nodes through both subtrees, so we can just send the
+                // notification to one of them.
+                if (cb.replicatedNodeSplit)
+                    RTree_notify_descendant_cuts(node, cb.replicatedNodeSplit, node, nn);
 
                 // Now we should have all the parts of the cut that should be in
                 // the tree. Now we need to patch up the order of things since
@@ -1556,6 +1601,10 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
         new_root->leaf(false);
         new_root->insert(node);
         new_root->insert(nn);
+
+        // All replicated tree cuts will want to know that there's a new root node
+        if (node->callbacks().replicatedRootCreated)
+            RTree_notify_descendant_cuts(new_root, node->callbacks().replicatedRootCreated, node, new_root);
 
         node = new_root;
         nn = NULL;
@@ -2103,14 +2152,13 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_post_deletion_cleanup(
     // We might need to shorten the tree if the root is left with only one child.
     if (!root->leaf() && root->size() == 1) {
         new_root = root->node(0);
-        // Notify cuts so they can refine to the new root
-        if (root->callbacks().rootReplaced) {
-            for(typename RTreeNodeType::CutNodeListConstIterator cut_it = root->cutNodesBegin(); cut_it != root->cutNodesEnd(); ) {
-                CutNode* cutnode = cut_it->second;
-                cut_it++; // Advance now to avoid invalidating iterator in callback
-                root->callbacks().rootReplaced(cutnode, root, new_root);
-            }
-        }
+        // Notify cuts so they can refine to the new root.
+        if (root->callbacks().rootReplaced)
+            RTree_notify_cuts(root, root->callbacks().rootReplaced, root, new_root);
+        // Cuts through descendant nodes want to know that the root was destroyed
+        if (root->callbacks().replicatedRootDestroyed)
+            RTree_notify_descendant_cuts(root, root->callbacks().replicatedRootDestroyed, root, new_root);
+
         new_root->parent(NULL);
         root->destroy();
     }

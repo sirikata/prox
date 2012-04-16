@@ -70,8 +70,17 @@ public:
     void handleRootReplaced(RTreeNodeType* orig_root, RTreeNodeType* new_root) {
         parent->handleRootReplaced(getNativeThis(), orig_root, new_root);
     }
+    void handleRootCreatedAboveCut(RTreeNodeType* orig_root, RTreeNodeType* new_root) {
+        parent->handleRootCreatedAboveCut(getNativeThis(), orig_root, new_root);
+    }
+    void handleRootDestroyedAboveCut(RTreeNodeType* orig_root, RTreeNodeType* new_root) {
+        parent->handleRootDestroyedAboveCut(getNativeThis(), orig_root, new_root);
+    }
     void handleSplit(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
         parent->handleSplit(getNativeThis(), orig_node, new_node);
+    }
+    void handleSplitAboveCut(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+        parent->handleSplitAboveCut(getNativeThis(), orig_node, new_node);
     }
     void handleLiftCut(RTreeNodeType* to_node) {
         parent->handleLiftCut(getNativeThis(), to_node);
