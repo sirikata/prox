@@ -151,7 +151,11 @@ public:
     // cut on the left and right of these ranges should remain as is.
     typedef std::tr1::function<void(typename CutNode::CutType*, const CutRangeVector&)> ReorderCutCallback;
     typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, int)> ObjectInsertedCallback;
-    typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, bool permanent)> ObjectRemovedCallback;
+    // Object was removed from a leaf node. emptiedNode indicates whether the
+    // removal caused the node to become empty. This can be relevant to tracking
+    // cuts since the cut may be need to be moved up (node ID inserted in
+    // results) along with the removal of the child object.
+    typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, bool permanent, bool emptiedNode)> ObjectRemovedCallback;
 
     typedef uint16 Index;
 
@@ -281,6 +285,7 @@ private:
 public:
     RTreeType* owner() const { return mOwner; }
     Index capacity() const { return owner()->elementsPerNode(); }
+    bool replicated() const { return owner()->replicated(); }
     LocationServiceCacheType* loc() const { return owner()->loc(); }
     const Callbacks& callbacks() const { return owner()->callbacks(); }
 
@@ -365,7 +370,7 @@ private:
     void notifyRemoved(const LocCacheIterator& obj, bool permanent) {
         ObjectID obj_id = loc()->iteratorID(obj);
         if (callbacks().objectRemoved)
-            RTree_notify_cuts(this, callbacks().objectRemoved, obj, permanent);
+            RTree_notify_cuts(this, callbacks().objectRemoved, obj, permanent, empty());
 
         if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildRemoved(callbacks().aggregator, aggregate, obj_id, mData.getBounds());
     }
@@ -1156,6 +1161,19 @@ void RTree_notify_cuts(
         func(cutnode, p1, p2);
     }
 }
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1, typename P2, typename P3>
+void RTree_notify_cuts(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    F func, const P1& p1, const P2& p2, const P3& p3
+)
+{
+    for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd();) {
+        CutNode* cutnode = cut_it->second;
+        cut_it++; // Advance now to avoid invalidating iterator in callback
+        func(cutnode, p1, p2, p3);
+    }
+}
+
 
 // Notify cuts *below* node with the given call. This is useful if you have an
 // event at a node (e.g. the root) which is relevant to cuts that have refined
@@ -2187,7 +2205,13 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     assert(leaf_with_obj->leaf());
     leaf_with_obj->erase(obj_id, temporary);
 
-    return RTree_post_deletion_cleanup(root, leaf_with_obj, t);
+    // If the tree is replicated, we don't really want to do anything else, but
+    // if it's our own tree then we want to cleanup nodes if we don't need them
+    // anymore.
+    if (root->replicated())
+        return root;
+    else
+        return RTree_post_deletion_cleanup(root, leaf_with_obj, t);
 }
 
 
@@ -2201,15 +2225,42 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_node(
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
+    // Removing only makes sense if we're replicating trees.
+    assert(root != NULL && root->replicated());
+
+    // We have to deal with some weird cases like removing the root node to
+    // shorten the tree:
     RTreeNodeType* parent = node->parent();
-    if (parent == NULL)
-        return root;
+    if (parent == NULL) {
+        assert(node == root);
+        assert(node->empty() || (!node->leaf() && node->size() == 1));
+        RTreeNodeType* new_root = (node->empty() ? NULL : node->node(0));
+        // Notify cuts so they can refine to the new root.
+        if (root->callbacks().rootReplaced)
+            RTree_notify_cuts(node, node->callbacks().rootReplaced, node, new_root);
 
-    // Notify any cuts that the node is leaving
+        new_root->parent(NULL);
+        node->destroy();
+
+        return new_root;
+    }
+
+    // Otherwise, we should be at the bottom of the tree (not necessarily a leaf
+    // since it's a partially replicated tree).
     assert(!parent->leaf());
+    assert(node->empty());
+    // And we need to get cuts out of the way. lift_cut_nodes should be
+    // sufficient (rather than lift_cut_nodes_from_tree) since there's nowhere
+    // deeper to go
+    RTree_lift_cut_nodes(node, parent);
+    // And then erase the node and destroy it
     parent->erase(node);
+    node->destroy();
 
-    return RTree_post_deletion_cleanup(root, node, t);
+    // Removing nodes only makes sense when replicating trees. We don't want to
+    // do any additional cleanup in that case, so we can just return the old
+    // root.
+    return root;
 }
 
 
@@ -2251,6 +2302,29 @@ void RTree_destroy_tree(
     }
 
     root->destroy();
+}
+
+
+
+// NOTE: This is debugging code and only works if your ObjectID type is ostream
+// compatible. Don't check calls to this in, but it can be handy for debugging.
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_draw_tree(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root,
+    int32 indent = 0)
+{
+
+    for(int i = 0; i < indent; i++) std::cout << " ";
+    std::cout << root->aggregateID() << std::endl;
+
+    if (root->leaf()) {
+        for(int i = 0; i < indent+1; i++) std::cout << " ";
+        std::cout << "(" << root->size() << " object children)" << std::endl;
+    }
+    else {
+        for(int ci = 0; ci < root->size(); ci++)
+            RTree_draw_tree(root->node(ci), indent+1);
+    }
 }
 
 } // namespace Prox

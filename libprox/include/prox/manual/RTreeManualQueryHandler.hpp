@@ -89,6 +89,7 @@ public:
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
         using std::tr1::placeholders::_3;
+        using std::tr1::placeholders::_4;
 
         mRTree = new RTree(
             mElementsPerNode, mLocCache, static_objects, replicated, /*report_restructures_cb*/0,
@@ -102,7 +103,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
-            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3, _4)
         );
     }
 
@@ -307,10 +308,10 @@ public:
         updateObj(obj_id, mLastTime); // FIXME new time?
     }
 
-    void locationDisconnected(const ObjectID& obj_id, bool permanent = false) {
+    void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
         // Works for objects or internal nodes
-        removeObject(obj_id, permanent);
-        removeNode(obj_id, permanent);
+        removeObject(obj_id, temporary);
+        removeNode(obj_id, temporary);
     }
 
     // QueryChangeListener Implementation
@@ -568,6 +569,12 @@ protected:
                 assert(false && "Encountered unknown removal reason in includeRemoval");
                 return false;
             }
+        }
+        bool includeIntermediateEvents() const {
+            // We can't jump across levels without including events for
+            // intermediate nodes since we wouldn't adjust the tracked set
+            // properly without doing this.
+            return true;
         }
 
         // Push events if there are any queued up.

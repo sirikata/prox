@@ -174,7 +174,6 @@ public:
 
     void insertNode(const LocCacheIterator& node, const ObjectID& parent, const Time& t) {
         assert(replicated());
-
         const ObjectID& nodeid = mLocCache->iteratorID(node);
         assert(mRTreeNodes.find(nodeid) == mRTreeNodes.end());
 
@@ -244,7 +243,6 @@ public:
         typename ObjectIDNodeMap::const_iterator nodeit = mRTreeNodes.find(nodeid);
         assert(nodeit != mRTreeNodes.end());
         RTreeNodeType* rtnode = nodeit->second;
-
         mRoot = RTree_delete_node(mRoot, rtnode, t, temporary);
         mRTreeNodes.erase(nodeid);
 

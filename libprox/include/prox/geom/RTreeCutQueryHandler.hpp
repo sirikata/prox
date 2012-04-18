@@ -123,6 +123,7 @@ public:
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
         using std::tr1::placeholders::_3;
+        using std::tr1::placeholders::_4;
 
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
@@ -139,7 +140,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
-            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3, _4)
         );
     }
 
@@ -214,6 +215,7 @@ public:
         using std::tr1::placeholders::_1;
         using std::tr1::placeholders::_2;
         using std::tr1::placeholders::_3;
+        using std::tr1::placeholders::_4;
         mRTree = new RTree(
             mElementsPerNode, mLocCache,
             static_objects, replicated,
@@ -229,7 +231,7 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
-            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3, _4)
         );
         mRTree->bulkLoad(objects, mLastTime);
 
@@ -413,6 +415,7 @@ public:
 
     void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
         removeObject(obj_id, temporary);
+        removeNode(obj_id, temporary);
     }
 
     // QueryChangeListener Implementation
@@ -636,7 +639,11 @@ private:
             // removal events should be forwarded.
             return true;
         }
-
+        bool includeIntermediateEvents() const {
+            // As long as we maintain a cut, the client doesn't care -- it just
+            // needs the result set.
+            return false;
+        }
     private:
         // Struct which keeps track of how many children do not satisfy the
         // constraint so they can be collapsed.

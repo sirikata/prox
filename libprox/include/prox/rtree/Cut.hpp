@@ -35,6 +35,12 @@ public:
 
     typedef typename Prox::RTree<SimulationTraits, NodeDataType, CutNodeType>::RTreeNodeType RTreeNodeType;
 
+protected:
+    // A cut is made up of a list of CutNodes
+    typedef std::list<CutNodeType*> CutNodeList;
+    typedef typename CutNodeList::iterator CutNodeListIterator;
+    typedef typename CutNodeList::const_iterator CutNodeListConstIterator;
+
 public:
     enum ChangeReason {
         Change_Inserted,
@@ -103,6 +109,10 @@ public:
     //    useful and correct) and querying to replicate the tree (where, e.g., a
     //    refinement removal should be ignored as it is still in the tree).
     //  bool includeRemoval(ChangeReason act) const;
+    //    Whether to include intermediate events when moving cuts across more
+    //    than one 'hop', i.e. if you lift a cut multiple levels. Allows cut
+    //    replication and tree replication to work from the same code.
+    //  bool includeIntermediateEvents() const;
     //
     // And these are helpers that make accessing these convenient within this
     // class.
@@ -144,6 +154,9 @@ public:
     }
     bool includeRemoval(ChangeReason act) const {
         return getNativeThis()->includeRemoval(act);
+    }
+    bool includeIntermediateEvents() const {
+        return getNativeThis()->includeIntermediateEvents();
     }
 
     int cutSize() const {
@@ -323,9 +336,7 @@ public:
     }
 
 
-    void handleLiftCut(CutNodeType* cnode, RTreeNodeType* to_node) {
-        validateCut();
-
+    void handleLiftCut_CutResults(CutNodeType* cnode, RTreeNodeType* to_node) {
         // This is tricky. The cutnode may be nowhere near the node we need
         // to pull up to. Instead, we have to find all cut nodes whose nodes
         // are children of to_node, destroy them, and replace them with a
@@ -373,6 +384,98 @@ public:
 
         if (usesAggregates())
             events.push_back(evt);
+    }
+
+    CutNodeListIterator handleLiftCut_TreeReplication_Work(RTreeNodeType* node, QueryEventType& qevt) {
+        // If we haven't reached a node with our cut, we need to recurse.
+        typename RTreeNodeType::CutNodeListConstIterator cnode_it = node->findCutNode(getNativeThis());
+        CutNodeType* cnode = NULL;
+        if (cnode_it == node->cutNodesEnd()) {
+            assert(!node->leaf());
+            // This needs to happen before doing this node's removal so the
+            // ordering goes bottom-up
+            CutNodeListIterator last_cut_it = nodes.end();
+            for(int i = 0; i < node->size(); i++)
+                last_cut_it = handleLiftCut_TreeReplication_Work(node->node(i), qevt);
+            // Mark removal
+            if (includeRemoval(Change_Coarsened))
+                qevt.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Transient) );
+            return last_cut_it;
+        }
+        else {
+            // Otherwise, we can just remove this cut node
+            cnode = cnode_it->second;
+            // Then deal with this node's removal: If we have a cut node for it,
+            // destroy it, which also removes the node from results
+            CutNodeListIterator last_cut_it = std::find(nodes.begin(), nodes.end(), cnode);
+            last_cut_it = nodes.erase(last_cut_it);
+            length--;
+            destroyCutNode(cnode, qevt);
+            return last_cut_it;
+        }
+    }
+
+    void handleLiftCut_TreeReplication(CutNodeType* cnode, RTreeNodeType* to_node) {
+        // If we find a cut node through the target node, then we're already
+        // done
+        if (to_node->findCutNode(getNativeThis()) != to_node->cutNodesEnd()) return;
+
+
+        // This is tricky. The cutnode may be nowhere near the node we need
+        // to pull up to. Instead, we have to find all cut nodes whose nodes
+        // are children of to_node, destroy them, and replace them with a
+        // single cut node at to_node.
+
+        // We also need to make sure we have removals for all the intermediate
+        // nodes between the existing cut and the new cut node so the tree
+        // replication works properly. Since we're going to need to visit all of
+        // these nodes anyway, we'll just clear out cut nodes by doing a
+        // post-order traversal of the tree, generating node removals and
+        // clearing out cut nodes. Then, once we're done with that we can fill
+        // in the new cut node.
+
+        // We put all the events into a single query event. This works because
+        // the events are ordered, so as long as we remove bottom up, the
+        // replicated tree should get cleaned up just fine.
+
+        QueryEventType evt;
+
+        // Generate all the removal events and remove cut nodes below this
+        // node. Start one level down from the target node since we just want to
+        // remove cuts below it.
+        CutNodeListIterator last_cut_it;
+        assert(!to_node->leaf());
+        for(int i = 0; i < to_node->size(); i++)
+            last_cut_it = handleLiftCut_TreeReplication_Work(to_node->node(i), evt);
+
+
+        // And insert the new node
+        CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), to_node, getAggregateListener());
+        if (usesAggregates()) {
+            if (includeAddition(Change_Coarsened))
+                evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
+            addToResults(new_cnode->rtnode->aggregateID());
+        }
+        nodes.insert(last_cut_it, new_cnode);
+        length++;
+
+        if (usesAggregates())
+            events.push_back(evt);
+    }
+
+    void handleLiftCut(CutNodeType* cnode, RTreeNodeType* to_node) {
+        validateCut();
+
+        //std::cout << "lifting cut to " << to_node->aggregateID() << std::endl;
+        //for(CutNodeListIterator pit = nodes.begin(); pit != nodes.end(); pit++)
+        //    std::cout << "  node " << (*pit)->rtnode->aggregateID() << std::endl;
+
+        if (includeIntermediateEvents()) {
+            handleLiftCut_CutResults(cnode, to_node);
+        }
+        else {
+            handleLiftCut_TreeReplication(cnode, to_node);
+        }
 
         validateCut();
     }
@@ -472,7 +575,7 @@ public:
         }
     }
 
-    void handleObjectRemoved(CutNodeType* cnode, const LocCacheIterator& objit, bool permanent) {
+    void handleObjectRemoved(CutNodeType* cnode, const LocCacheIterator& objit, bool permanent, bool emptied) {
         // Ignore insertions/deletions during rebuild
         if (isRebuilding()) return;
 
@@ -480,6 +583,30 @@ public:
         // it.
         ObjectID child_id = getLocCache()->iteratorID(objit);
         removeObjectChildFromResults(child_id, permanent);
+
+        // If the removal caused the node to become empty, we need to make sure
+        // we properly account for this to get the right sequence of
+        // additions/removals given that we implicitly decide whether the cut is
+        // at the children or at the node.
+        if (emptied) {
+            // The trick is to trigger an addition to go with the removal. This
+            // makes sure the parent gets back into the result set, and
+            // depending on whether we're doing result sets or tree replication,
+            // makes sure we send out the right updates. Having it in the result
+            // set is especially important since that triggers later updates as
+            // well -- we need to make sure our result set (especially for tree
+            // replication) truly reflects the current cut.
+            // TODO this would be better if it were lumped in the same event as
+            // the removal
+            if (usesAggregates()) {
+                if (includeAddition(Change_Coarsened)) {
+                    QueryEventType evt;
+                    evt.additions().push_back( typename QueryEventType::Addition(cnode->rtnode, QueryEventType::Imposter) );
+                    events.push_back(evt);
+                }
+                addToResults(cnode->rtnode->aggregateID());
+            }
+        }
 
         validateCut();
     }
@@ -578,10 +705,6 @@ protected:
 
     QueryHandlerType* parent;
     QueryType* query;
-    // A cut is made up of a list of CutNodes
-    typedef std::list<CutNodeType*> CutNodeList;
-    typedef typename CutNodeList::iterator CutNodeListIterator;
-    typedef typename CutNodeList::const_iterator CutNodeListConstIterator;
     CutNodeList nodes;
     int32 length;
 
@@ -690,17 +813,27 @@ protected:
             // When dealing with aggregates, we first check if the
             // node itself is in the result set since if it is, none
             // of its children can be (if it is a leaf).
-            // set.
+            //
+            // We need to be careful here because the results generated here
+            // depend on whether you're returning results or doing tree
+            // replication. For tree replication, we *must* put in intermediate
+            // events (e.g., because here if we have the children in the
+            // results, we need to remove them *as well as* the aggregate
+            // itself).
             size_t nremoved = removeFromResults(node->rtnode->aggregateID());
-            if (nremoved > 0) {
-                if (includeRemoval(Change_Coarsened))
-                    evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Transient) );
-            }
-            else {
+            // If necessary, make sure children removal is entered into the
+            // event first
+            if (nremoved == 0) {
                 // If it wasn't there and this is a leaf, we need to
                 // check for children in the result set.  In this
                 // case, they should all be there.
                 removeObjectChildrenFromResults(node->rtnode);
+            }
+            // Then, if it was removed or we need intermediate events, remove
+            // the aggregate node.
+            if (nremoved > 0 || includeIntermediateEvents()) {
+                if (includeRemoval(Change_Coarsened))
+                    evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Transient) );
             }
         }
         else {

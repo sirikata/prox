@@ -88,8 +88,8 @@ public:
     void handleObjectInserted(const LocCacheIterator& objit, int objidx) {
         parent->handleObjectInserted(getNativeThis(), objit, objidx);
     }
-    void handleObjectRemoved(const LocCacheIterator& objit, bool permanent) {
-        parent->handleObjectRemoved(getNativeThis(), objit, permanent);
+    void handleObjectRemoved(const LocCacheIterator& objit, bool permanent, bool emptied) {
+        parent->handleObjectRemoved(getNativeThis(), objit, permanent, emptied);
     }
 };
 
