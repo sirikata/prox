@@ -122,6 +122,11 @@ private:
     unsigned char mID[UUID_SIZE];
 }; // class ObjectID
 
+inline std::ostream &operator<<(std::ostream &os, const ObjectID& objRef) {
+    os << objRef.toString();
+    return os;
+}
+
 } // namespace Reference
 } // namespace Prox
 
