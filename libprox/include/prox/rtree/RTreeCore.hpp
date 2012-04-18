@@ -1641,6 +1641,14 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object_at_node(
     const typename LocationServiceCache<SimulationTraits>::Iterator& obj_id,
     const typename SimulationTraits::TimeType& t)
 {
+    // This function needs to make sure this is actually a leaf because it can
+    // be used to insert objects for a regular tree or from replication. In
+    // replication we may not have marked it as a leaf properly yet (because
+    // if this is the first child, this is the first time we would know that it
+    // is a leaf). Sanity check and then make sure the setting is right.
+    assert( leaf_node->leaf() || (leaf_node->empty() && leaf_node->replicated()) );
+    // And once we know it's safe, make sure we have the setting right
+    leaf_node->leaf(true);
 
     RTreeNode<SimulationTraits, NodeData, CutNode>* split_node = NULL;
     if (leaf_node->full()) {
@@ -1667,6 +1675,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     RTreeNodeType* leaf_node = RTree_choose_leaf(root, obj_id, t);
+    // In this case, it better already be marked as a leaf node
+    assert(leaf_node->leaf());
     return RTree_insert_object_at_node(leaf_node, obj_id, t);
 }
 
