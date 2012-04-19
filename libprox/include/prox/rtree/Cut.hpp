@@ -466,15 +466,11 @@ public:
     void handleLiftCut(CutNodeType* cnode, RTreeNodeType* to_node) {
         validateCut();
 
-        //std::cout << "lifting cut to " << to_node->aggregateID() << std::endl;
-        //for(CutNodeListIterator pit = nodes.begin(); pit != nodes.end(); pit++)
-        //    std::cout << "  node " << (*pit)->rtnode->aggregateID() << std::endl;
-
         if (includeIntermediateEvents()) {
-            handleLiftCut_CutResults(cnode, to_node);
+            handleLiftCut_TreeReplication(cnode, to_node);
         }
         else {
-            handleLiftCut_TreeReplication(cnode, to_node);
+            handleLiftCut_CutResults(cnode, to_node);
         }
 
         validateCut();
