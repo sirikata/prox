@@ -2324,7 +2324,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_node(
         if (root->callbacks().rootReplaced)
             RTree_notify_cuts(node, node->callbacks().rootReplaced, node, new_root);
 
-        new_root->parent(NULL);
+        if (new_root) new_root->parent(NULL);
         node->destroy();
 
         return new_root;
