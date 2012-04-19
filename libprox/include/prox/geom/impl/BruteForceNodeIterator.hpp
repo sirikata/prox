@@ -57,6 +57,9 @@ public:
     BoundingSphere bounds(const Time& t) const {
         return parent->mLocCache->worldCompleteBounds(it->second, t);
     }
+    uint32 cuts() const {
+        return 0;
+    }
 private:
     const QueryHandler* parent;
     ObjectSetConstIterator it;

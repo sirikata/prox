@@ -99,6 +99,10 @@ public:
         assert(impl != NULL);
         return impl->bounds(t);
     }
+    uint32 cuts() const {
+        assert(impl != NULL);
+        return impl->cuts();
+    }
 private:
     // Move to the next item, cloning underlying iterator if necessary to avoid
     // invalidating other iterators
@@ -154,6 +158,7 @@ public:
     virtual const ObjectID& id() const = 0;
     virtual ObjectID parentId() const = 0;
     virtual BoundingSphere bounds(const Time& t) const = 0;
+    virtual uint32 cuts() const = 0;
 private:
     int32 _ref_count;
 };

@@ -54,6 +54,9 @@ public:
     BoundingSphere bounds(const Time& t) const {
         return it.bounds(t);
     }
+    uint32 cuts() const {
+        return it.cuts();
+    }
 protected:
     RTreeNodeIterator it;
 };

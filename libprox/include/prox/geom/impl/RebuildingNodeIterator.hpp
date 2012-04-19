@@ -115,6 +115,9 @@ public:
     BoundingSphere bounds(const Time& t) const {
         return mCurrent.bounds(t);
     }
+    uint32 cuts() const {
+        return mCurrent.cuts();
+    }
 private:
 
     void reevaluatePhase() {

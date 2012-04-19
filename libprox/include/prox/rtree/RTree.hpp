@@ -409,6 +409,17 @@ public:
             assert(node->leaf());
             return owner->mLocCache->worldCompleteBounds(node->object(idx).object, t);
         }
+        uint32 cuts() const {
+            assert(valid());
+            // If we haven't processed the current node yet
+            if (idx == -1)
+                return node->cutNodesSize();
+
+            // If we're processing children, we should be at a leaf node. Cuts
+            // don't go through objects even though they are presented as nodes
+            assert(node->leaf());
+            return 0;
+        }
 
         bool operator==(const NodeIteratorBase& rhs) {
             return (node == rhs.node && (node == NULL || idx == rhs.idx));
