@@ -1635,6 +1635,25 @@ void RTree_recompute_bounds_from_leaf(
     }
 }
 
+// "Prepends" a new root to the tree, thereby adding a level to the
+// tree. This utility also makes sure cuts are also notified of the
+// change.
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_prepend_new_root(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* new_root,
+    RTreeNode<SimulationTraits, NodeData, CutNode>* root)
+{
+    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
+    assert(new_root->empty());
+    new_root->leaf(false);
+    new_root->insert(root);
+
+    // All replicated tree cuts will want to know that there's a new root node
+    if (root->callbacks().replicatedRootCreated)
+        RTree_notify_descendant_cuts(new_root, root->callbacks().replicatedRootCreated, root, new_root);
+}
+
 // Inserts a new object into the tree, updating any nodes as necessary. Returns the new root node.
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object_at_node(
@@ -1674,13 +1693,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object_at_node(
     // and putting the old root as a child.
     if (!nodes_to_split.empty() && nodes_to_split.back() == root) {
         RTreeNodeType* new_root = new RTreeNodeType(root->owner());
-        new_root->leaf(false);
-        new_root->insert(root);
-
-        // All replicated tree cuts will want to know that there's a new root node
-        if (root->callbacks().replicatedRootCreated)
-            RTree_notify_descendant_cuts(new_root, root->callbacks().replicatedRootCreated, root, new_root);
-
+        RTree_prepend_new_root(new_root, root);
         root = new_root;
     }
 

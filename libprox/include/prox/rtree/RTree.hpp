@@ -183,8 +183,13 @@ public:
         mRTreeNodes[nodeid] = new_node;
 
         if (parent == ObjectIDNull()()) {
-            // This is a root node
-            assert(mRoot == NULL);
+            // This is a root node. We might already have a root node
+            // that we're just putting a new parent on, or it's just
+            // the first node we've seen replicated
+            // TODO(ewencp) when we deal with rebuilding trees getting
+            // replicated, this won't be sufficient...
+            if (mRoot != NULL)
+                RTree_prepend_new_root(new_node, mRoot);
             mRoot = new_node;
             if (mRootCreatedCallback != 0) mRootCreatedCallback();
         }
