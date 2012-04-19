@@ -364,6 +364,18 @@ public:
     }
 
     void recomputeData(const Time& t) {
+        // We need to be careful about recomputing data to handle
+        // replicas properly. For now, our policy is that for replicas
+        // we can recompute data automatically (rather than getting
+        // updates from the server) as long as we know it is
+        // safe. This means that we must have the children of the node
+        // -- we have to trust updates for replicated nodes on the cut
+        // (otherwise, with no children, we would just clear out their
+        // data), but for other things we can assume our current set
+        // of children reflects the real tree and it is therefore safe
+        // to recompute.
+        if (replicated() && empty()) return;
+
         BoundingSphere orig = mData.getBounds();
         mData = NodeData();
         for(int i = 0; i < size(); i++)
