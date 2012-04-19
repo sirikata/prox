@@ -307,11 +307,14 @@ public:
             // be hitting the first child here.
             if (!node->leaf()) {
                 assert(idx == 0);
-                assert(node->size() > 0); // Non-leaf nodes should always have
-                                          // some children
-                node = node->node(idx);
-                idx = -1;
-                return *this;
+                // If we have a replicated tree, internal nodes could
+                // be empty. Make sure we handle that by skipping
+                // children if we have none.
+                if (!node->empty()) {
+                    node = node->node(idx);
+                    idx = -1;
+                    return *this;
+                }
             }
 
             // Otherwise, we're processing a leaf node. The simple case is if we
