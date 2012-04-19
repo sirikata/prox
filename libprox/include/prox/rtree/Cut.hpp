@@ -1010,6 +1010,8 @@ protected:
     }
 
     void validateCutNodesInTree() const {
+        if (nodes.empty()) return;
+
         // Get the root base on the first cut node.  Even if this one is
         // broken, we'll be able to tell that the trees have become disjoint
         CutNodeType* first_cut_node = *(nodes.begin());
@@ -1027,8 +1029,20 @@ protected:
     void validateCutCrossesEntireTree(RTreeNodeType* root = NULL) {
         // To avoid extra helper methods, we just set to the real root if we call
         // without a root
-        if (root == NULL)
+        if (root == NULL) {
             root = parent->mRTree->root();
+            // We might be mid-modification, so make sure we have the real root
+            // (in case it got replaced)
+            if (root != NULL) root = root->root();
+        }
+        // And if we still don't have a root, it's just because the
+        // parent doesn't have one (empty replicated tree)
+        if (root == NULL) return;
+
+        // If we have no cut nodes, we just haven't started this cut
+        // on the tree yet (e.g. because we started with an empty tree
+        // and haven't initialized the cut to the new root yet).
+        if (nodes.empty()) return;
 
         // We just need to traverse recursively, stopping when we hit cut
         // nodes. If we ever hit a leaf without having hit a cut node, we have a
@@ -1071,7 +1085,13 @@ protected:
         // easiest way is to build a new list by exploring the tree in-order
         // for nodes
         CutNodeList nodes_inorder;
-        rebuildOrderedCut(nodes_inorder, parent->mRTree->root());
+
+        RTreeNodeType* root = parent->mRTree->root();
+        if (root == NULL) return;
+        // We might be mid-modification, so make sure we have the real root
+        // (in case it got replaced)
+        root = root->root();
+        rebuildOrderedCut(nodes_inorder, root);
         assert(nodes_inorder.size() == nodes.size());
         for(CutNodeListConstIterator it = nodes.begin(), other_it = nodes_inorder.begin();
             it != nodes.end(); it++, other_it++) {
@@ -1089,6 +1109,8 @@ protected:
     // shouldn't).  This is more expensive, but also covers the
     // functionality of validateCutNodesUnrelated.
     void rebuildOrderedCut(CutNodeList& inorder, RTreeNodeType* root) {
+        if (root == NULL) return;
+
         bool had_cut = false;
         typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(getNativeThis());
         if (node_its != root->cutNodesEnd()) {
