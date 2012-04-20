@@ -170,13 +170,16 @@ public:
         // node.
         // FIXME linear search could be avoided by storing iterators
         CutNodeListIterator it = std::find(nodes.begin(), nodes.end(), cnode);
+        // We allow the cut to become empty if there is no root,
+        // i.e. the entire tree was destroyed
+        bool allow_empty = (new_root == NULL);
         if (usesAggregates()) {
             QueryEventType evt;
-            it = replaceParentWithChildren(it, &evt);
+            it = replaceParentWithChildren(it, &evt, allow_empty);
             events.push_back(evt);
         }
         else {
-            it = replaceParentWithChildren(it, NULL);
+            it = replaceParentWithChildren(it, NULL, allow_empty);
         }
     }
 
@@ -842,11 +845,14 @@ protected:
         node->destroy(parent, getAggregateListener());
     }
 
-    CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it, QueryEventType* qevt_out) {
+    CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it, QueryEventType* qevt_out, bool allow_empty = false) {
         CutNodeType* parent_cn = *parent_it;
         assert(!parent_cn->objectChildren());
-        // Better not be empty or we'll lose a portion of the cut
-        assert(!parent_cn->rtnode->empty());
+        // Better not be empty or we'll lose a portion of the cut. The
+        // only exception is if we're ok with the tree going
+        // empty. This can happen if a replicated tree is completely
+        // cleared out.
+        assert(!parent_cn->rtnode->empty() || allow_empty);
         // Inserts before, so get next it
         CutNodeListIterator next_it = parent_it;
         next_it++;
