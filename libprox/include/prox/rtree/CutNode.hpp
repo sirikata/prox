@@ -63,8 +63,8 @@ public:
         return satisfies;
     }
 
-    bool leaf() const {
-        return rtnode->leaf();
+    bool objectChildren() const {
+        return rtnode->objectChildren();
     }
 
     void handleRootReplaced(RTreeNodeType* orig_root, RTreeNodeType* new_root) {

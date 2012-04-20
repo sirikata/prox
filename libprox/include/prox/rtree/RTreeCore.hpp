@@ -96,13 +96,13 @@ struct CutNodeContainer {
 };
 
 template<typename SimulationTraits, typename CutNode>
-struct RTreeLeafNode : public CutNodeContainer<CutNode> {
+struct RTreeObjectNode : public CutNodeContainer<CutNode> {
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
     LocCacheIterator object;
 
-    RTreeLeafNode(LocCacheIterator it)
+    RTreeObjectNode(LocCacheIterator it)
      : object(it)
     {}
 
@@ -129,7 +129,7 @@ public:
     typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
 
-    typedef RTreeLeafNode<SimulationTraits, CutNode> LeafNode;
+    typedef RTreeObjectNode<SimulationTraits, CutNode> ObjectNode;
 
     typedef typename CutNode::RangeType CutNodeRange;
     typedef typename CutNode::CutType Cut;
@@ -178,12 +178,12 @@ public:
         ObjectRemovedCallback objectRemoved;
     };
 private:
-    static const uint8 LeafFlag = 0x02; // elements are object pointers instead of node pointers
+    static const uint8 ObjectsFlag = 0x02; // elements are object pointers instead of node pointers
 
     RTreeType* mOwner;
     union {
         RTreeNode** nodes;
-        LeafNode* objects;
+        ObjectNode* objects;
         uint8* magic;
     } elements;
     RTreeNode* mParent;
@@ -212,7 +212,7 @@ public:
     };
 
     struct ObjectChildOperations {
-        const LeafNode& child(RTreeNode* parent, int idx) {
+        const ObjectNode& child(RTreeNode* parent, int idx) {
             return parent->object(idx);
         }
 
@@ -235,12 +235,12 @@ public:
        mData(), flags(0), count(0),
        aggregate( ObjectIDRandom()() )
     {
-        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
+        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(ObjectNode) );
         uint32 magic_size = max_element_size * capacity();
         elements.magic = new uint8[magic_size];
         memset(elements.magic, 0, magic_size);
 
-        leaf(true);
+        objectChildren(true);
 
         if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
     }
@@ -252,12 +252,12 @@ public:
        mData(_owner->loc(), node, t), flags(0), count(0),
        aggregate( _owner->loc()->iteratorID(node) )
     {
-        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
+        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(ObjectNode) );
         uint32 magic_size = max_element_size * capacity();
         elements.magic = new uint8[magic_size];
         memset(elements.magic, 0, magic_size);
 
-        leaf(true);
+        objectChildren(true);
 
         // FIXME(ewencp) Better initialization of mData? Included max object
         // size but overwrite it for aggregates?
@@ -289,11 +289,14 @@ public:
     LocationServiceCacheType* loc() const { return owner()->loc(); }
     const Callbacks& callbacks() const { return owner()->callbacks(); }
 
-    bool leaf() const {
-        return (flags & LeafFlag);
+    // Whether we hold objects or other RTreeNodes as children. Note that this
+    // is different from leaf because replicated trees may have no objectChildren()
+    // nodes but they will have leaves
+    bool objectChildren() const {
+        return (flags & ObjectsFlag);
     }
-    void leaf(bool d) {
-        flags = (flags & ~LeafFlag) | (d ? LeafFlag : 0x00);
+    void objectChildren(bool d) {
+        flags = (flags & ~ObjectsFlag) | (d ? ObjectsFlag : 0x00);
     }
 
     bool empty() const {
@@ -310,7 +313,7 @@ public:
     int treeSize() const {
         int result = 1;
         // For leaves, we count the children ourselves
-        if (leaf())
+        if (objectChildren())
             result += size();
         else // Otherwise recurse
             for(Index i = 0; i < size(); i++)
@@ -340,14 +343,14 @@ public:
         return r;
     }
 
-    const LeafNode& object(int i) const {
-        assert( leaf() );
+    const ObjectNode& object(int i) const {
+        assert( objectChildren() );
         assert( i < count );
         return elements.objects[i];
     }
 
     RTreeNode* node(int i) const {
-        assert( !leaf() );
+        assert( !objectChildren() );
         assert( i < count );
         return elements.nodes[i];
     }
@@ -357,7 +360,7 @@ public:
     }
 
     NodeData childData(int i, const Time& t) {
-        if (leaf())
+        if (objectChildren())
             return NodeData(loc(), object(i).object, t);
         else
             return node(i)->data();
@@ -401,13 +404,13 @@ public:
 
         // If we have child objects, we need to notify cuts of removal
         // To allow validation after notifyRemoved we need to work 1 at a time.
-        if (leaf()) {
+        if (objectChildren()) {
             for(int i = 0; i < old_count; i++) {
                 count = old_count-i-1;
                 notifyRemoved(this->elements.objects[old_count-i-1].object, false);
                 // Explicitly call destructor, necessary since we use placement
                 // new to handle constructing objects in place (see insert())
-                this->elements.objects[old_count-i-1].~LeafNode();
+                this->elements.objects[old_count-i-1].~ObjectNode();
             }
         }
         else {
@@ -421,7 +424,7 @@ public:
 
 #ifdef PROXDEBUG
         // Clear out data for safety
-        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(LeafNode) );
+        uint32 max_element_size = std::max( sizeof(RTreeNode*), sizeof(ObjectNode) );
         for(uint32 i = 0; i < max_element_size * capacity(); i++)
             elements.magic[i] = 0;
 #endif
@@ -431,14 +434,14 @@ public:
 
     void insert(const LocCacheIterator& obj, const Time& t) {
         assert (count < capacity());
-        assert (leaf() == true);
+        assert (objectChildren() == true);
 
         int idx = count;
         // Use placement new to get the constructor called without using
         // assignment (which would result in a destructor on existing (likely
         // bogus or leftover) data being called. Careful destruction handled in
         // erase() and clear.
-        new (&(elements.objects[idx])) LeafNode(obj);
+        new (&(elements.objects[idx])) ObjectNode(obj);
         callbacks().objectLeafChanged(obj, this);
         count++;
         mData.mergeIn( NodeData(loc(), obj, t), size() );
@@ -459,7 +462,7 @@ public:
      */
     void insert(RTreeNode* node, RTreeNode* after = NULL) {
         assert (count < capacity());
-        assert (leaf() == false);
+        assert (objectChildren() == false);
         assert (after == NULL || (after->parent() == this && contains(after)));
 
         node->parent(this);
@@ -482,7 +485,7 @@ public:
     // NOTE: does not recalculate the bounding sphere
     void erase(const LocCacheIterator& obj, bool temporary) {
         assert(count > 0);
-        assert(leaf() == true);
+        assert(objectChildren() == true);
 
         // find obj
         Index obj_idx;
@@ -496,7 +499,7 @@ public:
         // Instead, we need to call it on the *last* element, because we shifted
         // everything down and would otherwise leave the last one in its place.
         // So we explicitly call destructor. See placement new in insert.
-        this->elements.objects[count-1].~LeafNode();
+        this->elements.objects[count-1].~ObjectNode();
         // Finally, reduce the count
         count--;
 
@@ -518,7 +521,7 @@ public:
     // NOTE: does not recalculate the bounding sphere
     void erase(const RTreeNode* node) {
         assert(count > 0);
-        assert(leaf() == false);
+        assert(objectChildren() == false);
         // find node
         Index node_idx;
         for(node_idx = 0; node_idx < count; node_idx++)
@@ -532,7 +535,7 @@ public:
     // NOTE: does not recalculate the bounding sphere.
     RTreeNode* erasePop() {
         assert(count > 0);
-        assert(leaf() == false);
+        assert(objectChildren() == false);
         int idx = size() - 1;
         RTreeNode* retval = node(idx);
         erase(idx);
@@ -540,13 +543,13 @@ public:
     }
 
     bool contains(const LocCacheIterator& obj) const {
-        assert(leaf());
+        assert(objectChildren());
         for(Index obj_idx = 0; obj_idx < count; obj_idx++)
             if (elements.objects[obj_idx] == obj) return true;
         return false;
     }
     bool contains(RTreeNode* node) const {
-        assert(!leaf());
+        assert(!objectChildren());
         for(Index idx = 0; idx < count; idx++)
             if (elements.nodes[idx] == node) return true;
         return false;
@@ -555,14 +558,14 @@ public:
 
     Index indexOf(const LocCacheIterator& obj) const {
         assert(contains(obj));
-        assert(leaf());
+        assert(objectChildren());
         for(Index idx = 0; idx < count; idx++)
             if (elements.objects[idx] == obj) return idx;
         return -1;
     }
     Index indexOf(RTreeNode* node) const {
         assert(contains(node));
-        assert(!leaf());
+        assert(!objectChildren());
         for(Index idx = 0; idx < count; idx++)
             if (elements.nodes[idx] == node) return idx;
         return -1;
@@ -1206,7 +1209,7 @@ void RTree_notify_descendant_cuts(
     // Just follow one path until we hit the leaf nodes, notifying all cuts we
     // encounter along the way
     RTreeNode<SimulationTraits, NodeData, CutNode>* n = node;
-    while(n != NULL && !n->leaf() && !n->empty()) {
+    while(n != NULL && !n->objectChildren() && !n->empty()) {
         n = n->node(0);
         RTree_notify_cuts(n, func, p1, p2);
     }
@@ -1222,7 +1225,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_choose_leaf(
 {
     RTreeNode<SimulationTraits, NodeData, CutNode>* node = root;
 
-    while(!node->leaf()) {
+    while(!node->objectChildren()) {
         RTreeNode<SimulationTraits, NodeData, CutNode>* min_increase_node = node->selectBestChildNode(obj_id, t);
         assert(min_increase_node != NULL);
         node = min_increase_node;
@@ -1338,7 +1341,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node_main(
     assert(!node->parent()->full());
     node->clear();
     RTreeNode<SimulationTraits, NodeData, CutNode>* nn = new RTreeNode<SimulationTraits, NodeData, CutNode>(node->owner());
-    nn->leaf(node->leaf());
+    nn->objectChildren(node->objectChildren());
     // We need to be careful about insertion of the new node for the
     // case when we're not lifting cuts. If the node we're splitting
     // isn't the last node in the parent, we could screw up the order
@@ -1438,7 +1441,7 @@ void RTree_extract_cut_segments(
             cut_ranges.push_back( CutNodeRange(cutnode, NULL) );
         }
 
-        if (n->leaf()) break;
+        if (n->objectChildren()) break;
         assert(!n->empty());
         n = n->node(0);
     }
@@ -1457,7 +1460,7 @@ void RTree_extract_cut_segments(
             cut_ranges.back().second = cutnode;
         }
 
-        if (n->leaf()) break;
+        if (n->objectChildren()) break;
         assert(!n->empty());
         n = n->node( n->size()-1 );
     }
@@ -1521,10 +1524,10 @@ void RTree_split_node_cleanup(
         // the tree could have become jumbled. However, we only need to
         // deal with "blocks" of the cuts under each child since we only
         // jumble things around one layer down (the children).
-        if (!node->leaf()) {
+        if (!node->objectChildren()) {
             // Only need to do (and only can do) rearrangement if we're
             // not at leaves.
-            assert(!nn->leaf());
+            assert(!nn->objectChildren());
 
             // Extract a segment of the cut for each cut
             CutRangeMap segments_out;
@@ -1572,7 +1575,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_adjust_tree(
  {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
-    assert(L->leaf());
+    assert(L->objectChildren());
     RTreeNode<SimulationTraits, NodeData, CutNode>* node = L;
     RTreeNode<SimulationTraits, NodeData, CutNode>* nn = LL;
 
@@ -1658,7 +1661,7 @@ void RTree_prepend_new_root(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     assert(new_root->empty());
-    new_root->leaf(false);
+    new_root->objectChildren(false);
     new_root->insert(root);
 
     // All replicated tree cuts will want to know that there's a new root node
@@ -1681,9 +1684,9 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object_at_node(
     // replication we may not have marked it as a leaf properly yet (because
     // if this is the first child, this is the first time we would know that it
     // is a leaf). Sanity check and then make sure the setting is right.
-    assert( leaf_node->leaf() || (leaf_node->empty() && leaf_node->replicated()) );
+    assert( leaf_node->objectChildren() || (leaf_node->empty() && leaf_node->replicated()) );
     // And once we know it's safe, make sure we have the setting right
-    leaf_node->leaf(true);
+    leaf_node->objectChildren(true);
 
     // We can't just start inserting here because we could cause
     // overflow. For tree replication to work simply, we need to
@@ -1751,7 +1754,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     RTreeNodeType* leaf_node = RTree_choose_leaf(root, obj_id, t);
     // In this case, it better already be marked as a leaf node
-    assert(leaf_node->leaf());
+    assert(leaf_node->objectChildren());
     return RTree_insert_object_at_node(leaf_node, obj_id, t);
 }
 
@@ -1783,9 +1786,9 @@ void RTree_insert_new_node_at_node(
     // Sanity check the parent
     assert(!parent_node->full());
     // Should be either marked as not a leaf or should be empty so we can change it
-    assert(!parent_node->leaf() || parent_node->empty());
+    assert(!parent_node->objectChildren() || parent_node->empty());
     // And once we know it's safe, make sure we have the setting right
-    parent_node->leaf(false);
+    parent_node->objectChildren(false);
 
     parent_node->insert(new_node);
 
@@ -1794,7 +1797,7 @@ void RTree_insert_new_node_at_node(
 
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 int32 RTree_count(RTreeNode<SimulationTraits, NodeData, CutNode>* root) {
-    if (root->leaf()) return root->size();
+    if (root->objectChildren()) return root->size();
 
     int32 result = 0;
     for(int i = 0; i < root->size(); i++)
@@ -1809,12 +1812,12 @@ void RTree_verify_constraints(
 {
 #ifdef PROXDEBUG
     for(int i = 0; i < root->size(); i++) {
-        if(!root->leaf()) {
+        if(!root->objectChildren()) {
             assert(root->node(i)->parent() == root);
         }
         root->data().verifyChild( root->childData(i, t) );
     }
-    if (!root->leaf()) {
+    if (!root->objectChildren()) {
         for(int i = 0; i < root->size(); i++)
             RTree_verify_constraints(root->node(i), t);
     }
@@ -1858,7 +1861,7 @@ void RTree_lift_cut_nodes_from_tree(
     RTree_lift_cut_nodes(from_node, to_node);
 
     // And recurse
-    if (!from_node->leaf()) {
+    if (!from_node->objectChildren()) {
         for(Index idx = 0; idx < from_node->size(); idx++) {
             RTree_lift_cut_nodes_from_tree(from_node->node(idx), to_node);
         }
@@ -1883,7 +1886,7 @@ void RTree_verify_no_cut_nodes_in_tree(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 #ifdef PROXDEBUG
     RTree_verify_no_cut_nodes(node);
-    if (!node->leaf())
+    if (!node->objectChildren())
         for(typename RTreeNodeType::Index idx = 0; idx < node->size(); idx++)
             RTree_verify_no_cut_nodes_in_tree(node->node(idx));
 #endif
@@ -1966,7 +1969,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             // reinserted. This works for nodes because they are
             // queued up for processing later, so the addition for
             // them doesn't happen immediately here.
-            if (removed->leaf()) {
+            if (removed->objectChildren()) {
                 for(Index idx = 0; idx < removed->size(); idx++)
                     root = RTree_insert_object(root, removed->object(idx).object, t);
             }
@@ -1985,7 +1988,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
     // After removal, there's a chance that the root node ended up with no
     // elements, in which case it should be marked as a leaf node
     if (root->size() == 0)
-        root->leaf(true);
+        root->objectChildren(true);
 
     // Perform recomputation of node data
     n = recompute_start;
@@ -2033,8 +2036,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
         bool all_nodes = true, all_objects = true;
         for(Index ci = 0; ci < parent->size(); ci++) {
             gchildren += parent->node(ci)->size();
-            all_nodes = all_nodes && !parent->node(ci)->leaf();
-            all_objects = all_objects && parent->node(ci)->leaf();
+            all_nodes = all_nodes && !parent->node(ci)->objectChildren();
+            all_objects = all_objects && parent->node(ci)->objectChildren();
         }
         // We use half capacity to avoid being too aggressive about
         // splitting/merging. We can only merge if all grandchildren
@@ -2076,7 +2079,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             // updated as we insert the objects
             assert(parent->empty());
             parent->clear();
-            parent->leaf(all_objects);
+            parent->objectChildren(all_objects);
 
             // Then, for each child, remove it's children and add them
             // to the parent. Destroy the node as it's no longer needed. These
@@ -2089,7 +2092,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
                 // copy each entry out, remove it, then add it to the
                 // parent.
                 while(!child_nodes[ci]->empty()) {
-                    if (child_nodes[ci]->leaf()) {
+                    if (child_nodes[ci]->objectChildren()) {
                         LocCacheIterator gchild_object = child_nodes[ci]->object(0).object;
                         child_nodes[ci]->erase(gchild_object, true);
                         parent->insert(gchild_object, t);
@@ -2178,7 +2181,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_tree(
     RTreeNode<SimulationTraits, NodeData, CutNode>* root,
     const typename SimulationTraits::TimeType& t)
 {
-    if (!root->leaf()) {
+    if (!root->objectChildren()) {
         for(int i = 0; i < root->size(); i++) {
             // FIXME set update node
             RTree_update_tree(root->node(i), t);
@@ -2203,7 +2206,7 @@ void RTree_collect_cuts(
         cuts->insert(cut);
     }
 
-    if (node->leaf())
+    if (node->objectChildren())
         return;
 
     for(int i = 0; i < node->size(); i++) {
@@ -2226,7 +2229,7 @@ void RTree_report_bounds(
     float this_volume = root->data().volume();
     fprintf(fout, " \"volume\" : %f, \"children\" : [ ", this_volume);
     // Recurse
-    if (root->leaf()) {
+    if (root->objectChildren()) {
         for(int i = 0; i < root->size(); i++) {
             if (i > 0) fprintf(fout, ", ");
             fprintf(fout, "{ \"volume\" : %f }", root->childData(i, t).volume());
@@ -2253,7 +2256,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_post_deletion_cleanup(
     RTreeNodeType* new_root = RTree_condense_tree(clean_start, t);
 
     // We might need to shorten the tree if the root is left with only one child.
-    if (!root->leaf() && root->size() == 1) {
+    if (!root->objectChildren() && root->size() == 1) {
         new_root = root->node(0);
         // Notify cuts so they can refine to the new root.
         if (root->callbacks().rootReplaced)
@@ -2287,7 +2290,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_object(
     }
 
     // Notify any cuts that the object is leaving
-    assert(leaf_with_obj->leaf());
+    assert(leaf_with_obj->objectChildren());
     leaf_with_obj->erase(obj_id, temporary);
 
     // If the tree is replicated, we don't really want to do anything else, but
@@ -2318,7 +2321,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_node(
     RTreeNodeType* parent = node->parent();
     if (parent == NULL) {
         assert(node == root);
-        assert(node->empty() || (!node->leaf() && node->size() == 1));
+        assert(node->empty() || (!node->objectChildren() && node->size() == 1));
         RTreeNodeType* new_root = (node->empty() ? NULL : node->node(0));
         // Notify cuts so they can refine to the new root.
         if (root->callbacks().rootReplaced)
@@ -2332,7 +2335,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_node(
 
     // Otherwise, we should be at the bottom of the tree (not necessarily a leaf
     // since it's a partially replicated tree).
-    assert(!parent->leaf());
+    assert(!parent->objectChildren());
     assert(node->empty());
     // And we need to get cuts out of the way. lift_cut_nodes should be
     // sufficient (rather than lift_cut_nodes_from_tree) since there's nowhere
@@ -2361,7 +2364,7 @@ void RTree_collect_objects(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     typedef typename SimulationTraits::ObjectIDType ObjectIDType;
 
-    if (root->leaf()) {
+    if (root->objectChildren()) {
         for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
             objects->push_back(root->object(i).object);
     }
@@ -2379,7 +2382,7 @@ void RTree_destroy_tree(
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
     typedef typename SimulationTraits::ObjectIDType ObjectIDType;
 
-    if (!root->leaf()) {
+    if (!root->objectChildren()) {
         while(root->size()) {
             RTreeNodeType* child = root->erasePop();
             RTree_destroy_tree(child);
@@ -2402,7 +2405,7 @@ void RTree_draw_tree(
     for(int i = 0; i < indent; i++) std::cout << " ";
     std::cout << root->aggregateID() << std::endl;
 
-    if (root->leaf()) {
+    if (root->objectChildren()) {
         for(int i = 0; i < indent+1; i++) std::cout << " ";
         std::cout << "(" << root->size() << " object children)" << std::endl;
     }

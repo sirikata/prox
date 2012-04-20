@@ -126,7 +126,7 @@ public:
                 RTreeNodeType* node = elem.node;
                 node_heap.pop_back();
 
-                if (node->leaf()) {
+                if (node->objectChildren()) {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
                         float32 score = scoreAngle( node->childData(i,t), qpos, qregion, qmaxsize, qangle, qradius );

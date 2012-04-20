@@ -310,7 +310,7 @@ public:
             // Our traversal only uses internal nodes as node once: when they
             // visit them. They then start working on children. We should always
             // be hitting the first child here.
-            if (!node->leaf()) {
+            if (!node->objectChildren()) {
                 assert(idx == 0);
                 // If we have a replicated tree, internal nodes could
                 // be empty. Make sure we handle that by skipping
@@ -381,7 +381,7 @@ public:
                 return node->aggregateID();
 
             // If we're processing children, we should be at a leaf node
-            assert(node->leaf());
+            assert(node->objectChildren());
             return owner->mLocCache->iteratorID(node->object(idx).object);
         }
 
@@ -396,7 +396,7 @@ public:
             }
 
             // If we're processing children, we should be at a leaf node
-            assert(node->leaf());
+            assert(node->objectChildren());
             return node->aggregateID();
         }
         BoundingSphere bounds(const Time& t) const {
@@ -406,7 +406,7 @@ public:
                 return node->data().getBounds();
 
             // If we're processing children, we should be at a leaf node
-            assert(node->leaf());
+            assert(node->objectChildren());
             return owner->mLocCache->worldCompleteBounds(node->object(idx).object, t);
         }
         uint32 cuts() const {
@@ -417,7 +417,7 @@ public:
 
             // If we're processing children, we should be at a leaf node. Cuts
             // don't go through objects even though they are presented as nodes
-            assert(node->leaf());
+            assert(node->objectChildren());
             return 0;
         }
 

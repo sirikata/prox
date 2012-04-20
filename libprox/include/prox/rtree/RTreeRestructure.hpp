@@ -214,7 +214,7 @@ RestructureInfo RTree_restructure_tree_work(
     // The basic approach is to work bottom up, looking for "inefficient" nodes.
 
     // We can't do anything about root leaves directly
-    if (root->leaf())
+    if (root->objectChildren())
         return result;
 
     // Allow children to restructure first
@@ -237,7 +237,7 @@ RestructureInfo RTree_restructure_tree_work(
     if (children_volume / this_volume <= 2.f)
         return result;
 
-    if (root->node(0)->leaf())
+    if (root->node(0)->objectChildren())
         RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNodeType::ObjectChildOperations>(root, t, affected_cuts);
     else
         RTree_restructure_nodes_children<SimulationTraits, NodeData, CutNode, RTreeNodeType*, typename RTreeNodeType::NodeChildOperations>(root, t, affected_cuts);

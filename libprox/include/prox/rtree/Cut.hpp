@@ -292,8 +292,8 @@ public:
             // case, the new object (and only the new object) isn't in the
             // result set yet.
             // This should only happen if this is a leaf
-            assert(orig_node->leaf());
-            assert(new_node->leaf());
+            assert(orig_node->objectChildren());
+            assert(new_node->objectChildren());
             // And we don't know where we inserted the object, so just cycle
             // through all of both nodes looking for the missing item.
             // TODO(ewencp). Currently, notifications are sent during
@@ -391,7 +391,7 @@ public:
         typename RTreeNodeType::CutNodeListConstIterator cnode_it = node->findCutNode(getNativeThis());
         CutNodeType* cnode = NULL;
         if (cnode_it == node->cutNodesEnd()) {
-            assert(!node->leaf());
+            assert(!node->objectChildren());
             // This needs to happen before doing this node's removal so the
             // ordering goes bottom-up
             CutNodeListIterator last_cut_it = nodes.end();
@@ -444,7 +444,7 @@ public:
         // node. Start one level down from the target node since we just want to
         // remove cuts below it.
         CutNodeListIterator last_cut_it;
-        assert(!to_node->leaf());
+        assert(!to_node->objectChildren());
         for(int i = 0; i < to_node->size(); i++)
             last_cut_it = handleLiftCut_TreeReplication_Work(to_node->node(i), evt);
 
@@ -526,7 +526,7 @@ public:
         if (isRebuilding()) return;
 
         RTreeNodeType* node = cnode->rtnode;
-        assert(node->leaf());
+        assert(node->objectChildren());
 
         if (usesAggregates()) {
             // When dealing with aggregates, since this node is on the cut
@@ -622,7 +622,7 @@ public:
             }
 
             // And, if its a leaf, try to remove its children
-            if (node->leaf() && node_removed == 0) {
+            if (node->objectChildren() && node_removed == 0) {
                 for(int leaf_idx = 0; leaf_idx < node->size(); leaf_idx++) {
                     ObjectID leaf_id = getLocCache()->iteratorID(node->object(leaf_idx).object);
                     size_t leaf_removed = removeFromResults(leaf_id);
@@ -796,7 +796,7 @@ protected:
 
     void removeObjectChildrenFromResults(RTreeNodeType* from_node) {
         // Notify any cuts that objects held by this node are gone
-        assert(from_node->leaf());
+        assert(from_node->objectChildren());
         for(typename RTreeNodeType::Index idx = 0; idx < from_node->size(); idx++) {
             removeObjectChildFromResults( getLocCache()->iteratorID(from_node->object(idx).object), false );
         }
@@ -836,7 +836,7 @@ protected:
             // Without aggregates, we only need to check to remove
             // children from the result set if we're at a leaf.  In
             // this case, some may be there, some may not.
-            if (node->rtnode->leaf())
+            if (node->rtnode->objectChildren())
                 removeObjectChildrenFromResults(node->rtnode);
         }
         node->destroy(parent, getAggregateListener());
@@ -844,7 +844,7 @@ protected:
 
     CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it, QueryEventType* qevt_out) {
         CutNodeType* parent_cn = *parent_it;
-        assert(!parent_cn->leaf());
+        assert(!parent_cn->objectChildren());
         // Inserts before, so get next it
         CutNodeListIterator next_it = parent_it;
         next_it++;
@@ -877,7 +877,7 @@ protected:
     // node itself.  Just adjusts the result set since
     void replaceLeafChildrenWithParent(CutNodeType* cnode, QueryEventType* qevt_out) {
         RTreeNodeType* node = cnode->rtnode;
-        assert(node->leaf());
+        assert(node->objectChildren());
         // At leaves, if the aggregate wasn't in the results (either
         // because it had been refined or because we're not returning
         // aggregates), we need to check for children in the result set.
@@ -945,7 +945,7 @@ protected:
             // This is almost like replaceLeafChildrenWithParent
             // but doesn't add the parent since we're in the
             // process of removing it.
-            if (!aggregate_was_in_results && child_rtnode->leaf()) {
+            if (!aggregate_was_in_results && child_rtnode->objectChildren()) {
                 // FIXME for sanity checking we could track # of removed
                 // children when mWithAggregates is true and validate that
                 // it is the same as the total number of children
@@ -1056,7 +1056,7 @@ protected:
             return;
 
         // Otherwise, if we hit a leaf, then we've hit a leaky cut
-        assert(!root->leaf());
+        assert(!root->objectChildren());
 
         // And if we're not at a leaf, then we just need to recurse
         for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
@@ -1120,7 +1120,7 @@ protected:
             had_cut = true;
         }
 
-        if (root->leaf())
+        if (root->objectChildren())
             return;
 
         // With PROXDEBUG we verify no children get added if we process
@@ -1158,7 +1158,7 @@ protected:
         }
 
         // Then, recurse and check within children
-        if (root->leaf()) return;
+        if (root->objectChildren()) return;
         for(typename RTreeNodeType::Index i = 0; i < root->size(); i++)
             rebuildOrderedCutWithViolations_removeChildrenCutNodes(evt, root->node(i));
     };
@@ -1169,7 +1169,7 @@ protected:
     void rebuildOrderedCutWithViolations_filterChildrenPass(QueryEventType& evt, RTreeNodeType* root) {
         typename RTreeNodeType::CutNodeListConstIterator node_its = root->findCutNode(getNativeThis());
 
-        if (root->leaf()) return;
+        if (root->objectChildren()) return;
 
         // If there's a cut node here, remove all children cut nodes
         if (node_its != root->cutNodesEnd()) {
@@ -1200,7 +1200,7 @@ protected:
 
         // Base case: at a leaf, there's no additional processing to be
         // done. This subtree is empty.
-        if (root->leaf()) return false;
+        if (root->objectChildren()) return false;
 
         // Next, process each of the children, recording whether they are
         // filled or not.
@@ -1277,7 +1277,7 @@ protected:
 
     void validateChildrenSubtreesObjectsNotInResults(RTreeNodeType* root) {
         for(typename RTreeNodeType::Index i = 0; i < root->size(); i++) {
-            if (root->leaf())
+            if (root->objectChildren())
                 assert( !isInResults(getLocCache()->iteratorID(root->object(i).object)) );
             else
                 validateSubtreeObjectsNotInResults(root->node(i));
@@ -1302,13 +1302,13 @@ protected:
                 }
                 else { // Otherwise, we better have all the children
                     for(typename RTreeNodeType::Index i = 0; i < rtnode->size(); i++)
-                        accounted.insert( rtnode->leaf() ? getLocCache()->iteratorID(rtnode->object(i).object) : rtnode->node(i)->aggregateID() );
+                        accounted.insert( rtnode->objectChildren() ? getLocCache()->iteratorID(rtnode->object(i).object) : rtnode->node(i)->aggregateID() );
                 }
             }
             else {
                 // Without aggregates, we should have some subset of the
                 // children of the node.
-                if (!rtnode->leaf()) continue;
+                if (!rtnode->objectChildren()) continue;
                 // To avoid actually evaluating, we're conservative in this
                 // case and might miss some false positives. We just add all
                 // leaf children we encounter

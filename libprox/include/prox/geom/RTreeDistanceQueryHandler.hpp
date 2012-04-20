@@ -138,7 +138,7 @@ public:
                 // Process the children of this node. Leaves -> directly to
                 // result set. Internal nodes -> inserted into node_heap. Either
                 // way, this is where we actually cull.
-                if (node->leaf()) {
+                if (node->objectChildren()) {
                     for(int i = 0; i < node->size(); i++) {
                         tcount++;
                         float32 score = scoreDistance( node->childData(i,t), qpos, qregion, qmaxsize, qradius );

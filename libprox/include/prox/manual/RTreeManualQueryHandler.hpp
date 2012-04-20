@@ -617,7 +617,7 @@ protected:
             if (cut_node_it == nodes.end()) return false;
             // and refine it
             CutNode<SimulationTraits>* cnode = *cut_node_it;
-            if (cnode->rtnode->leaf()) {
+            if (cnode->rtnode->objectChildren()) {
                 replaceParentWithChildrenResults(cnode);
             }
             else {

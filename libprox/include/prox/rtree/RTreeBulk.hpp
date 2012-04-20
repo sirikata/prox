@@ -108,7 +108,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_rebuild_build_subtree_from
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     RTreeNodeType* parent = new RTreeNodeType(owner);
-    parent->leaf(false);
+    parent->objectChildren(false);
 
     for(int i = 0; i < (int)subtree_list.children.size(); i++)
         parent->insert(subtree_list.children[i].node);
@@ -191,7 +191,7 @@ BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> RTree_rebuild_build_sub
     if ((int)range.size() < owner->elementsPerNode() && (no_split_cost < bestCost || bestCost < 0.f)) {
         // Make a leaf since we can't seem to do any better
         RTreeNodeType* node = new RTreeNodeType(owner);
-        node->leaf(true);
+        node->objectChildren(true);
         for(typename ObjectVector::iterator it = objects.begin() + range.start; it != objects.begin() + range.end + 1; it++)
             node->insert(it->iterator, t);
         BulkLoadSubTreeInfo<SimulationTraits, NodeData, CutNode> retval;

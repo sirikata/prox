@@ -69,7 +69,7 @@ float RTree_traverse_cost(
     for(typename RTreeNodeType::Index i = 0; i < node->size(); i++) {
         NodeData child_data = node->childData(i, t);
         float p = NodeData::hitProbability(this_data, child_data);
-        float child_cost = (node->leaf() ? COST_LEAF_TEST : RTree_traverse_cost(node->node(i), t));
+        float child_cost = (node->objectChildren() ? COST_LEAF_TEST : RTree_traverse_cost(node->node(i), t));
         cost += COST_NODE_TEST + p * child_cost;
     }
 

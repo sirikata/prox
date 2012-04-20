@@ -757,7 +757,7 @@ private:
                     else {
                         // With no aggregates, if this is a leaf, we need to
                         // clear out the children
-                        if (node->leaf()) {
+                        if (node->objectChildren()) {
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
                                 checkMembership(child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
@@ -867,7 +867,7 @@ private:
 
                 // What we do with satisfying nodes depends on whether they are
                 // a leaf or not
-                if (!node->leaf()) {
+                if (!node->objectChildren()) {
                     // For internal nodes that satisfy, we replace this node
                     // with the children. Note: don't increment since we need to
                     // start with the first child, which will now be
