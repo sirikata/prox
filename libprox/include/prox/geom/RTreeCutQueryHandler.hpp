@@ -872,13 +872,22 @@ private:
                     // with the children. Note: don't increment since we need to
                     // start with the first child, which will now be
                     // it
-                    if (parent->mWithAggregates) {
-                        QueryEventType evt;
-                        it = replaceParentWithChildren(it, &evt);
-                        events.push_back(evt);
+                    // However, we only do this if there *are*
+                    // children to replace it with
+                    if (!node->rtnode->empty()) {
+                        if (parent->mWithAggregates) {
+                            QueryEventType evt;
+                            it = replaceParentWithChildren(it, &evt);
+                            events.push_back(evt);
+                        }
+                        else {
+                            it = replaceParentWithChildren(it, NULL);
+                        }
                     }
                     else {
-                        it = replaceParentWithChildren(it, NULL);
+                        // If we couldn't refine, we just have to keep
+                        // moving forward
+                        it++;
                     }
                 }
                 else {

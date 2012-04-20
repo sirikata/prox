@@ -845,6 +845,8 @@ protected:
     CutNodeListIterator replaceParentWithChildren(const CutNodeListIterator& parent_it, QueryEventType* qevt_out) {
         CutNodeType* parent_cn = *parent_it;
         assert(!parent_cn->objectChildren());
+        // Better not be empty or we'll lose a portion of the cut
+        assert(!parent_cn->rtnode->empty());
         // Inserts before, so get next it
         CutNodeListIterator next_it = parent_it;
         next_it++;
@@ -981,6 +983,9 @@ protected:
     // child objects satisfies the constraints and therefore pulls all the
     // children in with it. Should not be used for non-leaf nodes.
     void replaceParentWithChildrenResults(CutNodeType* cnode) {
+        // Better not be empty or we'll lose a portion of the cut
+        assert(!cnode->rtnode->empty());
+
         QueryEventType evt;
         for(int i = 0; i < cnode->rtnode->size(); i++) {
             ObjectID child_id = getLocCache()->iteratorID(cnode->rtnode->object(i).object);
