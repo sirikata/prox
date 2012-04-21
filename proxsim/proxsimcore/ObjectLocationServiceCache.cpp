@@ -102,11 +102,14 @@ MotionVector3 ObjectLocationServiceCache::location(const Iterator& id) {
     return obj->position();
 }
 
-BoundingSphere ObjectLocationServiceCache::region(const Iterator& id) {
-    Object* obj = (Object*)id.data;
-    assert(obj != NULL);
-    assert(obj->bounds().center() == Reference::Vector3f::nil());
-    return sNullBoundingSphere;
+Vector3 ObjectLocationServiceCache::centerOffset(const Iterator& id) {
+    // We don't do any offsets in this test code
+    return Vector3::nil();
+}
+
+float32 ObjectLocationServiceCache::centerBoundsRadius(const Iterator& id) {
+    // Single objects have zero sized bounds around center points
+    return 0;
 }
 
 float32 ObjectLocationServiceCache::maxSize(const Iterator& id) {

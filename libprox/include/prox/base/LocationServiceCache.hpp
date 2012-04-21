@@ -51,6 +51,7 @@ class LocationServiceCache : public LocationUpdateProvider<SimulationTraits> {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
 
@@ -105,19 +106,33 @@ public:
     // entire contents of the element (worldRegion + maxSize to radius).
 
     virtual MotionVector3 location(const Iterator& id) = 0;
-    virtual BoundingSphere region(const Iterator& id) = 0;
+    // These are the core values that describe the bounds of the
+    // object/aggregate:
+    //  Offset of the center from the location -- a fixed value. We actually
+    //  wouldn't care if this is combined with location() because it only affects
+    //  rotations.
+    virtual Vector3 centerOffset(const Iterator& id) = 0;
+    //  The radius of the bounding sphere that encompasses the *center points*
+    //  of all child objects
+    virtual float32 centerBoundsRadius(const Iterator& id) = 0;
+    //  The maximum size of any of the children
+    virtual float32 maxSize(const Iterator& id) = 0;
+    // And these are derived values
+    virtual BoundingSphere region(const Iterator& id) {
+        return BoundingSphere(centerOffset(id), centerBoundsRadius(id));
+    }
     virtual BoundingSphere worldRegion(const Iterator& id, const Time& t) {
         BoundingSphere reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() );
     }
-
-    virtual float32 maxSize(const Iterator& id) = 0;
-    virtual ZernikeDescriptor& zernikeDescriptor(const Iterator& id) = 0;
-    virtual String mesh(const Iterator& id) = 0;
     virtual BoundingSphere worldCompleteBounds(const Iterator& id, const Time& t) {
         BoundingSphere reg = region(id);
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );
     }
+
+    virtual ZernikeDescriptor& zernikeDescriptor(const Iterator& id) = 0;
+    virtual String mesh(const Iterator& id) = 0;
+
     // Returns true if the object is local, false if it is a replica
     virtual bool isLocal(const Iterator& id) = 0;
 
