@@ -32,9 +32,12 @@ public:
 protected:
     // AggregateListener Interface
     virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid);
-    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
-    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds);
-    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds);
+    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
+        const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size);
+    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
+        const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size);
+    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid,
+        const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size);
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid);
     virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers);
 
@@ -63,7 +66,24 @@ protected:
     typedef boost::mutex Mutex;
     typedef boost::lock_guard<Mutex> Lock;
     Mutex mAggregateMutex;
-    typedef std::tr1::unordered_map<ObjectID, BoundingSphereType, ObjectID::Hasher> AggregateBounds;
+    struct BoundsInfo {
+        BoundsInfo()
+         : centerOffset(0, 0, 0),
+           centerBoundsRadius(0),
+           maxObjectSize(0)
+        {}
+
+        BoundsInfo(Vector3 center_offset, float32 center_bounds_radius, float32 max_object_size)
+         : centerOffset(center_offset),
+           centerBoundsRadius(center_bounds_radius),
+           maxObjectSize(max_object_size)
+        {}
+
+        Vector3 centerOffset;
+        float32 centerBoundsRadius;
+        float32 maxObjectSize;
+    };
+    typedef std::tr1::unordered_map<ObjectID, BoundsInfo, ObjectID::Hasher> AggregateBounds;
     AggregateBounds mAggregateBounds;
 
     enum DisplayMode {

@@ -384,8 +384,12 @@ public:
         for(int i = 0; i < size(); i++)
           mData.mergeIn( childData(i, t), size() );
         BoundingSphere updated = mData.getBounds();
-        if (callbacks().aggregate != NULL && updated != orig)
-            callbacks().aggregate->aggregateBoundsUpdated(callbacks().aggregator, aggregate, mData.getBounds());
+        if (callbacks().aggregate != NULL && updated != orig) {
+            callbacks().aggregate->aggregateBoundsUpdated(
+                callbacks().aggregator, aggregate,
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
     }
 
 private:
@@ -394,7 +398,12 @@ private:
         if (callbacks().objectRemoved)
             RTree_notify_cuts(this, callbacks().objectRemoved, obj, permanent, empty());
 
-        if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildRemoved(callbacks().aggregator, aggregate, obj_id, mData.getBounds());
+        if (callbacks().aggregate != NULL) {
+            callbacks().aggregate->aggregateChildRemoved(
+                callbacks().aggregator, aggregate, obj_id,
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
     }
 
 public:
@@ -417,8 +426,14 @@ public:
             // If we're removing child nodes, we don't need to notify
             // of object removal, but we do need to notify of
             // aggregate child removal
-            for(Index i = 0; i < count; i++)
-                if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildRemoved(callbacks().aggregator, aggregate, node(i)->aggregate, mData.getBounds());
+            for(Index i = 0; i < count; i++) {
+                if (callbacks().aggregate != NULL) {
+                    callbacks().aggregate->aggregateChildRemoved(
+                        callbacks().aggregator, aggregate, node(i)->aggregate,
+                        mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+                    );
+                }
+            }
             count = 0;
         }
 
@@ -446,7 +461,12 @@ public:
         count++;
         mData.mergeIn( NodeData(loc(), obj, t), size() );
 
-        if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildAdded(callbacks().aggregator, aggregate, loc()->iteratorID(obj), mData.getBounds());
+        if (callbacks().aggregate != NULL) {
+            callbacks().aggregate->aggregateChildAdded(
+                callbacks().aggregator, aggregate, loc()->iteratorID(obj),
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
 
         if (callbacks().objectInserted)
             RTree_notify_cuts(this, callbacks().objectInserted, obj, idx);
@@ -479,7 +499,12 @@ public:
         count++;
         mData.mergeIn( node->data(), size() );
 
-        if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildAdded(callbacks().aggregator, aggregate, node->aggregate, mData.getBounds());
+        if (callbacks().aggregate != NULL) {
+            callbacks().aggregate->aggregateChildAdded(
+                callbacks().aggregator, aggregate, node->aggregate,
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
     }
 
     // NOTE: does not recalculate the bounding sphere
@@ -528,7 +553,12 @@ public:
             if (elements.nodes[node_idx] == node) break;
         erase(node_idx);
 
-        if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateChildRemoved(callbacks().aggregator, aggregate, node->aggregate, mData.getBounds());
+        if (callbacks().aggregate != NULL) {
+            callbacks().aggregate->aggregateChildRemoved(
+                callbacks().aggregator, aggregate, node->aggregate,
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
     }
 
     // Removes the last child in the node and returns the pointer to it.
@@ -588,6 +618,7 @@ class BoundingSphereDataBase {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
+    typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
@@ -720,6 +751,26 @@ public:
         return bounding_sphere;
     }
 
+    /** Gets the center of the aggregate bounds object. */
+    Vector3 getBoundsCenter() const {
+        return bounding_sphere.center();
+    }
+    /** Gets the center positoin bounds radius (radius of bounds around center
+     *  points, not around all subobjects).
+     */
+    Real getBoundsCenterBoundsRadius() const {
+        // Without tracking both things, we can't actually differentiate the
+        // center bounds radius and the max object size. To make this actually
+        // looks sane for objects, we just have to ignore center bounds radius
+        // for aggregates and pretend they are giant objects.
+        return 0;
+    }
+    /** Gets the maximum object size under this node. */
+    Real getBoundsMaxObjectSize() const {
+        return bounding_sphere.radius();
+    }
+
+
     /** Gets the volume of this bounds of this region. */
     float volume() const {
         return getBounds().volume();
@@ -786,6 +837,7 @@ public:
     typedef BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
@@ -889,6 +941,17 @@ public:
         return BoundingSphere( ThisBase::bounding_sphere.center(), ThisBase::bounding_sphere.radius() + mMaxRadius );
     }
 
+    Vector3 getBoundsCenter() const {
+        return ThisBase::bounding_sphere.center();
+    }
+    Real getBoundsCenterBoundsRadius() const {
+        return ThisBase::bounding_sphere.radius();
+    }
+    Real getBoundsMaxObjectSize() const {
+        return mMaxRadius;
+    }
+
+
     /** Gets the volume of this bounds of this region. */
     float volume() const {
         return getBounds().volume();
@@ -930,6 +993,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     typedef BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
+    typedef typename SimulationTraits::realType Real;
     typedef typename SimulationTraits::Vector3Type Vector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
@@ -1128,6 +1192,16 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
      */
     BoundingSphere getBounds() const {
       return BoundingSphere( ThisBase::bounding_sphere.center(), ThisBase::bounding_sphere.radius() + mMaxRadius );
+    }
+
+    Vector3 getBoundsCenter() const {
+        return ThisBase::bounding_sphere.center();
+    }
+    Real getBoundsCenterBoundsRadius() const {
+        return ThisBase::bounding_sphere.radius();
+    }
+    Real getBoundsMaxObjectSize() const {
+        return mMaxRadius;
     }
 
     /** Gets the volume of this bounds of this region. */

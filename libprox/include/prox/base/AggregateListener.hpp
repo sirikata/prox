@@ -67,6 +67,8 @@ template<typename SimulationTraits>
 class AggregateListener {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectIDType;
+    typedef typename SimulationTraits::realType realType;
+    typedef typename SimulationTraits::Vector3Type Vector3Type;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphereType;
     typedef Aggregator<SimulationTraits> AggregatorType;
 
@@ -74,11 +76,14 @@ public:
     virtual ~AggregateListener() {}
 
     virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) = 0;
-    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
-    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) = 0;
+    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
+        const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) = 0;
+    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
+        const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) = 0;
     // Only invoked on pure bounds updates. Passed as part of the
     // callback for childAdded and childRemoved.
-    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) = 0;
+    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid,
+        const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) = 0;
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) = 0;
 
     virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) = 0;

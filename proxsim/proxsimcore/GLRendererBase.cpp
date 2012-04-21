@@ -103,24 +103,27 @@ void GLRendererBase::aggregateCreated(AggregatorType* handler, const ObjectIDTyp
     mAggregateObjects[objid] = ObjectIDSet();
 }
 
-void GLRendererBase::aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
+void GLRendererBase::aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
+    const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size) {
     Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].insert(child);
 
-    mAggregateBounds[objid] = bnds;
+    mAggregateBounds[objid] = BoundsInfo(bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
 }
 
-void GLRendererBase::aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child, const BoundingSphereType& bnds) {
+void GLRendererBase::aggregateChildRemoved(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
+    const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size) {
     Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
     mAggregateObjects[objid].erase(child);
 }
 
-void GLRendererBase::aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid, const BoundingSphereType& bnds) {
+void GLRendererBase::aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid,
+    const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size) {
     Lock lck(mAggregateMutex);
     if (mAggregateBounds.find(objid) != mAggregateBounds.end())
-        mAggregateBounds[objid] = bnds;
+        mAggregateBounds[objid] = BoundsInfo(bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
 }
 
 void GLRendererBase::aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
@@ -183,7 +186,7 @@ void GLRendererBase::display() {
               int idx = 0;
               for(AggregateBounds::iterator it = mAggregateBounds.begin(); it != mAggregateBounds.end(); it++) {
                   ObjectID agg = it->first;
-                  BoundingSphere bb = it->second;
+                  BoundingSphere bb(it->second.centerOffset, it->second.centerBoundsRadius + it->second.maxObjectSize);
 
                   int col_idx = ObjectID::Hasher()(agg) % COLOR_PALETTE_COLORS;
                   glColor3f(color_palette[col_idx].r, color_palette[col_idx].g, color_palette[col_idx].b);
@@ -217,7 +220,7 @@ void GLRendererBase::display() {
                   else {
                       AggregateBounds::const_iterator agg_bounds_it = mAggregateBounds.find(objid);
                       if (agg_bounds_it == mAggregateBounds.end()) continue;
-                      bb = agg_bounds_it->second;
+                      bb = BoundingSphere(agg_bounds_it->second.centerOffset, agg_bounds_it->second.centerBoundsRadius + agg_bounds_it->second.maxObjectSize);
                   }
 
                   float col = 0.5f + 0.5f * ((float)num_seen / mMaxObservers);

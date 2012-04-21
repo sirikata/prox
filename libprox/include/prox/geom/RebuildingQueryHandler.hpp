@@ -518,17 +518,23 @@ protected:
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
         if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateCreated(this, objid);
     }
-    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
+    virtual void aggregateChildAdded(AggregatorType* handler, const ObjectID& objid, const ObjectID& child,
+        const Vector3& bnds_center_offset, const Real bnds_center_bounds_radius, const Real bnds_max_object_size) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateChildAdded(this, objid, child, bnds);
+        if (AggregatorType::mAggregateListener)
+            AggregatorType::mAggregateListener->aggregateChildAdded(this, objid, child, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
     }
-    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectID& objid, const ObjectID& child, const BoundingSphere& bnds) {
+    virtual void aggregateChildRemoved(AggregatorType* handler, const ObjectID& objid, const ObjectID& child,
+        const Vector3& bnds_center_offset, const Real bnds_center_bounds_radius, const Real bnds_max_object_size) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateChildRemoved(this, objid, child, bnds);
+        if (AggregatorType::mAggregateListener)
+            AggregatorType::mAggregateListener->aggregateChildRemoved(this, objid, child, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
     }
-    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectID& objid, const BoundingSphere& bnds) {
+    virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectID& objid,
+        const Vector3& bnds_center_offset, const Real bnds_center_bounds_radius, const Real bnds_max_object_size) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateBoundsUpdated(this, objid, bnds);
+        if (AggregatorType::mAggregateListener)
+            AggregatorType::mAggregateListener->aggregateBoundsUpdated(this, objid, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
     }
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectID& objid) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
