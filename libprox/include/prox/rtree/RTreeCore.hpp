@@ -44,7 +44,7 @@
 // Currently the following two are arbitrarily selected parameters.
 // Need to explore this parameter space.
 
-#define kShapeParameter 0.1f
+#define kShapeParameter 0.5f
 #define kGeometryParameter (1.0 - kShapeParameter)
 
 namespace Prox {
@@ -1071,10 +1071,11 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       for (int i=0; i<node->size(); i++) {
         RTreeNodeType* child_node = node->node(i);
 
+        //Not doing any normalizing of these diffs for now, because it causes worse results. For example, if a sphere inflates from 2->10, it
+        //is much worse than if it inflates from 1->5. But normalizing the two diffs makes them seems equally bad.
 
         BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
-        float ns_minus_os =  (merged.radius() - child_node->data().bounding_sphere.radius())
-          / child_node->data().bounding_sphere.radius();
+        float ns_minus_os =  (merged.volume() - child_node->data().bounding_sphere.volume()) ;
 
         ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
 
@@ -1150,14 +1151,16 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         for(uint32 i = 0; i < split_data.size(); i++) {
             if (split_groups[i] != UnassignedGroup) continue;
 
+	    //Not doing any normalizing of these diffs for now, because it causes worse results. For example, if a sphere inflates from 2->10, it
+	    //is much worse than if it inflates from 1->5. But normalizing the two diffs makes them seems equally bad.
             BoundingSphere merged0 = group_data_0.bounding_sphere.merge(split_data[i].bounding_sphere);
             BoundingSphere merged1 = group_data_1.bounding_sphere.merge(split_data[i].bounding_sphere);
 
-            float diff0 = (merged0.radius() - group_data_0.bounding_sphere.radius()) / (group_data_0.bounding_sphere.radius() + 1);
-            float diff1 = (merged1.radius() - group_data_1.bounding_sphere.radius()) / (group_data_1.bounding_sphere.radius() + 1);
+            float diff0 = (merged0.volume() - group_data_0.bounding_sphere.volume());
+            float diff1 = (merged1.volume() - group_data_1.bounding_sphere.volume());
 
-            float zdiff0 = group_data_0.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() / group_data_0.zernike_descriptor.l2Norm();
-            float zdiff1 = group_data_1.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() / group_data_1.zernike_descriptor.l2Norm();
+            float zdiff0 = group_data_0.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() ;
+            float zdiff1 = group_data_1.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() ;
 
             float metric0 = kShapeParameter * zdiff0 + kGeometryParameter * diff0;
             float metric1 = kShapeParameter * zdiff1 + kGeometryParameter * diff1;
