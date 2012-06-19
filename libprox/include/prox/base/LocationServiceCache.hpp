@@ -72,6 +72,36 @@ public:
 
     virtual ~LocationServiceCache() {}
 
+
+    // Since LocationServiceCaches are thread-safe, but LocationServices may
+    // not be, we can get into a weird situation where one thread knows about a
+    // new, internally-generated aggregate, e.g. because a node was added to a
+    // query data structure, but it hasn't been added to the
+    // LocationServiceCache because it needs to be routed through the
+    // LocationService first. To address this, LocationServiceCaches must be
+    // able to add temporary placeholders immediately with their basic
+    // properties, but set them up in a way such that they can be cleaned up
+    // normally, i.e. the forthcoming addition and following removal will be
+    // handled as if this call never happened.
+    //
+    // Note that this is called addPlaceholderImposter, not
+    // addPlaceholder. There should never be a reason to call it with real
+    // objects, which should make it through the LocationService normally; only
+    // imposter (aggregates/bogus objects) should need to be inserted
+    // immediately as they are created dynamically. This also means that we
+    // don't pass in all the information that a LocationServiceCache may contain
+    // for all objects -- the implementation is responsible for filling in any
+    // reasonable default values.
+    virtual void addPlaceholderImposter(
+        const ObjectID& id,
+        const Vector3& center_pos,
+        const float32 center_bounds_radius,
+        const float32 max_size,
+        const String& zernike,
+        const String& mesh
+    ) = 0;
+
+
     virtual Iterator startTracking(const ObjectID& id) = 0;
     virtual void stopTracking(const Iterator& id) = 0;
 

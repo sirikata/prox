@@ -242,7 +242,17 @@ public:
 
         objectChildren(true);
 
-        if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
+        if (callbacks().aggregate != NULL) {
+            // Make sure we get it into the location service cache first, even
+            // if it's just a placeholder.
+            _owner->loc()->addPlaceholderImposter(
+                aggregate,
+                data().getBoundsCenter(), data().getBoundsCenterBoundsRadius(), data().getBoundsMaxObjectSize(),
+                // Zernike descriptor and mesh are just default value placeholders
+                "", ""
+            );
+            callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
+        }
     }
 
     // This version initializes the node from known data, i.e. for
@@ -262,7 +272,17 @@ public:
         // FIXME(ewencp) Better initialization of mData? Included max object
         // size but overwrite it for aggregates?
 
-        if (callbacks().aggregate != NULL) callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
+        if (callbacks().aggregate != NULL) {
+            // Make sure we get it into the location service cache first, even
+            // if it's just a placeholder.
+            _owner->loc()->addPlaceholderImposter(
+                aggregate,
+                data().getBoundsCenter(), data().getBoundsCenterBoundsRadius(), data().getBoundsMaxObjectSize(),
+                // Zernike descriptor and mesh are just default value placeholders
+                "", ""
+            );
+            callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
+        }
     }
 
     // We have a destroy method and hide the destructor in private in order to

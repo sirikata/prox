@@ -67,6 +67,20 @@ void ObjectLocationServiceCache::tryClearObject(const Object* obj) {
         mObjects.erase(it);
 }
 
+void ObjectLocationServiceCache::addPlaceholderImposter(
+    const ObjectID& id,
+    const Vector3& center_offset,
+    const float32 center_bounds_radius,
+    const float32 max_size,
+    const String& zernike,
+    const String& mesh
+) {
+    // We don't actually have a corresponding object for this, and we don't have
+    // a way to use this data for it by creating one. Instead, we'll fill in a
+    // bogus entry which shouldn't be accessed.
+    mObjects[id] = ObjectInfo(NULL);
+}
+
 LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const ObjectID& id) {
     Lock lck(mMutex);
 
