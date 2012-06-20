@@ -153,7 +153,7 @@ public:
             }
 
             std::deque<QueryEventType> events;
-            state->cache.exchange(newcache, &events, mRemovedObjects);
+            state->cache.exchange(QueryHandlerType::handlerID(), newcache, &events, mRemovedObjects);
 
             query->pushEvents(events);
 

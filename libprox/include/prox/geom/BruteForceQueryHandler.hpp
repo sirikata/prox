@@ -142,7 +142,7 @@ public:
             }
 
             std::deque<QueryEventType> events;
-            state->cache.exchange(newcache, &events, mRemovedObjects);
+            state->cache.exchange(QueryHandlerType::handlerID(), newcache, &events, mRemovedObjects);
 
             query->pushEvents(events);
         }
@@ -289,7 +289,7 @@ public:
         if (!implicit) {
             QueryCacheType emptycache(query->maxResults());
             std::deque<QueryEventType> events;
-            state->cache.exchange(emptycache, &events, mRemovedObjects);
+            state->cache.exchange(QueryHandlerType::handlerID(), emptycache, &events, mRemovedObjects);
             query->pushEvents(events);
         }
 

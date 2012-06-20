@@ -152,6 +152,7 @@ SET(LIBPROX_SOURCES
   ${LIBPROX_SOURCE_DIR}/Duration.cpp
   ${LIBPROX_SOURCE_DIR}/SolidAngle.cpp
   ${LIBPROX_SOURCE_DIR}/Time.cpp
+  ${LIBPROX_SOURCE_DIR}/UniqueID.cpp
 )
 
 

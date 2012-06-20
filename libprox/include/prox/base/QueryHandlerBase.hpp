@@ -33,6 +33,7 @@ public:
     typedef typename SimulationTraits::MotionVector3Type MotionVector3;
     typedef typename SimulationTraits::BoundingSphereType BoundingSphere;
     typedef typename SimulationTraits::SolidAngleType SolidAngle;
+    typedef typename SimulationTraits::UniqueIDGeneratorType UniqueIDGenerator;
     typedef QueryTypeT QueryType;
     typedef typename QueryType::ID QueryID;
 
@@ -47,7 +48,8 @@ public:
 
     QueryHandlerBase()
      : LocationUpdateListenerType(),
-       QueryChangeListenerType()
+       QueryChangeListenerType(),
+       mHandlerIndexID( UniqueIDGenerator()() )
     {}
     virtual ~QueryHandlerBase() {}
 
@@ -172,10 +174,14 @@ public:
     virtual void queryDeleted(const QueryType* query) = 0;
 
 protected:
+    QueryHandlerIndexID handlerID() const { return mHandlerIndexID; }
 
     // Implementation of iterators
     virtual NodeIteratorImpl* nodesBeginImpl() const = 0;
     virtual NodeIteratorImpl* nodesEndImpl() const = 0;
+
+private:
+    QueryHandlerIndexID mHandlerIndexID;
 }; // class QueryHandlerBase
 
 } // namespace Prox

@@ -331,7 +331,7 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryEventType rem_evt;
+            QueryEventType rem_evt(QueryHandlerType::handlerID());
             state->cut->destroyCut(rem_evt);
             query->pushEvent(rem_evt);
         }
@@ -623,7 +623,7 @@ protected:
                 replaceParentWithChildrenResults(cnode);
             }
             else {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 replaceParentWithChildren(cut_node_it, &evt);
                 query->pushEvent(evt);
             }

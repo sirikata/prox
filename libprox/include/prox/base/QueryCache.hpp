@@ -106,7 +106,7 @@ public:
      *  \param permanent_removals a list of objects which have been permanently
      *         removed, passed along in the events.
      */
-    void exchange(QueryCache& newcache, std::deque<QueryEventType>* changes, const ObjectIDSet& permanent_removals) {
+    void exchange(QueryHandlerIndexID qhiid, QueryCache& newcache, std::deque<QueryEventType>* changes, const ObjectIDSet& permanent_removals) {
         if (changes != NULL) {
             IDSet added_objs;
             std::set_difference(
@@ -125,14 +125,14 @@ public:
             // Approaches that use a QueryCache are not implementing imposters.
             // Therefore, we always have single action QueryEvents
             for(IDSetIterator it = added_objs.begin(); it != added_objs.end(); it++) {
-                QueryEventType evt;
+                QueryEventType evt(qhiid);
                 // Note null parent -- should only use QueryCache when not using aggregates.
                 evt.additions().push_back( typename QueryEventType::Addition(*it, QueryEventType::Normal, ObjectIDNull()()) );
                 changes->push_back(evt);
             }
 
             for(IDSetIterator it = removed_objs.begin(); it != removed_objs.end(); it++) {
-                QueryEventType evt;
+                QueryEventType evt(qhiid);
                 // Query caches are only used for result sets (not tree
                 // replication) so we only need to consider that case here.
                 typename QueryEventType::ObjectEventPermanence perm = QueryEventType::Transient;

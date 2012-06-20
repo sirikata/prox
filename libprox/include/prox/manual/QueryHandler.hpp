@@ -55,6 +55,8 @@ protected:
     // Friend ManualQueries so they can forward requests to us
     friend class ManualQuery<SimulationTraits>;
 
+    using BaseType::handlerID;
+
     virtual void registerQuery(QueryType* query) = 0;
 
     /** Refine a query's results by expanding the query's result cut at the

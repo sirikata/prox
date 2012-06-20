@@ -34,6 +34,7 @@
 #define _PROX_QUERY_EVENT_HPP_
 
 #include <prox/base/DefaultSimulationTraits.hpp>
+#include <prox/base/Defs.hpp>
 
 namespace Prox {
 
@@ -145,7 +146,11 @@ public:
     };
     typedef std::vector<Removal> RemovalList;
 
-    QueryEvent() {}
+    QueryEvent(QueryHandlerIndexID iid)
+     : mIndexID(iid)
+    {}
+
+    const QueryHandlerIndexID indexID() const { return mIndexID; }
 
     AdditionList& additions() { return mAdditions; }
     const AdditionList& additions() const { return mAdditions; }
@@ -157,9 +162,10 @@ public:
     bool empty() const { return (mAdditions.empty() && mRemovals.empty()); }
 
 private:
+    QueryHandlerIndexID mIndexID;
     AdditionList mAdditions;
     RemovalList mRemovals;
-}; // class QueryEventListener
+}; // class QueryEvent
 
 } // namespace Prox
 

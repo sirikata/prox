@@ -45,6 +45,8 @@
 #include <prox/util/Time.hpp>
 #include <prox/util/Duration.hpp>
 
+#include <prox/util/UniqueID.hpp>
+
 // LocationServiceCache?
 
 namespace Prox {
@@ -73,6 +75,7 @@ public:
     // Flags an infinite number of results may be returned, the default
     const static uint32 InfiniteResults;
 
+    typedef Reference::UniqueIDGenerator UniqueIDGeneratorType;
 }; // class DefaultSimulationTraits
 
 } // namespace Prox

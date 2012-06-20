@@ -446,7 +446,7 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryEventType rem_evt;
+            QueryEventType rem_evt(QueryHandlerType::handlerID());
             state->cut->destroyCut(rem_evt);
             query->pushEvent(rem_evt);
         }
@@ -735,7 +735,7 @@ private:
                             // add this node (even though its not a real result).
                             // If this change allows merging to the parent node of
                             // this node, that'll happen upon push-up
-                            QueryEventType evt;
+                            QueryEventType evt(parent->handlerID());
                             // No need to check like Cut code does for whether
                             // to includeAddition() because we know it always
                             // returns true
@@ -846,7 +846,7 @@ private:
                                 // We need an event for both with and without
                                 // aggregates because the removal of a leaf node
                                 // could affect the result set in either case.
-                                QueryEventType evt;
+                                QueryEventType evt(parent->handlerID());
                                 it = replaceChildrenWithParent(it, &evt);
                                 if (evt.size() > 0)
                                     events.push_back(evt);
@@ -876,7 +876,7 @@ private:
                     // children to replace it with
                     if (!node->rtnode->empty()) {
                         if (parent->mWithAggregates) {
-                            QueryEventType evt;
+                            QueryEventType evt(parent->handlerID());
                             it = replaceParentWithChildren(it, &evt);
                             events.push_back(evt);
                         }
@@ -921,7 +921,7 @@ private:
                             // results, then all the children should
                             // be. If no children satisfy anymore,
                             // lift the cut back up.
-                            QueryEventType evt;
+                            QueryEventType evt(parent->handlerID());
                             replaceLeafChildrenWithParent(node, &evt);
                             if (evt.size() > 0)
                                 events.push_back(evt);

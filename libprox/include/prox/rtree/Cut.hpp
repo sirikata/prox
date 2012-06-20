@@ -69,7 +69,7 @@ public:
 
         if (usesAggregates()) {
             if (includeAddition(Change_Refined)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 evt.additions().push_back( typename QueryEventType::Addition(root, QueryEventType::Imposter) );
                 events.push_back(evt);
             }
@@ -174,7 +174,7 @@ public:
         // i.e. the entire tree was destroyed
         bool allow_empty = (new_root == NULL);
         if (usesAggregates()) {
-            QueryEventType evt;
+            QueryEventType evt(parent->handlerID());
             it = replaceParentWithChildren(it, &evt, allow_empty);
             events.push_back(evt);
         }
@@ -192,7 +192,7 @@ public:
         // past it.
         if (usesAggregates()) {
             if (includeAddition(Change_Inserted)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 evt.additions().push_back( typename QueryEventType::Addition(new_root, QueryEventType::Imposter) );
                 events.push_back(evt);
             }
@@ -204,7 +204,7 @@ public:
         // already refined past it.
         if (usesAggregates()) {
             if (includeRemoval(Change_Deleted)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 evt.removals().push_back( typename QueryEventType::Removal(orig_root->aggregateID(), QueryEventType::Permanent) );
                 events.push_back(evt);
             }
@@ -245,7 +245,7 @@ public:
         // past it.
         if (usesAggregates()) {
             if (includeAddition(Change_Inserted)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 evt.additions().push_back( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
                 events.push_back(evt);
             }
@@ -281,7 +281,7 @@ public:
         if (!usesAggregates()) return;
         // The split can result in one of two cases:
         // In both cases, we should be generating an event of some kind.
-        QueryEventType evt;
+        QueryEventType evt(parent->handlerID());
         // If the original node is in the result set, then none of the
         // children were in the result set. This means we can just add the
         // new node to the result set.
@@ -345,7 +345,7 @@ public:
         // are children of to_node, destroy them, and replace them with a
         // single cut node at to_node.
 
-        QueryEventType evt;
+        QueryEventType evt(parent->handlerID());
 
         // We'll exit when we have last_was_ancestor == true and
         // _is_ancestor == false, indicating we hit the end of the run for
@@ -441,7 +441,7 @@ public:
         // the events are ordered, so as long as we remove bottom up, the
         // replicated tree should get cleaned up just fine.
 
-        QueryEventType evt;
+        QueryEventType evt(parent->handlerID());
 
         // Generate all the removal events and remove cut nodes below this
         // node. Start one level down from the target node since we just want to
@@ -551,7 +551,7 @@ public:
                 addToResults(child_id);
 
                 if (includeAddition(Change_Inserted)) {
-                    QueryEventType evt;
+                    QueryEventType evt(parent->handlerID());
                     evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, node->aggregateID()) );
                     events.push_back(evt);
                 }
@@ -599,7 +599,7 @@ public:
             // the removal
             if (usesAggregates()) {
                 if (includeAddition(Change_Coarsened)) {
-                    QueryEventType evt;
+                    QueryEventType evt(parent->handlerID());
                     evt.additions().push_back( typename QueryEventType::Addition(cnode->rtnode, QueryEventType::Imposter) );
                     events.push_back(evt);
                 }
@@ -668,7 +668,7 @@ public:
         // And finally, we can push the event onto the queue.
         if (!swapEvent.empty()) {
             events.push_back(swapEvent);
-            swapEvent = QueryEventType();
+            swapEvent = QueryEventType(parent->handlerID());
         }
     }
 
@@ -720,7 +720,8 @@ protected:
        query(_query),
        nodes(),
        length(0),
-       events()
+       events(),
+       swapEvent(_parent->handlerID())
     {
     }
     ~CutBase() {
@@ -761,7 +762,7 @@ protected:
             addToResults(child_id);
 
             if (includeAddition(Change_Refined)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 // Note null parent is fine here because we're not using aggregates
                 evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, ObjectIDNull()()) );
                 events.push_back(evt);
@@ -771,7 +772,7 @@ protected:
             removeFromResults(child_id);
 
             if (includeRemoval(Change_Coarsened)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
                 events.push_back(evt);
             }
@@ -785,7 +786,7 @@ protected:
             removeFromResults(child_id);
 
             if (includeRemoval(permanent ? Change_Deleted : Change_Coarsened)) {
-                QueryEventType evt;
+                QueryEventType evt(parent->handlerID());
                 evt.removals().push_back(
                     typename QueryEventType::Removal(
                         child_id,
@@ -992,7 +993,7 @@ protected:
         // Better not be empty or we'll lose a portion of the cut
         assert(!cnode->rtnode->empty());
 
-        QueryEventType evt;
+        QueryEventType evt(parent->handlerID());
         for(int i = 0; i < cnode->rtnode->size(); i++) {
             ObjectID child_id = getLocCache()->iteratorID(cnode->rtnode->object(i).object);
             addToResults(child_id);
@@ -1260,7 +1261,7 @@ protected:
     // nodes.
     void rebuildOrderedCutWithViolations(CutNodeList& inorder, RTreeNodeType* root) {
         // This works in two passes.
-        QueryEventType evt;
+        QueryEventType evt(parent->handlerID());
         // On the first pass, we make sure we don't have any overlapping cut
         // nodes, i.e. that reordering hasn't caused the rtnode of one cut
         // node to become the child of the rtnode of another cut node.

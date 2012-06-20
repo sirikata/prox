@@ -110,6 +110,8 @@ public:
     virtual float cost() = 0;
 
 protected:
+    using BaseType::handlerID;
+
     virtual void registerQuery(QueryType* query) = 0;
 
     QueryID mQueryIDSource;
