@@ -62,7 +62,7 @@ public:
     class Iterator {
     public:
         Iterator() : data(NULL) {};
-        Iterator(void* _data) : data(_data) {};
+        explicit Iterator(void* _data) : data(_data) {};
         void* data;
 
         bool operator==(const Iterator& rhs) const {
