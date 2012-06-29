@@ -33,6 +33,8 @@
 #ifndef _PROX_AGGREGATE_LISTENER_HPP_
 #define _PROX_AGGREGATE_LISTENER_HPP_
 
+#include <prox/util/Platform.hpp>
+
 namespace Prox {
 
 template<typename SimulationTraits>
