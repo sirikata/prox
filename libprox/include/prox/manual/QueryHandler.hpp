@@ -51,11 +51,11 @@ public:
         return q;
     }
 
+    using BaseType::handlerID;
+
 protected:
     // Friend ManualQueries so they can forward requests to us
     friend class ManualQuery<SimulationTraits>;
-
-    using BaseType::handlerID;
 
     virtual void registerQuery(QueryType* query) = 0;
 

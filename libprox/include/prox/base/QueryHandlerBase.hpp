@@ -173,8 +173,15 @@ public:
     virtual void queryDestroyed(QueryType* query, bool implicit) = 0;
     virtual void queryDeleted(const QueryType* query) = 0;
 
-protected:
+    /** Get the handlerID for this query handler. Beware that there may be
+     *  multiple underlying handler IDs, any of which may be reported
+     *  to ensure only a single tree is required to replicate an
+     *  entire handler ID's data. Only use this if you know what
+     *  you're doing.
+     */
     QueryHandlerIndexID handlerID() const { return mHandlerIndexID; }
+
+protected:
 
     // Implementation of iterators
     virtual NodeIteratorImpl* nodesBeginImpl() const = 0;
