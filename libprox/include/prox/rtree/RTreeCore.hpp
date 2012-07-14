@@ -1026,7 +1026,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     SimilarMaxSphereData()
       : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>(),
         mMaxRadius(0.f), zernike_descriptor(ZernikeDescriptor::null()),
-        mesh("")
+        mesh(""), descriptorReader(DescriptorReader::getDescriptorReader())
     {
 
     }
@@ -1034,13 +1034,14 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     SimilarMaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
       : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>(loc, obj_id, t),
         mMaxRadius( loc->maxSize(obj_id) ), zernike_descriptor(loc->zernikeDescriptor(obj_id)),
-        mesh(loc->mesh(obj_id))
+        mesh(loc->mesh(obj_id)), descriptorReader(DescriptorReader::getDescriptorReader())
     {
       // Note: we override this here because we need worldCompleteBounds for
       // just the bounds data, but with the max size values, we can use the
       // smaller worldRegion along with the maximum size object.  Note
       // difference in satisfiesConstraints
       ThisBase::bounding_sphere = loc->worldRegion(obj_id, t);
+      zernike_descriptor = descriptorReader->getZernikeDescriptor(mesh);
     }
 
     NodeData merge(const NodeData& other) const {
@@ -1082,26 +1083,37 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       float min_metric = FLT_MAX;
 
       RTreeNodeType* chosen_node = NULL;
-
+      
+      float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
       const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+      
+      float normalizer = 0.00000;
+      for (int i=0; i<node->size(); i++) {
+	RTreeNodeType* child_node = node->node(i);
+        BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+	float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
+        BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
+        BoundingSphere total(merged.center(), merged.radius() + new_max_size);
 
+	if (total.volume() > normalizer) normalizer = total.volume();
+      }
+      
       //trying to balance between choosing far-away objects for grouping and choosing
       //similar objects for grouping.
       for (int i=0; i<node->size(); i++) {
         RTreeNodeType* child_node = node->node(i);
-
-        //Not doing any normalizing of these diffs for now, because it causes worse results. For example, if a sphere inflates from 2->10, it
-        //is much worse than if it inflates from 1->5. But normalizing the two diffs makes them seems equally bad.
-
         BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
-        float ns_minus_os =  (merged.volume() - child_node->data().bounding_sphere.volume()) ;
+        float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
+        BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
+        BoundingSphere total(merged.center(), merged.radius() + new_max_size);
+        float ns_minus_os =  (total.volume() - old_total.volume())/normalizer ;
 
         ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
+  
+        float nz_minus_mz = median_zd.minus(new_zd).l2Norm();
 
-        float nz_minus_mz = median_zd.minus(new_zd).l2Norm()/median_zd.l2Norm();
-
-        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;
+        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;        
 
         if (chosen_node == NULL || metric < min_metric) {
           min_metric = metric;
@@ -1168,6 +1180,19 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         *next_child = -1;
         *selected_group = -1;
 
+	float normalizer = 0.0f;
+	for(uint32 i = 0; i < split_data.size(); i++) {
+            if (split_groups[i] != UnassignedGroup) continue;
+
+            //Not doing any normalizing of these diffs for now, because it causes worse results. For example, if a sphere inflates from 2->10, it
+            //is much worse than if it inflates from 1->5. But normalizing the two diffs makes them seems equally bad.
+            BoundingSphere merged0 = group_data_0.bounding_sphere.merge(split_data[i].bounding_sphere);
+            BoundingSphere merged1 = group_data_1.bounding_sphere.merge(split_data[i].bounding_sphere);
+
+	    if (merged0.volume() > normalizer) normalizer = merged0.volume();
+            if (merged1.volume() > normalizer) normalizer = merged1.volume();
+	}
+
         for(uint32 i = 0; i < split_data.size(); i++) {
             if (split_groups[i] != UnassignedGroup) continue;
 
@@ -1176,8 +1201,8 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
             BoundingSphere merged0 = group_data_0.bounding_sphere.merge(split_data[i].bounding_sphere);
             BoundingSphere merged1 = group_data_1.bounding_sphere.merge(split_data[i].bounding_sphere);
 
-            float diff0 = (merged0.volume() - group_data_0.bounding_sphere.volume());
-            float diff1 = (merged1.volume() - group_data_1.bounding_sphere.volume());
+            float diff0 = (merged0.volume() - group_data_0.bounding_sphere.volume())/normalizer;
+            float diff1 = (merged1.volume() - group_data_1.bounding_sphere.volume())/normalizer;
 
             float zdiff0 = group_data_0.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() ;
             float zdiff1 = group_data_1.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() ;
@@ -1185,15 +1210,14 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
             float metric0 = kShapeParameter * zdiff0 + kGeometryParameter * diff0;
             float metric1 = kShapeParameter * zdiff1 + kGeometryParameter * diff1;
 
-            float metric = fabs(metric0-metric1);
+            float metric = fabs(metric0-metric1);  
 
             if (metric > max_metric) {
                 max_metric = metric;
                 *next_child = i;
-                *selected_group = (metric0 < metric1) ? 0 : 1;
+                *selected_group = (metric0 < metric1) ? 0 : 1;                
             }
         }
-
     }
 
     void verifyChild(const NodeData& child) const {
@@ -1260,6 +1284,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     float mMaxRadius;
     ZernikeDescriptor zernike_descriptor;
     String mesh;
+    DescriptorReader* descriptorReader;
 
 };
 
