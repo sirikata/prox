@@ -102,6 +102,8 @@ public:
         return q;
     }
 
+    using BaseType::handlerID;
+
     virtual void rebuild() = 0;
 
     /** Get an estimation of the cost of evaluating a query on this query
@@ -110,7 +112,6 @@ public:
     virtual float cost() = 0;
 
 protected:
-    using BaseType::handlerID;
 
     virtual void registerQuery(QueryType* query) = 0;
 
