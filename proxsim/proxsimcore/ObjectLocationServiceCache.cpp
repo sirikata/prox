@@ -58,11 +58,10 @@ void ObjectLocationServiceCache::removeObject(const Object* obj) {
     assert( it != mObjects.end() );
     it->second.exists = false;
 
-    tryClearObject(obj);
+    tryClearObject(it);
 }
 
-void ObjectLocationServiceCache::tryClearObject(const Object* obj) {
-    ObjectMap::iterator it = mObjects.find(obj->id());
+void ObjectLocationServiceCache::tryClearObject(ObjectMap::iterator& it) {
     if (it->second.refcount == 0 && !it->second.exists)
         mObjects.erase(it);
 }
@@ -88,7 +87,8 @@ LocationServiceCache::Iterator ObjectLocationServiceCache::startTracking(const O
     assert(it != mObjects.end());
 
     it->second.refcount++;
-    if (it->second.refcount == 1)
+    // Aggregates will have NULL object and don't need update tracking
+    if (it->second.refcount == 1 && it->second.object != NULL)
         it->second.object->addUpdateListener(this);
     return Iterator((void*)it->second.object);
 }
@@ -99,14 +99,31 @@ void ObjectLocationServiceCache::stopTracking(const Iterator& id) {
     Object* obj = (Object*)id.data;
     assert(obj != NULL);
 
-    ObjectMap::iterator it = mObjects.find(obj->id());
+    stopRefcountTracking(obj->id());
+}
+
+bool ObjectLocationServiceCache::startRefcountTracking(const ObjectID& id) {
+    Lock lck(mMutex);
+    // Just reuse existing code and ignore the output iterator, which
+    // can just be discarded since it's just a pointer to the existing
+    // object. Not sure when it would be reasonable for this to fail,
+    // so the return will always assume success...
+    startTracking(id);
+    return true;
+}
+
+void ObjectLocationServiceCache::stopRefcountTracking(const ObjectID& objid) {
+    Lock lck(mMutex);
+
+    ObjectMap::iterator it = mObjects.find(objid);
     assert(it != mObjects.end());
     it->second.refcount--;
 
-    if (it->second.refcount == 0)
-        obj->removeUpdateListener(this);
+    // Aggregates will have NULL object and don't need update tracking
+    if (it->second.refcount == 0 && it->second.object != NULL)
+        it->second.object->removeUpdateListener(this);
 
-    tryClearObject(obj);
+    tryClearObject(it);
 }
 
 

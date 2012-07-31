@@ -61,6 +61,8 @@ public:
 
     virtual Iterator startTracking(const ObjectID& id);
     virtual void stopTracking(const Iterator& id);
+    virtual bool startRefcountTracking(const ObjectID& id);
+    virtual void stopRefcountTracking(const ObjectID& id);
 
     virtual MotionVector3 location(const Iterator& id);
     virtual Vector3 centerOffset(const Iterator& id);
@@ -87,8 +89,6 @@ public:
     virtual void simulatorAddedObject(Object* obj, const MotionVector3& pos, const BoundingSphere& bounds);
     virtual void simulatorRemovedObject(Object* obj);
 private:
-    void tryClearObject(const Object* obj);
-
     static BoundingSphere sNullBoundingSphere;
 
     struct ObjectInfo {
@@ -102,6 +102,8 @@ private:
 
     typedef std::tr1::unordered_map<ObjectID, ObjectInfo, ObjectID::Hasher> ObjectMap;
     typedef std::tr1::unordered_set<LocationUpdateListenerType*> ListenerSet;
+
+    void tryClearObject(ObjectMap::iterator& it);
 
     typedef boost::recursive_mutex Mutex;
     typedef boost::lock_guard<Mutex> Lock;

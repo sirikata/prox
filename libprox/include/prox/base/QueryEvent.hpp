@@ -35,6 +35,7 @@
 
 #include <prox/base/DefaultSimulationTraits.hpp>
 #include <prox/base/Defs.hpp>
+#include <prox/base/LocationServiceCache.hpp>
 
 namespace Prox {
 
@@ -63,6 +64,7 @@ class QueryEvent {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::ObjectIDNullType ObjectIDNull;
+    typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
 
     enum ObjectType {
         Normal,
@@ -146,22 +148,63 @@ public:
     };
     typedef std::vector<Removal> RemovalList;
 
-    QueryEvent(QueryHandlerIndexID iid)
-     : mIndexID(iid)
+    // We need the location service cache so we can make sure
+    // everything we use in this QueryEvent is properly maintained.
+    QueryEvent(LocationServiceCacheType* loccache, QueryHandlerIndexID iid)
+     : mLocCache(loccache),
+       mIndexID(iid)
     {}
+    QueryEvent(const QueryEvent& rhs)
+     : mLocCache(rhs.mLocCache),
+       mIndexID(rhs.mIndexID)
+    {
+        for(int i = 0; i < rhs.mAdditions.size(); i++)
+            addAddition(rhs.mAdditions[i]);
+        for(int i = 0; i < rhs.mRemovals.size(); i++)
+            addRemoval(rhs.mRemovals[i]);
+    }
+    QueryEvent& operator=(const QueryEvent& rhs) {
+        for(int i = 0; i < mAdditions.size(); i++)
+            mLocCache->stopRefcountTracking(mAdditions[i].id());
+        for(int i = 0; i < mRemovals.size(); i++)
+            mLocCache->stopRefcountTracking(mRemovals[i].id());
+
+        mLocCache = rhs.mLocCache;
+        mIndexID = rhs.mIndexID;
+        mAdditions.clear();
+        mRemovals.clear();
+
+        for(int i = 0; i < rhs.mAdditions.size(); i++)
+            addAddition(rhs.mAdditions[i]);
+        for(int i = 0; i < rhs.mRemovals.size(); i++)
+            addRemoval(rhs.mRemovals[i]);
+    }
+    ~QueryEvent() {
+        for(int i = 0; i < mAdditions.size(); i++)
+            mLocCache->stopRefcountTracking(mAdditions[i].id());
+        for(int i = 0; i < mRemovals.size(); i++)
+            mLocCache->stopRefcountTracking(mRemovals[i].id());
+    }
 
     const QueryHandlerIndexID indexID() const { return mIndexID; }
 
-    AdditionList& additions() { return mAdditions; }
+    void addAddition(const Addition& a) {
+        mLocCache->startRefcountTracking(a.id());
+        mAdditions.push_back(a);
+    }
     const AdditionList& additions() const { return mAdditions; }
 
-    RemovalList& removals() { return mRemovals; }
+    void addRemoval(const Removal& r) {
+        mLocCache->startRefcountTracking(r.id());
+        mRemovals.push_back(r);
+    }
     const RemovalList& removals() const { return mRemovals; }
 
     uint32 size() const { return mAdditions.size() + mRemovals.size(); }
     bool empty() const { return (mAdditions.empty() && mRemovals.empty()); }
 
 private:
+    LocationServiceCacheType* mLocCache;
     QueryHandlerIndexID mIndexID;
     AdditionList mAdditions;
     RemovalList mRemovals;

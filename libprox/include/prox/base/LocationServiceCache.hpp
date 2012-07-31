@@ -102,8 +102,24 @@ public:
     ) = 0;
 
 
+    /** Start tracking the object with the given ID and return an
+     *  Iterator which can be used to access its data. You must call
+     *  stopTracking(iterator) to allow the object to be freed when
+     *  you are done with it.
+     */
     virtual Iterator startTracking(const ObjectID& id) = 0;
+    /** Stop tracking the object with the given iterator obtained from
+     *  startTracking.
+     */
     virtual void stopTracking(const Iterator& id) = 0;
+    /** Start tracking an object by just increasint its refcount. This
+     *  doesn't give access to it's data but does ensure the entry
+     *  remains in the cache. This must be accompanied by a later call
+     *  to stopRefcountTracking.
+     */
+    virtual bool startRefcountTracking(const ObjectID& id) = 0;
+    /** Stop tracking an object by decreasing its refcount. */
+    virtual void stopRefcountTracking(const ObjectID& id) = 0;
 
     // The various properties maintained here can get a bit confusing because
     // they are designed to support a few different scenarios.

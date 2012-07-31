@@ -446,7 +446,7 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryEventType rem_evt(QueryHandlerType::handlerID());
+            QueryEventType rem_evt(mLocCache, QueryHandlerType::handlerID());
             state->cut->destroyCut(rem_evt);
             query->pushEvent(rem_evt);
         }
@@ -563,6 +563,8 @@ private:
         using CutBaseType::nodes;
         using CutBaseType::length;
         using CutBaseType::events;
+
+        using CutBaseType::getLocCache;
     public:
         using CutBaseType::validateCut;
     private:
@@ -735,11 +737,11 @@ private:
                             // add this node (even though its not a real result).
                             // If this change allows merging to the parent node of
                             // this node, that'll happen upon push-up
-                            QueryEventType evt(parent->handlerID());
+                            QueryEventType evt(getLocCache(), parent->handlerID());
                             // No need to check like Cut code does for whether
                             // to includeAddition() because we know it always
                             // returns true
-                            evt.additions().push_back( typename QueryEventType::Addition(node->rtnode, QueryEventType::Imposter) );
+                            evt.addAddition( typename QueryEventType::Addition(node->rtnode, QueryEventType::Imposter) );
                             results.insert( node->rtnode->aggregateID() );
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
@@ -749,7 +751,7 @@ private:
                                 // No need to check like Cut code does for
                                 // whether to includeRemoval() because we know
                                 // it always returns true
-                                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
+                                evt.addRemoval( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
                             }
                             events.push_back(evt);
                         }
@@ -846,7 +848,7 @@ private:
                                 // We need an event for both with and without
                                 // aggregates because the removal of a leaf node
                                 // could affect the result set in either case.
-                                QueryEventType evt(parent->handlerID());
+                                QueryEventType evt(getLocCache(), parent->handlerID());
                                 it = replaceChildrenWithParent(it, &evt);
                                 if (evt.size() > 0)
                                     events.push_back(evt);
@@ -876,7 +878,7 @@ private:
                     // children to replace it with
                     if (!node->rtnode->empty()) {
                         if (parent->mWithAggregates) {
-                            QueryEventType evt(parent->handlerID());
+                            QueryEventType evt(getLocCache(), parent->handlerID());
                             it = replaceParentWithChildren(it, &evt);
                             events.push_back(evt);
                         }
@@ -921,7 +923,7 @@ private:
                             // results, then all the children should
                             // be. If no children satisfy anymore,
                             // lift the cut back up.
-                            QueryEventType evt(parent->handlerID());
+                            QueryEventType evt(getLocCache(), parent->handlerID());
                             replaceLeafChildrenWithParent(node, &evt);
                             if (evt.size() > 0)
                                 events.push_back(evt);

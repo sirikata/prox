@@ -331,7 +331,7 @@ public:
 
         // Fill in removal events if they aren't implicit
         if (!implicit) {
-            QueryEventType rem_evt(QueryHandlerType::handlerID());
+            QueryEventType rem_evt(mLocCache, QueryHandlerType::handlerID());
             state->cut->destroyCut(rem_evt);
             query->pushEvent(rem_evt);
         }
@@ -465,6 +465,8 @@ protected:
         using CutBaseType::nodes;
         using CutBaseType::length;
         using CutBaseType::events;
+
+        using CutBaseType::getLocCache;
 
         using CutBaseType::validateCut;
 
@@ -623,7 +625,7 @@ protected:
                 replaceParentWithChildrenResults(cnode);
             }
             else {
-                QueryEventType evt(parent->handlerID());
+                QueryEventType evt(getLocCache(), parent->handlerID());
                 replaceParentWithChildren(cut_node_it, &evt);
                 query->pushEvent(evt);
             }

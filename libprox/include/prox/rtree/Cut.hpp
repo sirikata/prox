@@ -69,8 +69,8 @@ public:
 
         if (usesAggregates()) {
             if (includeAddition(Change_Refined)) {
-                QueryEventType evt(parent->handlerID());
-                evt.additions().push_back( typename QueryEventType::Addition(root, QueryEventType::Imposter) );
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addAddition( typename QueryEventType::Addition(root, QueryEventType::Imposter) );
                 events.push_back(evt);
             }
             addToResults(root->aggregateID());
@@ -174,7 +174,7 @@ public:
         // i.e. the entire tree was destroyed
         bool allow_empty = (new_root == NULL);
         if (usesAggregates()) {
-            QueryEventType evt(parent->handlerID());
+            QueryEventType evt(getLocCache(), parent->handlerID());
             it = replaceParentWithChildren(it, &evt, allow_empty);
             events.push_back(evt);
         }
@@ -192,8 +192,8 @@ public:
         // past it.
         if (usesAggregates()) {
             if (includeAddition(Change_Inserted)) {
-                QueryEventType evt(parent->handlerID());
-                evt.additions().push_back( typename QueryEventType::Addition(new_root, QueryEventType::Imposter) );
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addAddition( typename QueryEventType::Addition(new_root, QueryEventType::Imposter) );
                 events.push_back(evt);
             }
         }
@@ -204,8 +204,8 @@ public:
         // already refined past it.
         if (usesAggregates()) {
             if (includeRemoval(Change_Deleted)) {
-                QueryEventType evt(parent->handlerID());
-                evt.removals().push_back( typename QueryEventType::Removal(orig_root->aggregateID(), QueryEventType::Permanent) );
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addRemoval( typename QueryEventType::Removal(orig_root->aggregateID(), QueryEventType::Permanent) );
                 events.push_back(evt);
             }
         }
@@ -245,8 +245,8 @@ public:
         // past it.
         if (usesAggregates()) {
             if (includeAddition(Change_Inserted)) {
-                QueryEventType evt(parent->handlerID());
-                evt.additions().push_back( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addAddition( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
                 events.push_back(evt);
             }
         }
@@ -281,13 +281,13 @@ public:
         if (!usesAggregates()) return;
         // The split can result in one of two cases:
         // In both cases, we should be generating an event of some kind.
-        QueryEventType evt(parent->handlerID());
+        QueryEventType evt(getLocCache(), parent->handlerID());
         // If the original node is in the result set, then none of the
         // children were in the result set. This means we can just add the
         // new node to the result set.
         if (isInResults(orig_node->aggregateID())) {
             if (includeAddition(Change_Inserted))
-                evt.additions().push_back( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
+                evt.addAddition( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
             addToResults(new_node->aggregateID());
         }
         else {
@@ -316,7 +316,7 @@ public:
                 if (!isInResults(child_id)) {
                     nadded++;
                     if (includeAddition(Change_Inserted))
-                        evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, orig_node->aggregateID()) );
+                        evt.addAddition( typename QueryEventType::Addition(child_id, QueryEventType::Normal, orig_node->aggregateID()) );
                     addToResults(child_id);
                 }
             }
@@ -325,7 +325,7 @@ public:
                 if (!isInResults(child_id)) {
                     nadded++;
                     if (includeAddition(Change_Inserted))
-                        evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, new_node->aggregateID()) );
+                        evt.addAddition( typename QueryEventType::Addition(child_id, QueryEventType::Normal, new_node->aggregateID()) );
                     addToResults(child_id);
                 }
             }
@@ -345,7 +345,7 @@ public:
         // are children of to_node, destroy them, and replace them with a
         // single cut node at to_node.
 
-        QueryEventType evt(parent->handlerID());
+        QueryEventType evt(getLocCache(), parent->handlerID());
 
         // We'll exit when we have last_was_ancestor == true and
         // _is_ancestor == false, indicating we hit the end of the run for
@@ -379,7 +379,7 @@ public:
         CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), to_node, getAggregateListener());
         if (usesAggregates()) {
             if (includeAddition(Change_Coarsened))
-                evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
+                evt.addAddition( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
             addToResults(new_cnode->rtnode->aggregateID());
         }
         nodes.insert(it, new_cnode);
@@ -402,7 +402,7 @@ public:
                 last_cut_it = handleLiftCut_TreeReplication_Work(node->node(i), qevt);
             // Mark removal
             if (includeRemoval(Change_Coarsened))
-                qevt.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Transient) );
+                qevt.addRemoval( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Transient) );
             return last_cut_it;
         }
         else {
@@ -441,7 +441,7 @@ public:
         // the events are ordered, so as long as we remove bottom up, the
         // replicated tree should get cleaned up just fine.
 
-        QueryEventType evt(parent->handlerID());
+        QueryEventType evt(getLocCache(), parent->handlerID());
 
         // Generate all the removal events and remove cut nodes below this
         // node. Start one level down from the target node since we just want to
@@ -456,7 +456,7 @@ public:
         CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), to_node, getAggregateListener());
         if (usesAggregates()) {
             if (includeAddition(Change_Coarsened))
-                evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
+                evt.addAddition( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
             addToResults(new_cnode->rtnode->aggregateID());
         }
         nodes.insert(last_cut_it, new_cnode);
@@ -551,8 +551,8 @@ public:
                 addToResults(child_id);
 
                 if (includeAddition(Change_Inserted)) {
-                    QueryEventType evt(parent->handlerID());
-                    evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, node->aggregateID()) );
+                    QueryEventType evt(getLocCache(), parent->handlerID());
+                    evt.addAddition( typename QueryEventType::Addition(child_id, QueryEventType::Normal, node->aggregateID()) );
                     events.push_back(evt);
                 }
             }
@@ -599,8 +599,8 @@ public:
             // the removal
             if (usesAggregates()) {
                 if (includeAddition(Change_Coarsened)) {
-                    QueryEventType evt(parent->handlerID());
-                    evt.additions().push_back( typename QueryEventType::Addition(cnode->rtnode, QueryEventType::Imposter) );
+                    QueryEventType evt(getLocCache(), parent->handlerID());
+                    evt.addAddition( typename QueryEventType::Addition(cnode->rtnode, QueryEventType::Imposter) );
                     events.push_back(evt);
                 }
                 addToResults(cnode->rtnode->aggregateID());
@@ -621,7 +621,7 @@ public:
             size_t node_removed = removeFromResults(node->aggregateID());
             if (node_removed > 0) {
                 if (includeRemoval(Change_Coarsened))
-                    destroyEvent.removals().push_back( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Transient) );
+                    destroyEvent.addRemoval( typename QueryEventType::Removal(node->aggregateID(), QueryEventType::Transient) );
             }
 
             // And, if its a leaf, try to remove its children
@@ -631,7 +631,7 @@ public:
                     size_t leaf_removed = removeFromResults(leaf_id);
                     if (leaf_removed > 0) {
                         if (includeRemoval(Change_Coarsened))
-                            destroyEvent.removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
+                            destroyEvent.addRemoval( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
                     }
                 }
             }
@@ -658,7 +658,7 @@ public:
         // Add in the root CutNode
         if (usesAggregates()) {
             if (includeAddition(Change_Inserted))
-                swapEvent.additions().push_back( typename QueryEventType::Addition(new_root, QueryEventType::Imposter) );
+                swapEvent.addAddition( typename QueryEventType::Addition(new_root, QueryEventType::Imposter) );
             addToResults(new_root->aggregateID());
         }
         nodes.push_back(new CutNodeType(parent, getNativeThis(), new_root, getAggregateListener()));
@@ -668,7 +668,7 @@ public:
         // And finally, we can push the event onto the queue.
         if (!swapEvent.empty()) {
             events.push_back(swapEvent);
-            swapEvent = QueryEventType(parent->handlerID());
+            swapEvent = QueryEventType(getLocCache(), parent->handlerID());
         }
     }
 
@@ -721,7 +721,7 @@ protected:
        nodes(),
        length(0),
        events(),
-       swapEvent(_parent->handlerID())
+       swapEvent(getLocCache(), _parent->handlerID())
     {
     }
     ~CutBase() {
@@ -762,9 +762,9 @@ protected:
             addToResults(child_id);
 
             if (includeAddition(Change_Refined)) {
-                QueryEventType evt(parent->handlerID());
+                QueryEventType evt(getLocCache(), parent->handlerID());
                 // Note null parent is fine here because we're not using aggregates
-                evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, ObjectIDNull()()) );
+                evt.addAddition( typename QueryEventType::Addition(child_id, QueryEventType::Normal, ObjectIDNull()()) );
                 events.push_back(evt);
             }
         }
@@ -772,8 +772,8 @@ protected:
             removeFromResults(child_id);
 
             if (includeRemoval(Change_Coarsened)) {
-                QueryEventType evt(parent->handlerID());
-                evt.removals().push_back( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addRemoval( typename QueryEventType::Removal(child_id, QueryEventType::Transient) );
                 events.push_back(evt);
             }
         }
@@ -786,8 +786,8 @@ protected:
             removeFromResults(child_id);
 
             if (includeRemoval(permanent ? Change_Deleted : Change_Coarsened)) {
-                QueryEventType evt(parent->handlerID());
-                evt.removals().push_back(
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addRemoval(
                     typename QueryEventType::Removal(
                         child_id,
                         permanent ? QueryEventType::Permanent : QueryEventType::Transient
@@ -833,7 +833,7 @@ protected:
             // the aggregate node.
             if (nremoved > 0 || includeIntermediateEvents()) {
                 if (includeRemoval(Change_Coarsened))
-                    evt.removals().push_back( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Transient) );
+                    evt.addRemoval( typename QueryEventType::Removal(node->rtnode->aggregateID(), QueryEventType::Transient) );
             }
         }
         else {
@@ -863,7 +863,7 @@ protected:
             RTreeNodeType* child_rtnode = parent_cn->rtnode->node(i);
             if (qevt_out) {
                 if (includeAddition(Change_Refined))
-                    qevt_out->additions().push_back( typename QueryEventType::Addition(child_rtnode, QueryEventType::Imposter) );
+                    qevt_out->addAddition( typename QueryEventType::Addition(child_rtnode, QueryEventType::Imposter) );
                 addToResults(child_rtnode->aggregateID());
             }
             next_it = nodes.insert(next_it, new CutNodeType(parent, getNativeThis(), child_rtnode, getAggregateListener()));
@@ -871,7 +871,7 @@ protected:
         // Delete old node
         if (qevt_out) {
             if (includeRemoval(Change_Refined))
-                qevt_out->removals().push_back( typename QueryEventType::Removal(parent_cn->rtnode->aggregateID(), QueryEventType::Transient) );
+                qevt_out->addRemoval( typename QueryEventType::Removal(parent_cn->rtnode->aggregateID(), QueryEventType::Transient) );
             removeFromResults(parent_cn->rtnode->aggregateID());
         }
         nodes.erase(parent_it);
@@ -899,12 +899,12 @@ protected:
             size_t n_leaf_removed = removeFromResults(leaf_id);
             if (n_leaf_removed > 0) {
                 if (includeRemoval(Change_Coarsened))
-                    qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
+                    qevt_out->addRemoval( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
             }
         }
 
         if (includeAddition(Change_Coarsened))
-            qevt_out->additions().push_back( typename QueryEventType::Addition(node, QueryEventType::Imposter) );
+            qevt_out->addAddition( typename QueryEventType::Addition(node, QueryEventType::Imposter) );
         addToResults(node->aggregateID());
         // Note: no modification of length because we haven't
         // actually added or removed anything, only adjusted the
@@ -921,7 +921,7 @@ protected:
         // Add the new node using the parent.
         if (usesAggregates()) {
             if (includeAddition(Change_Coarsened))
-                qevt_out->additions().push_back( typename QueryEventType::Addition(parent_rtnode, QueryEventType::Imposter) );
+                qevt_out->addAddition( typename QueryEventType::Addition(parent_rtnode, QueryEventType::Imposter) );
             addToResults(parent_rtnode->aggregateID());
         }
         // Parent needs to be inserted after children, insert puts it before
@@ -944,7 +944,7 @@ protected:
                 if (nremoved > 0) {
                     aggregate_was_in_results = true;
                     if (includeRemoval(Change_Coarsened))
-                        qevt_out->removals().push_back( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Transient) );
+                        qevt_out->addRemoval( typename QueryEventType::Removal(child_rtnode->aggregateID(), QueryEventType::Transient) );
                 }
             }
             // At leaves, if the aggregate wasn't in the results (either
@@ -963,7 +963,7 @@ protected:
                     size_t n_leaf_removed = removeFromResults(leaf_id);
                     if (n_leaf_removed > 0) {
                         if (includeRemoval(Change_Coarsened))
-                            qevt_out->removals().push_back( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
+                            qevt_out->addRemoval( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
                     }
                 }
             }
@@ -993,12 +993,12 @@ protected:
         // Better not be empty or we'll lose a portion of the cut
         assert(!cnode->rtnode->empty());
 
-        QueryEventType evt(parent->handlerID());
+        QueryEventType evt(getLocCache(), parent->handlerID());
         for(int i = 0; i < cnode->rtnode->size(); i++) {
             ObjectID child_id = getLocCache()->iteratorID(cnode->rtnode->object(i).object);
             addToResults(child_id);
             if (includeAddition(Change_Refined))
-                evt.additions().push_back( typename QueryEventType::Addition(child_id, QueryEventType::Normal, cnode->rtnode->aggregateID()) );
+                evt.addAddition( typename QueryEventType::Addition(child_id, QueryEventType::Normal, cnode->rtnode->aggregateID()) );
         }
         // For some reason this:
         //results.erase(result_it);
@@ -1008,7 +1008,7 @@ protected:
         size_t nremoved = removeFromResults(cnode->rtnode->aggregateID());
         assert(nremoved == 1);
         if (includeRemoval(Change_Refined))
-            evt.removals().push_back( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Transient) );
+            evt.addRemoval( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Transient) );
         events.push_back(evt);
     }
 
@@ -1232,7 +1232,7 @@ protected:
                 CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), root, getAggregateListener());
                 if (usesAggregates()) {
                     if (includeAddition(Change_Refined))
-                        evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
+                        evt.addAddition( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
                     addToResults(new_cnode->rtnode->aggregateID());
                 }
             }
@@ -1246,7 +1246,7 @@ protected:
             CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), root->node(i), getAggregateListener());
             if (usesAggregates()) {
                 if (includeAddition(Change_Refined))
-                    evt.additions().push_back( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
+                    evt.addAddition( typename QueryEventType::Addition(new_cnode->rtnode, QueryEventType::Imposter) );
                 addToResults(new_cnode->rtnode->aggregateID());
             }
             // Not adding to list since we're rebuilding it in the next pass
@@ -1261,7 +1261,7 @@ protected:
     // nodes.
     void rebuildOrderedCutWithViolations(CutNodeList& inorder, RTreeNodeType* root) {
         // This works in two passes.
-        QueryEventType evt(parent->handlerID());
+        QueryEventType evt(getLocCache(), parent->handlerID());
         // On the first pass, we make sure we don't have any overlapping cut
         // nodes, i.e. that reordering hasn't caused the rtnode of one cut
         // node to become the child of the rtnode of another cut node.

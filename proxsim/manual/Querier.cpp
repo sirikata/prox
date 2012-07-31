@@ -26,9 +26,9 @@ void Querier::queryHasEvents(ManualQuery* query) {
     std::deque<QueryEvent> evts;
     query->copyEvents(evts);
     for(std::deque<QueryEvent>::iterator it = evts.begin(); it != evts.end(); it++) {
-        for(QueryEvent::AdditionList::iterator add_it = it->additions().begin(); add_it != it->additions().end(); add_it++)
+        for(QueryEvent::AdditionList::const_iterator add_it = it->additions().begin(); add_it != it->additions().end(); add_it++)
             mResults.insert(add_it->id());
-        for(QueryEvent::RemovalList::iterator rem_it = it->removals().begin(); rem_it != it->removals().end(); rem_it++)
+        for(QueryEvent::RemovalList::const_iterator rem_it = it->removals().begin(); rem_it != it->removals().end(); rem_it++)
             mResults.erase(rem_it->id());
     }
 
