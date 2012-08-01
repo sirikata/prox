@@ -158,15 +158,15 @@ public:
      : mLocCache(rhs.mLocCache),
        mIndexID(rhs.mIndexID)
     {
-        for(int i = 0; i < rhs.mAdditions.size(); i++)
+        for(size_t i = 0; i < rhs.mAdditions.size(); i++)
             addAddition(rhs.mAdditions[i]);
-        for(int i = 0; i < rhs.mRemovals.size(); i++)
+        for(size_t i = 0; i < rhs.mRemovals.size(); i++)
             addRemoval(rhs.mRemovals[i]);
     }
     QueryEvent& operator=(const QueryEvent& rhs) {
-        for(int i = 0; i < mAdditions.size(); i++)
+        for(size_t i = 0; i < mAdditions.size(); i++)
             mLocCache->stopRefcountTracking(mAdditions[i].id());
-        for(int i = 0; i < mRemovals.size(); i++)
+        for(size_t i = 0; i < mRemovals.size(); i++)
             mLocCache->stopRefcountTracking(mRemovals[i].id());
 
         mLocCache = rhs.mLocCache;
@@ -174,15 +174,17 @@ public:
         mAdditions.clear();
         mRemovals.clear();
 
-        for(int i = 0; i < rhs.mAdditions.size(); i++)
+        for(size_t i = 0; i < rhs.mAdditions.size(); i++)
             addAddition(rhs.mAdditions[i]);
-        for(int i = 0; i < rhs.mRemovals.size(); i++)
+        for(size_t i = 0; i < rhs.mRemovals.size(); i++)
             addRemoval(rhs.mRemovals[i]);
+
+        return *this;
     }
     ~QueryEvent() {
-        for(int i = 0; i < mAdditions.size(); i++)
+        for(size_t i = 0; i < mAdditions.size(); i++)
             mLocCache->stopRefcountTracking(mAdditions[i].id());
-        for(int i = 0; i < mRemovals.size(); i++)
+        for(size_t i = 0; i < mRemovals.size(); i++)
             mLocCache->stopRefcountTracking(mRemovals[i].id());
     }
 
