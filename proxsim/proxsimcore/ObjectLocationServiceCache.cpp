@@ -47,8 +47,14 @@ ObjectLocationServiceCache::~ObjectLocationServiceCache() {
 void ObjectLocationServiceCache::addObject(Object* obj) {
     Lock lck(mMutex);
 
-    assert( mObjects.find(obj->id()) == mObjects.end() );
-    mObjects[obj->id()] = ObjectInfo(obj);
+    // Since these are refcounted, we may have a copy, but it *must* be marked
+    // as !exists
+    ObjectMap::iterator it = mObjects.find(obj->id());
+    assert( it == mObjects.end() || it->second.exists == false );
+    if (it == mObjects.end())
+        mObjects[obj->id()] = ObjectInfo(obj);
+    else
+        mObjects[obj->id()].exists = true;
 }
 
 void ObjectLocationServiceCache::removeObject(const Object* obj) {
