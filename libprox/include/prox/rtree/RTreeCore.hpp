@@ -2524,12 +2524,20 @@ void RTree_draw_tree(
     int32 indent = 0)
 {
 
+    if (root == NULL) {
+        std::cout << "(NULL Tree)" << std::endl;
+        return;
+    }
+
     for(int i = 0; i < indent; i++) std::cout << " ";
-    std::cout << root->aggregateID() << std::endl;
+    std::cout << root->aggregateID() << " with " << root->cutNodesSize() << " cuts" << std::endl;
 
     if (root->objectChildren()) {
-        for(int i = 0; i < indent+1; i++) std::cout << " ";
-        std::cout << "(" << root->size() << " object children)" << std::endl;
+        for(int ci = 0; ci < root->size(); ci++) {
+            for(int i = 0; i < indent+1; i++) std::cout << " ";
+            std::cout << root->loc()->iteratorID(root->object(ci).object) << std::endl;
+        }
+        //std::cout << "(" << root->size() << " object children)" << std::endl;
     }
     else {
         for(int ci = 0; ci < root->size(); ci++)

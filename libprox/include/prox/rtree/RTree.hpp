@@ -280,6 +280,9 @@ public:
     }
 
 
+    void draw() {
+        RTree_draw_tree(mRoot);
+    }
 
     // Iteration over nodes. This just means internal nodes are visited as
     // well. This iterator does pre-order traversal. This is most convenient if

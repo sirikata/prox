@@ -310,6 +310,21 @@ public:
             // when we're splitting nodes while keeping cuts in place. Currently
             // it works without the assertion since the end goal is to just add
             // all the children as results anyway.
+
+            // For tree replication we need to make sure the new node is
+            // explicitly added
+            {
+                if (includeAddition(Change_Inserted)) {
+                    QueryEventType parent_evt(getLocCache(), parent->handlerID());
+                    parent_evt.addAddition( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
+                    events.push_back(parent_evt);
+                }
+            }
+
+            // Then we deal with the missing children, also sending the removal
+            // if needed
+            if (includeRemoval(Change_Refined))
+                evt.addRemoval( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Transient) );
             int32 nadded = 0;
             for(typename RTreeNodeType::Index ci = 0; ci < orig_node->size(); ci++) {
                 ObjectID child_id = getLocCache()->iteratorID(orig_node->object(ci).object);
