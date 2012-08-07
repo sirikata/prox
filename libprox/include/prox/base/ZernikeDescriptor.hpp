@@ -218,7 +218,7 @@ public:
         int count = 0;
 
         //tokenize the line
-#if SIRIKATA_PLATFORM == SIRIKATA_PLATFORM_WINDOWS
+#if LIBPROX_PLATFORM == PLATFORM_WINDOWS
 #define strtok_threadsafe strtok_s
 #else
 #define strtok_threadsafe strtok_r
