@@ -218,7 +218,12 @@ public:
         int count = 0;
 
         //tokenize the line
-        for (p=strtok_r(valueline, delim, &save); p; p = strtok_r(NULL, delim, &save) ) {
+#if SIRIKATA_PLATFORM == SIRIKATA_PLATFORM_WINDOWS
+#define strtok_threadsafe strtok_s
+#else
+#define strtok_threadsafe strtok_r
+#endif
+        for (p=strtok_threadsafe(valueline, delim, &save); p; p = strtok_threadsafe(NULL, delim, &save) ) {
           if (count == 1) {
             int percentValue = atoi(p);
             if (percentValue > maxPercentage && percentValue > 90) {
