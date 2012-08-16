@@ -88,7 +88,7 @@ public:
 
         // This path is inefficient since we need to remove from the heap
         for(typename ScoredObjectHeap::iterator it = mScoredObjects.begin(); it != mScoredObjects.end(); it++) {
-            if (it->second.id == id) {
+            if (it->id == id) {
                 mScoredObjects.erase(it);
                 break;
             }
