@@ -55,6 +55,10 @@ public:
             objects.push_back(ObjectID::Random()());
     }
 
+    void tearDown() {
+        objects.clear();
+    }
+
     void testAdd() {
         QueryCache qc(1);
         qc.add(objects[0], 0);

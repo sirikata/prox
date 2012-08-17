@@ -210,10 +210,15 @@ SET(MANUAL_PROXSIM_SOURCES
 # input tests
 SET(LIBPROX_TESTS_TEST_SOURCES
   ${LIBPROX_TESTS_SOURCE_DIR}/QueryCacheTest.hpp
+  ${LIBPROX_TESTS_SOURCE_DIR}/BruteForceHandlerTest.hpp
+  ${LIBPROX_TESTS_SOURCE_DIR}/RTreeHandlerTest.hpp
+  ${LIBPROX_TESTS_SOURCE_DIR}/RTreeCutHandlerTest.hpp
+  ${LIBPROX_TESTS_SOURCE_DIR}/RTreeCutAggHandlerTest.hpp
   )
 # source that actually gets compiled
 SET(LIBPROX_TESTS_SOURCES
   ${LIBPROX_TESTS_SOURCE_DIR}/Test.cpp
+  ${LIBPROX_TESTS_SOURCE_DIR}/TestLocationServiceCache.cpp
   ${LIBPROX_TESTS_SOURCE_DIR}/GeneratedTestSuite.cpp
 )
 
