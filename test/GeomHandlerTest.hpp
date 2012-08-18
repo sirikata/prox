@@ -27,6 +27,18 @@ public:
        strict(_strict)
     {}
 
+    void addQuery(float32 minangle) {
+        // For these tests we, always put the querier at the origin, with no
+        // bounding sphere, 0 max_size, and just specify the minangle passed in.
+        Query* q = handler->registerQuery(
+            MotionVector3f(Time::null(), Vector3f::nil(), Vector3f::nil()),
+            BoundingSphere3f(Vector3f::nil(), 0.f),
+            0,
+            SolidAngle(minangle)
+        );
+        HandlerTestBaseType::addQuery(q);
+    }
+
     void checkCorrectResultsSize(size_t query_idx, size_t nresults) {
         if (strict) {
             TS_ASSERT_EQUALS(query_results[queries[query_idx]].size(), nresults);

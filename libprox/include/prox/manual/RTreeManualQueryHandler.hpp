@@ -403,7 +403,10 @@ protected:
         // Initialize any cuts that haven't been initialized yet (never got
         // past, or dropped to, cut length 0)
         for(QueryMapIterator it = mQueries.begin(); it != mQueries.end(); it++)
-            if (it->second->cut->cutSize() == 0) it->second->cut->init(mRTree->root());
+            if (it->second->cut->cutSize() == 0) {
+                it->second->cut->init(mRTree->root());
+                it->second->cut->pushEvents();
+            }
     }
 
     ///this needs to be a template class for no good reason: Microsoft visual studio bugs demand it.

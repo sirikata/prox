@@ -109,6 +109,7 @@ public:
         objects.clear();
         queries.clear();
         query_indices.clear();
+        query_results.clear();
     }
 
     // Subclasses should provide this to create the handler they want to test.
@@ -150,15 +151,7 @@ public:
             removeObject(i);
     }
 
-    void addQuery(float32 minangle) {
-        // For these tests we, always put the querier at the origin, with no
-        // bounding sphere, 0 max_size, and just specify the minangle passed in.
-        Query* q = handler->registerQuery(
-            MotionVector3f(Time::null(), Vector3f::nil(), Vector3f::nil()),
-            BoundingSphere3f(Vector3f::nil(), 0.f),
-            0,
-            SolidAngle(minangle)
-        );
+    void addQuery(Query* q) {
         q->setEventListener(this);
         queries.push_back(q);
         query_indices[q] = queries.size()-1;

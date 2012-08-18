@@ -137,12 +137,18 @@ public:
         printf("Error: Assert failed at %s:%d: (%s != %s), value: %s\n", file, line, xStr, yStr, value);
         mFailedTests.push_back(mCurrentTest);
     }
-    virtual void failedAssertLessThan( const char * /*file*/, int /*line*/,
-        const char * /*xStr*/, const char * /*yStr*/,
-        const char * /*x*/, const char * /*y*/ ) {}
-    virtual void failedAssertLessThanEquals( const char * /*file*/, int /*line*/,
-        const char * /*xStr*/, const char * /*yStr*/,
-        const char * /*x*/, const char * /*y*/ ) {}
+    virtual void failedAssertLessThan( const char * file, int line,
+        const char * xStr, const char * yStr,
+        const char * x, const char * y ) {
+        printf("Error: Assert failed at %s:%d: %s < %s, was %s < %s\n", file, line, xStr, yStr, x, y);
+        mFailedTests.push_back(mCurrentTest);
+    }
+    virtual void failedAssertLessThanEquals( const char * file, int line,
+        const char * xStr, const char * yStr,
+        const char * x, const char * y ) {
+        printf("Error: Assert failed at %s:%d: %s < %s, was %s < %s\n", file, line, xStr, yStr, x, y);
+        mFailedTests.push_back(mCurrentTest);
+    }
     virtual void failedAssertPredicate( const char * /*file*/, int /*line*/,
         const char * /*predicate*/, const char * /*xStr*/, const char * /*x*/ ) {}
     virtual void failedAssertRelation( const char * /*file*/, int /*line*/,
