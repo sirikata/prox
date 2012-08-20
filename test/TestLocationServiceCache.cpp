@@ -36,6 +36,34 @@ void TestLocationServiceCache::addObject(const ObjectID& objid,
             (*it)->locationConnected(objid, aggregate, true, loc, BoundingSphere(bounds_center_offset, bounds_center_bounds_radius), bounds_max_size);
 }
 
+void TestLocationServiceCache::addObjectWithParent(
+    const ObjectID& objid,
+    const ObjectID& parentid,
+    bool aggregate,
+    const MotionVector3& loc,
+    const Vector3& bounds_center_offset,
+    const float32 bounds_center_bounds_radius,
+    const float32 bounds_max_size,
+    const String& mesh,
+    bool notify)
+{
+    // Since these are refcounted, we may have a copy, but it *must* be marked
+    // as !exists. The one exception is for aggregates, which will have been
+    // added via addPlaceholderImposter already
+    ObjectMap::iterator it = mObjects.find(objid);
+    assert( it == mObjects.end() || it->second->exists == false || aggregate);
+    if (it == mObjects.end())
+        mObjects[objid] = ObjectInfoPtr(
+            new ObjectInfo(objid, aggregate, loc, bounds_center_offset, bounds_center_bounds_radius, bounds_max_size, mesh)
+        );
+    else
+        mObjects[objid]->exists = true;
+
+    if (notify)
+        for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+            (*it)->locationConnectedWithParent(objid, parentid, aggregate, true, loc, BoundingSphere(bounds_center_offset, bounds_center_bounds_radius), bounds_max_size);
+}
+
 #define LOCK_AND_GET_OBJ_ENTRY(it, objid)               \
     ObjectMap::iterator it = mObjects.find(objid);      \
     assert( it != mObjects.end() )
@@ -43,11 +71,15 @@ void TestLocationServiceCache::addObject(const ObjectID& objid,
 void TestLocationServiceCache::removeObject(const ObjectID& objid) {
     LOCK_AND_GET_OBJ_ENTRY(it, objid);
     it->second->exists = false;
-
-    tryClearObject(it);
+    // Make sure this stays alive until we're done
+    it->second->refcount++;
 
     for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
         (*it)->locationDisconnected(objid);
+
+    // Then allow it to possibly be cleaned up
+    it->second->refcount--;
+    tryClearObject(it);
 }
 
 void TestLocationServiceCache::updateLocation(const ObjectID& objid, const MotionVector3& newval) {

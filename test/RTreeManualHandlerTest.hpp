@@ -17,6 +17,11 @@ class RTreeManualHandlerTest : public CxxTest::TestSuite,
     typedef HandlerTestBase<Prox::ManualQueryHandler<Prox::DefaultSimulationTraits>, Prox::ManualQuery<Prox::DefaultSimulationTraits> > HandlerTestBaseType;
 public:
 
+    RTreeManualHandlerTest()
+     : HandlerTestBaseType(true) // aggregates added to loc since this query
+                                 // handler works over just input set of objects
+    {}
+
     virtual QueryHandler* createHandler() {
         return new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits>(10);
     }

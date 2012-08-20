@@ -32,6 +32,15 @@ public:
         const float32 bounds_max_size,
         const String& mesh,
         bool notify);
+    void addObjectWithParent(const ObjectID& objid,
+        const ObjectID& parentid,
+        bool aggregate,
+        const MotionVector3& loc,
+        const Vector3& bounds_center_offset,
+        const float32 bounds_center_bounds_radius,
+        const float32 bounds_max_size,
+        const String& mesh,
+        bool notify);
     void removeObject(const ObjectID& objid);
     void updateLocation(const ObjectID& objid, const MotionVector3& newval);
     void updateBounds(const ObjectID& objid,

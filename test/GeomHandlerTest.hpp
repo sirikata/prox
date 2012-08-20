@@ -23,7 +23,7 @@ public:
     const bool strict;
 
     GeomHandlerTest(bool _strict)
-     : HandlerTestBaseType(),
+     : HandlerTestBaseType(true),
        strict(_strict)
     {}
 

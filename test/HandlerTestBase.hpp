@@ -72,11 +72,13 @@ public:
     TestLocationServiceCache* loccache;
     QueryHandler* handler;
     Time time;
+    bool add_aggregates_to_loc;
 
-    HandlerTestBase()
+    HandlerTestBase(bool aggregates_to_loc)
      : loccache(NULL),
        handler(NULL),
-       time(Time::null())
+       time(Time::null()),
+       add_aggregates_to_loc(aggregates_to_loc)
     {}
 
     void setUp() {
@@ -209,14 +211,16 @@ public:
     // arrive via the LocationService, but we just push them in directly here to
     // avoid including more pieces.
     virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) {
-        loccache->addObject(
-            objid,
-            true, // aggregate
-            MotionVector3f(Time::null(), Vector3f(0, 0, 0), Vector3f::nil()),
-            Vector3f(0, 0, 0), 0, 0,
-            "", // no mesh
-            false
-        );
+        if (add_aggregates_to_loc) {
+            loccache->addObject(
+                objid,
+                true, // aggregate
+                MotionVector3f(Time::null(), Vector3f(0, 0, 0), Vector3f::nil()),
+                Vector3f(0, 0, 0), 0, 0,
+                "", // no mesh
+                false
+            );
+        }
     }
     virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
         const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) {
@@ -226,10 +230,12 @@ public:
     }
     virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid,
         const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) {
-        loccache->updateBounds(objid, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
+        if (add_aggregates_to_loc)
+            loccache->updateBounds(objid, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
     }
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
-        loccache->removeObject(objid);
+        if (add_aggregates_to_loc)
+            loccache->removeObject(objid);
     }
     virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) {}
 
