@@ -34,6 +34,8 @@ def build_config(flags):
         call_success(subprocess.call(['make', '-j4'], cwd=wd))
     if not success:
         raise Exception("Build failed: " + ' '.join(flags))
+    if not call_success(subprocess.call(['./libprox_tests'])):
+        raise Exception("Tests failed: " + ' '.join(flags))
 
 def select_option(flags, opt_idx):
     # If we are done selecting options
