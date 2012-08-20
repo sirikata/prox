@@ -216,6 +216,7 @@ SET(LIBPROX_TESTS_TEST_SOURCES
   ${LIBPROX_TESTS_SOURCE_DIR}/RTreeCutAggHandlerTest.hpp
   ${LIBPROX_TESTS_SOURCE_DIR}/RTreeManualHandlerTest.hpp
   ${LIBPROX_TESTS_SOURCE_DIR}/RTreeReplicatedTreeTest.hpp
+  ${LIBPROX_TESTS_SOURCE_DIR}/RTreeTreeReplicatedFromQueryTest.hpp
   )
 # source that actually gets compiled
 SET(LIBPROX_TESTS_SOURCES

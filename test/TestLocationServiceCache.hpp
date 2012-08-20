@@ -70,6 +70,23 @@ public:
     virtual String mesh(const Iterator& id);
     virtual bool isLocal(const Iterator& id);
 
+    MotionVector3 location(const ObjectID& id);
+    Vector3 centerOffset(const ObjectID& id);
+    float32 centerBoundsRadius(const ObjectID& id);
+    float32 maxSize(const ObjectID& id);
+    BoundingSphere region(const ObjectID& id) {
+        return BoundingSphere(centerOffset(id), centerBoundsRadius(id));
+    }
+    BoundingSphere worldRegion(const ObjectID& id, const Time& t) {
+        BoundingSphere reg = region(id);
+        return BoundingSphere( reg.center() + location(id).position(t), reg.radius() );
+    }
+    BoundingSphere worldCompleteBounds(const ObjectID& id, const Time& t) {
+        BoundingSphere reg = region(id);
+        return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );
+    }
+    String mesh(const ObjectID& id);
+
     virtual const ObjectID& iteratorID(const Iterator& id);
 
     virtual void addUpdateListener(LocationUpdateListenerType* listener);

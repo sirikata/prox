@@ -181,7 +181,7 @@ void TestLocationServiceCache::stopRefcountTracking(const ObjectID& objid) {
 
 #define GET_OBJECT_INFO_PTR(name, from)                     \
     ObjectInfoPtr* name = (ObjectInfoPtr*)from.data;       \
-    assert(obj != NULL || !*obj);
+    assert(name != NULL || !*name);
 
 TestLocationServiceCache::MotionVector3 TestLocationServiceCache::location(const Iterator& id) {
     GET_OBJECT_INFO_PTR(obj, id);
@@ -221,6 +221,36 @@ bool TestLocationServiceCache::isLocal(const Iterator& id) {
 const TestLocationServiceCache::ObjectID& TestLocationServiceCache::iteratorID(const Iterator& id) {
     GET_OBJECT_INFO_PTR(obj, id);
     return (*obj)->objid;
+}
+
+#define GET_OBJECT_INFO_FROM_ID(name, from)            \
+    assert(mObjects.find(from) != mObjects.end());     \
+    ObjectInfoPtr name = mObjects[from];               \
+    assert(name)
+
+TestLocationServiceCache::MotionVector3 TestLocationServiceCache::location(const ObjectID& id) {
+    GET_OBJECT_INFO_FROM_ID(obj, id);
+    return obj->loc;
+}
+
+TestLocationServiceCache::Vector3 TestLocationServiceCache::centerOffset(const ObjectID& id) {
+    GET_OBJECT_INFO_FROM_ID(obj, id);
+    return obj->bounds_center_offset;
+}
+
+TestLocationServiceCache::float32 TestLocationServiceCache::centerBoundsRadius(const ObjectID& id) {
+    GET_OBJECT_INFO_FROM_ID(obj, id);
+    return obj->bounds_center_bounds_radius;
+}
+
+TestLocationServiceCache::float32 TestLocationServiceCache::maxSize(const ObjectID& id) {
+    GET_OBJECT_INFO_FROM_ID(obj, id);
+    return obj->bounds_max_size;
+}
+
+TestLocationServiceCache::String TestLocationServiceCache::mesh(const ObjectID& id) {
+    GET_OBJECT_INFO_FROM_ID(obj, id);
+    return obj->mesh;
 }
 
 void TestLocationServiceCache::addUpdateListener(LocationUpdateListenerType* listener) {
