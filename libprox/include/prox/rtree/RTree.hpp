@@ -79,6 +79,7 @@ public:
     typedef typename RTreeNodeType::ObjectInsertedCallback ObjectInsertedCallback;
     typedef typename RTreeNodeType::ObjectRemovedCallback ObjectRemovedCallback;
 
+    typedef typename RTreeNodeType::NodeAddedAboveCutCallback NodeAddedAboveCutCallback;
     typedef typename RTreeNodeType::NodeRemovedCallback NodeRemovedCallback;
 
     typedef typename RTreeNodeType::Index Index;
@@ -96,6 +97,7 @@ public:
         NodeSplitCallback replicated_node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
         ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0,
+        NodeAddedAboveCutCallback node_add_above_cb = 0,
         NodeRemovedCallback node_rem_cb = 0
     )
      : mLocCache(loccache),
@@ -121,6 +123,7 @@ public:
         mCallbacks.reorderCut = reorder_cut_cb;
         mCallbacks.objectInserted = obj_ins_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
+        mCallbacks.nodeAddedAboveCut = node_add_above_cb;
         mCallbacks.nodeWithCutRemoved = node_rem_cb;
         mRootCreatedCallback = root_created_cb;
 

@@ -91,6 +91,9 @@ public:
     void handleObjectRemoved(const LocCacheIterator& objit, bool permanent, bool emptied) {
         parent->handleObjectRemoved(getNativeThis(), objit, permanent, emptied);
     }
+    void handleNodeAddedAboveCut(RTreeNodeType* add_node) {
+        parent->handleNodeAddedAboveCut(getNativeThis(), add_node);
+    }
     void handleNodeRemoved(RTreeNodeType* rem_node) {
         parent->handleNodeRemoved(getNativeThis(), rem_node);
     }

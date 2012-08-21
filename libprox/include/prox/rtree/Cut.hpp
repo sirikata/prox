@@ -626,6 +626,36 @@ public:
         validateCut();
     }
 
+    // A (replicated) node is being added somewhere in the tree above
+    // our cut. We need to get it incorporated into our cut or we'll
+    // leave a gap. Note that this doesn't get called for local
+    // splits, only when replication commands tell us we need to add a
+    // node (which could be due to a remote split)
+    void handleNodeAddedAboveCut(CutNodeType* cnode, RTreeNodeType* add_node) {
+        // cnode is the CutNode "closest" to this node on the left,
+        // which is how we found this cut to notify it. To complete
+        // the cut, we need to add a cut node for add_node right after
+        // cnode.
+
+        CutNodeListIterator it = std::find(nodes.begin(), nodes.end(), cnode);
+        assert(it != nodes.end());
+        CutNodeListIterator after_it = it; after_it++;
+
+        CutNodeType* new_cnode = new CutNodeType(parent, getNativeThis(), add_node, getAggregateListener());
+        nodes.insert(after_it, new_cnode);
+        length++;
+        validateCut();
+
+        if (usesAggregates()) {
+            if (includeAddition(Change_Inserted)) {
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addAddition( typename QueryEventType::Addition(add_node, QueryEventType::Imposter) );
+                events.push_back(evt);
+            }
+        }
+        query->pushEvents(events);
+    }
+
     // A node is being removed while we still have a cut node through it. Should
     // be nothing below it (objects or other nodes) so it should be as simple as
     // removing the cut node. See RTreeCore docs about siblings: we are

@@ -157,6 +157,16 @@ public:
     // results) along with the removal of the child object.
     typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, bool permanent, bool emptiedNode)> ObjectRemovedCallback;
 
+    // Node was added somewhere above the cut, e.g. because we are
+    // querying a replicated tree and we saw a node addition. The cut
+    // node "closest" to the left of the new node will be the one this
+    // callback is invoked for. This will always be a sibling of the
+    // new node since this callback is never necessary when inserting
+    // into a node with no children (you couldn't have a cut below
+    // this node in that case). The node will have been added already,
+    // so you can use the structure of the updated tree (e.g. getting
+    // the parent) to complete the update.
+    typedef std::tr1::function<void(CutNode*, RTreeNode*)> NodeAddedAboveCutCallback;
     // Node is being removed (completely destroyed), but the cut is still
     // passing through it (because we're not lifting cuts). The node is just
     // being removed and should be empty, so handling this should be as simple
@@ -187,7 +197,9 @@ public:
         ReorderCutCallback reorderCut;
         ObjectInsertedCallback objectInserted;
         ObjectRemovedCallback objectRemoved;
-        // When not lifting cuts, we need a few additional types of callbacks
+        // When not lifting cuts, we need a few additional types of
+        // callbacks
+        NodeAddedAboveCutCallback nodeAddedAboveCut;
         NodeRemovedCallback nodeWithCutRemoved;
     };
 private:
@@ -1347,6 +1359,22 @@ void RTree_notify_cuts(
 // Notify cuts *below* node with the given call. This is useful if you have an
 // event at a node (e.g. the root) which is relevant to cuts that have refined
 // past it. The cuts through the specified node *are not* notified.
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1>
+void RTree_notify_descendant_cuts(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    F func, const P1& p1
+)
+{
+    // Just follow one path until we hit the leaf nodes, notifying all cuts we
+    // encounter along the way
+    RTreeNode<SimulationTraits, NodeData, CutNode>* n = node;
+    while(n != NULL && !n->objectChildren() && !n->empty()) {
+        // Go all the way to the right so we get the "closest" nodes
+        // to the event
+        n = n->node( n->size()-1 );
+        RTree_notify_cuts(n, func, p1);
+    }
+}
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1, typename P2>
 void RTree_notify_descendant_cuts(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
@@ -1357,7 +1385,9 @@ void RTree_notify_descendant_cuts(
     // encounter along the way
     RTreeNode<SimulationTraits, NodeData, CutNode>* n = node;
     while(n != NULL && !n->objectChildren() && !n->empty()) {
-        n = n->node(0);
+        // Go all the way to the right so we get the "closest" nodes
+        // to the event
+        n = n->node( n->size()-1 );
         RTree_notify_cuts(n, func, p1, p2);
     }
 }
@@ -1934,12 +1964,27 @@ void RTree_insert_new_node_at_node(
     assert(!parent_node->full());
     // Should be either marked as not a leaf or should be empty so we can change it
     assert(!parent_node->objectChildren() || parent_node->empty());
+    bool was_empty = parent_node->empty();
     // And once we know it's safe, make sure we have the setting right
     parent_node->objectChildren(false);
 
     parent_node->insert(new_node);
 
     // No cleanup -- cannot cause overflow and splitting
+
+    // Let any cuts that are below this one know that a new node was
+    // added. If the node was empty, there couldn't have been any
+    // nodes under it, so we can skip this
+    if (new_node->callbacks().nodeAddedAboveCut && !was_empty) {
+        // We're careful here to notify with the right cut nodes, the
+        // ones "closest" to the event where we'll need to insert the
+        // new node in the cut. First we find the closest node
+        RTreeNodeType* closest_node = parent_node->node(parent_node->size()-2);
+        // Notify its cuts
+        RTree_notify_cuts(closest_node, new_node->callbacks().nodeAddedAboveCut, new_node);
+        // and then cuts in its descendants
+        RTree_notify_descendant_cuts(closest_node, new_node->callbacks().nodeAddedAboveCut, new_node);
+    }
 }
 
 template<typename SimulationTraits, typename NodeData, typename CutNode>

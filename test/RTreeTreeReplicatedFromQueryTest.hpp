@@ -220,6 +220,20 @@ public:
         TS_ASSERT_TREES_IDENTICAL();
     }
 
+
+    void testInsertionAlongCut() {
+        addObject(ObjID(1), ObjID(0), true);
+        addObject(ObjID(2), ObjID(1), true);
+        addObject(ObjID(3), ObjID(1), true);
+        refineToBottom();
+        TS_ASSERT_TREES_IDENTICAL();
+
+        // Cut should be in 2, 3. Add 4 as a neighbor. This simple addition
+        // (no split/merge) should always result in a simple addition to the cut
+        addObject(ObjID(4), ObjID(1), true);
+        TS_ASSERT_TREES_IDENTICAL();
+    }
+
     void testRemovalAlongCut() {
         addObject(ObjID(1), ObjID(0), true);
         addObject(ObjID(2), ObjID(1), true);
