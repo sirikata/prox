@@ -79,6 +79,9 @@ public:
     void handleSplit(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
         parent->handleSplit(getNativeThis(), orig_node, new_node);
     }
+    void handleSplitFinished(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+        parent->handleSplitFinished(getNativeThis(), orig_node, new_node);
+    }
     void handleSplitAboveCut(RTreeNodeType* orig_node, RTreeNodeType* new_node) {
         parent->handleSplitAboveCut(getNativeThis(), orig_node, new_node);
     }
@@ -97,6 +100,18 @@ public:
     void handleNodeRemoved(RTreeNodeType* rem_node) {
         parent->handleNodeRemoved(getNativeThis(), rem_node);
     }
+
+    void handleNodeReparented(RTreeNodeType* node, RTreeNodeType* old_parent, RTreeNodeType* new_parent) {
+        // CutNode should be
+        parent->handleNodeReparented(getNativeThis(), node, old_parent, new_parent);
+    }
+    void handleNodeReparentedAboveCut(RTreeNodeType* node, RTreeNodeType* old_parent, RTreeNodeType* new_parent) {
+        parent->handleNodeReparentedAboveCut(getNativeThis(), node, old_parent, new_parent);
+    }
+    void handleObjectReparented(const LocCacheIterator& objit, RTreeNodeType* old_parent, RTreeNodeType* new_parent) {
+        parent->handleObjectReparented(getNativeThis(), objit, old_parent, new_parent);
+    }
+
 };
 
 

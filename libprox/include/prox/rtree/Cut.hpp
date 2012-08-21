@@ -235,23 +235,6 @@ public:
         handleSplitResolveAdditions(cnode, orig_node, new_node);
     }
 
-    // Handle a split of orig_node into orig_node and new_node. cnode is the
-    // CutNode that was (and remains) at orig_node. This is only used for tree
-    // replication, where we need to know that a node was added above the cut
-    // so we can insert it
-    void handleSplitAboveCut(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
-        // We just need to add the new node so the client actually replicates
-        // it. Does *not* get added to result set since we've already refined
-        // past it.
-        if (usesAggregates()) {
-            if (includeAddition(Change_Inserted)) {
-                QueryEventType evt(getLocCache(), parent->handlerID());
-                evt.addAddition( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
-                events.push_back(evt);
-            }
-        }
-    }
-
     // Helper that does the addition of the cut node.
     void handleSplitAddCutNode(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
         // Add a new CutNode to new_node and insert it in our cut list.
@@ -284,8 +267,12 @@ public:
         QueryEventType evt(getLocCache(), parent->handlerID());
         // If the original node is in the result set, then none of the
         // children were in the result set. This means we can just add the
-        // new node to the result set.
-        if (isInResults(orig_node->aggregateID())) {
+        // new node to the result set. Alternatively, if we're not
+        // lifting cuts, then we'll do this all before we move any
+        // children (which we'll later reparent), in which case the
+        // new node is empty and we can't even add it's children -- we
+        // *have* to return just the node.
+        if (new_node->empty() || isInResults(orig_node->aggregateID())) {
             if (includeAddition(Change_Inserted))
                 evt.addAddition( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
             addToResults(new_node->aggregateID());
@@ -351,6 +338,57 @@ public:
         events.push_back(evt);
 
         // mid operation (addition causing split), no validation
+    }
+
+    void handleSplitFinished(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+#ifdef LIBPROX_LIFT_CUTS
+        assert(false && "You shouldn't need or get splitFinished callbacks when lifting cuts.");
+#endif
+
+        // When not lifting cuts, we can end up removing *object*
+        // results because of the order of operations we follow: the
+        // nodes are split and we are notified (in handleSplit above)
+        // and we add the new node to the cut, but at that point we
+        // have no objects inserted so even if the original node has
+        // children results, we're stuck only returning the new
+        // node. We need to check if the old node has children results
+        // and, if so, refine the new node. Note that this is only an
+        // issue for the leaf nodes -- nodes with node children don't
+        // have this issue because a cut only goes through internal
+        // nodes if they are part of the results themselves.
+
+        // Sanity check that we have cut nodes through both
+        assert(orig_node->findCutNode(getNativeThis()) != orig_node->cutNodesEnd());
+        assert(new_node->findCutNode(getNativeThis()) != new_node->cutNodesEnd());
+
+        if (!orig_node->objectChildren()) return;
+
+        bool orig_in_results = isInResults(orig_node->aggregateID());
+        if (orig_in_results) return;
+
+        // At this point, we know the children of the original node
+        // are in the results, so we should refine the new node to
+        // its children.
+        assert(!new_node->empty());
+        typename RTreeNodeType::CutNodeListConstIterator new_cnode_it = new_node->findCutNode(getNativeThis());
+        replaceParentWithChildrenResults(new_cnode_it->second);
+    }
+
+    // Handle a split of orig_node into orig_node and new_node. cnode is the
+    // CutNode that was (and remains) at orig_node. This is only used for tree
+    // replication, where we need to know that a node was added above the cut
+    // so we can insert it
+    void handleSplitAboveCut(CutNodeType* cnode, RTreeNodeType* orig_node, RTreeNodeType* new_node) {
+        // We just need to add the new node so the client actually replicates
+        // it. Does *not* get added to result set since we've already refined
+        // past it.
+        if (usesAggregates()) {
+            if (includeAddition(Change_Inserted)) {
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addAddition( typename QueryEventType::Addition(new_node, QueryEventType::Imposter) );
+                events.push_back(evt);
+            }
+        }
     }
 
 
@@ -593,19 +631,24 @@ public:
     }
 
     void handleObjectRemoved(CutNodeType* cnode, const LocCacheIterator& objit, bool permanent, bool emptied) {
+        handleObjectRemovedNoCutValidation(cnode, objit, permanent, emptied);
+        validateCut();
+        query->pushEvents(events);
+    }
+    void handleObjectRemovedNoCutValidation(CutNodeType* cnode, const LocCacheIterator& objit, bool permanent, bool emptied) {
         // Ignore insertions/deletions during rebuild
         if (isRebuilding()) return;
 
         // We just need to remove the object from the result set if we have
         // it.
         ObjectID child_id = getLocCache()->iteratorID(objit);
-        removeObjectChildFromResults(child_id, permanent);
+        bool did_remove = removeObjectChildFromResults(child_id, permanent);
 
         // If the removal caused the node to become empty, we need to make sure
         // we properly account for this to get the right sequence of
         // additions/removals given that we implicitly decide whether the cut is
         // at the children or at the node.
-        if (emptied) {
+        if (emptied && did_remove) {
             // The trick is to trigger an addition to go with the removal. This
             // makes sure the parent gets back into the result set, and
             // depending on whether we're doing result sets or tree replication,
@@ -624,9 +667,6 @@ public:
                 addToResults(cnode->rtnode->aggregateID());
             }
         }
-
-        validateCut();
-        query->pushEvents(events);
     }
 
     // A (replicated) node is being added somewhere in the tree above
@@ -682,6 +722,222 @@ public:
 
         query->pushEvents(events);
     }
+
+
+    // Searches for the CutNodes that start and end (actually end, not like
+    // iterators where end is last+1) the cut under the given node. Could be
+    // just one node (i.e. start and end are the same) if there is just a cut
+    // node in under.
+    void findCutSegment(RTreeNodeType* under, CutNodeType** start_out, CutNodeType** end_out) {
+        // Traverse down the left and right trees looking for the start and end
+        // nodes
+
+        RTreeNodeType* rtnode = under;
+        typename RTreeNodeType::CutNodeListConstIterator rtcut_it;
+        // Left edge
+        while((rtcut_it = rtnode->findCutNode(getNativeThis())) == rtnode->cutNodesEnd()) {
+            assert(!rtnode->objectChildren());
+            assert(!rtnode->empty());
+            rtnode = rtnode->node(0);
+        }
+        *start_out = rtcut_it->second;
+        // Right edge
+        rtnode = under;
+        while((rtcut_it = rtnode->findCutNode(getNativeThis())) == rtnode->cutNodesEnd()) {
+            assert(!rtnode->objectChildren());
+            assert(!rtnode->empty());
+            rtnode = rtnode->node(rtnode->size()-1);
+        }
+        *end_out = rtcut_it->second;
+    }
+
+    void handleNodeReparented(CutNodeType* cnode, RTreeNodeType* node, RTreeNodeType* old_parent, RTreeNodeType* new_parent) {
+        // Node with a cut running through it is being reparented.
+
+#ifdef LIBPROX_LIFT_CUTS
+        // Not used when lifting cuts
+        assert(false);
+#endif
+        // cnode should be the cut node for this cut running through
+        // the reparented rtree node.
+
+        // What we do here depends on why we're getting this:
+        // a) because we're splitting a node on a regular tree and
+        // something needs to move to the split node:
+        if (!node->replicated()) {
+            // Note also that this callback comes mid-split operation, so
+            // cuts may not be complete. However, the nodes being operated
+            // on should be in sane positions (i.e. new parent has already
+            // been attached to the tree).
+
+            // There's not much to do here since we're going to recover
+            // the cut later. Instead, here we just make sure the querier
+            // for the cut knows the tree structure has changed.
+            if (usesAggregates()) {
+                // There's no check like includeAddition(Change_Inserted)
+                // because none of those operations happened -- the cut
+                // goes through this node and it's moving, so the querier
+                // *must* be updated about it.
+                QueryEventType evt(getLocCache(), parent->handlerID());
+                evt.addReparent( typename QueryEventType::Reparent(node, old_parent, new_parent) );
+                events.push_back(evt);
+            }
+        }
+        else { //b) in a replicated tree where we just got the command
+               //to reparent
+            // In this case, we get a sequence of events which keep
+            // the tree in valid state, but because they're small
+            // operations, just following them doesn't work quite the
+            // same as on the server. For example, here, we may have
+            // added the split node and adjusted the cut already. Now,
+            // if we move this node, with cuts possibly through itself
+            // or it's descendants, under the other node, we'd screw
+            // up the cut. At the very least we probably need to
+            // rework the order.
+
+            // Since these events only happen for splits, we know that
+            // if we're getting this callback, the cut going through
+            // us must also go through either the new parent or it's
+            // children (if it has any).
+            typename RTreeNodeType::CutNodeListConstIterator new_parent_cut_it = new_parent->findCutNode(getNativeThis());
+            if (new_parent_cut_it != new_parent->cutNodesEnd()) {
+                // The parent has a cut node. Treat this as if we're
+                // refining to this node, except that we already had
+                // the node we're "adding", i.e. the one we're
+                // reparenting. Remove the cut node and report it like
+                // the removal part of a refinement.
+                if (includeRemoval(Change_Refined)) {
+                    QueryEventType evt(getLocCache(), parent->handlerID());
+                    evt.addRemoval( typename QueryEventType::Removal(new_parent->aggregateID(), QueryEventType::Transient) );
+                    events.push_back(evt);
+                }
+                removeFromResults(new_parent->aggregateID());
+                CutNodeListIterator parent_cn_it = std::find(nodes.begin(), nodes.end(), new_parent_cut_it->second);
+                CutNodeType* parent_cn = *parent_cn_it;
+                CutNodeListIterator after_new_parent_it = nodes.erase(parent_cn_it);
+                length--;
+                parent_cn->destroy(parent, getAggregateListener());
+                // Move the cut node for the moved node into the right
+                // place. (See note in handleNodeReparentedAboveCut for why we
+                // take an entire segment when in this callback we should only
+                // need the one node)
+                CutNodeType* reparented_start_cn = NULL; CutNodeType* reparented_end_cn = NULL;
+                findCutSegment(node, &reparented_start_cn, &reparented_end_cn);
+                CutNodeListIterator reparented_start_it = std::find(nodes.begin(), nodes.end(), reparented_start_cn);
+                CutNodeListIterator reparented_end_it = std::find(reparented_start_it, nodes.end(), reparented_start_cn);
+                assert(reparented_start_it != nodes.end() && reparented_end_it != nodes.end());
+                // Need to move the end over by one for normal iterator
+                // semantics since findCutSegment pulls out the last cut node
+                // within the subtree
+                reparented_end_it++;
+                for(CutNodeListIterator repit = reparented_start_it; repit != reparented_end_it; repit++)
+                    nodes.insert(after_new_parent_it, *repit);
+                nodes.erase(reparented_start_it, reparented_end_it);
+                // length remained same for above move
+            }
+            else {
+                // The parent doesn't have a cut. Cut segments should
+                // be disjoint (it's other children may have cut
+                // nodes), but it's out of order.
+                // FIXME this could be done more efficiently since we
+                // know which sections have become jumbled
+                rebuildCutOrder();
+            }
+
+
+            // If the node we reparented from became empty because we
+            // moved, since we had the cut it will now be left out of
+            // the cut. We need to make sure it gets added back in.
+            // Currently, this shouldn't be possible since these are
+            // only caused by splits, which should guarantee the
+            // source node retains some members, so instead of
+            // addressing this, we just make sure we don't violate
+            // that condition.
+            assert(!old_parent->empty());
+
+            validateCut();
+        }
+    }
+
+    void handleNodeReparentedAboveCut(CutNodeType* cnode, RTreeNodeType* node, RTreeNodeType* old_parent, RTreeNodeType* new_parent) {
+        // Node with a cut running through it is a descendant of a node being
+        // reparented, e.g.:
+        //
+        //         A                   ->     A      A'
+        //      /     \                      / \    /
+        //     B     --C-----cut            B'  C  B
+        //    / \   /                            ... (more nodes below)
+        // --D---E--
+        //  / \
+        // oF oG
+        //
+        // If we insert another object oH such that D overflows, it also causes
+        // B and A to overflow with new nodes to accomodate the new children
+        // (we'll end up with a new root as well). During this process, suppose
+        // we split A to get A and A' and we reparent B to A'. D and E, which
+        // hold cuts, are not directly affected, but the cut nodes did move
+        // around. There will never be overlap problems in the original tree
+        // (doing a cascading split that causes this callback), we just need to
+        // make sure the order get cleaned up and we let the querier know things
+        // rearranged.
+        //
+        // The previous applies when this is due to a split operation during an
+        // insertion. In a replicated tree, the same analysis mostly applies
+        // except that we're just getting a reparent command instead of being in
+        // the middle of a insert-driven split operation. In this case we're not
+        // going to get any recovery of the cut later on so we need to do it
+        // ourselves. The same overlap issue can apply as in
+        // handleNodeReparented, for examle in the image we had to add A' first
+        // which would cause cuts to immediately recover by adding a cut node to
+        // them. Adding B below A' causes overlap. We can recover in a similar
+        // way, by treating the new parent as if it has been refined and we just
+        // already have the entire subtree. This requires moving an entire block
+        // of cut nodes (everything below the moved node) over to the new
+        // position. We just implemented handleNodeReparented (see note) to do
+        // this since the single-cut-node version it needs is a degenerate case
+        // of this. With that minor update, we can just use handleNodeReparented
+        // directly.
+
+#ifdef LIBPROX_LIFT_CUTS
+        // Not used when lifting cuts
+        assert(false);
+#endif
+        // Note: cnode is just a cut node somewhere below the
+        // reparented node, so it's not really useful for anything.
+        // Note also that this callback comes mid-split operation, so
+        // cuts may not be complete.
+
+        handleNodeReparented(cnode, node, old_parent, new_parent);
+        return;
+    }
+
+    void handleObjectReparented(CutNodeType* cnode, const LocCacheIterator& objit, RTreeNodeType* old_parent, RTreeNodeType* new_parent) {
+#ifdef LIBPROX_LIFT_CUTS
+        // Not used when lifting cuts
+        assert(false);
+#endif
+        // cnode should be the cut node for this cut in the *old*
+        // parent. Since this occurs when there are splits and we're
+        // mid-operation, we may not have a cut node in the new
+        // parent's node yet.
+
+        // For now, we only get this when the node is splitting, and
+        // since we'll be in the middle of the operation, we *know*
+        // that our cut won't be in the other node yet. This means
+        // we can just remove it and it'll get re-added. Not
+        // necessarily ideal but it'll work for objects.
+        //
+        // We can just reuse the object removal code, which also makes
+        // sure we maintain the cut properly if we had the child in
+        // the results and it was the last one. The cut node (from the
+        // old parent) and the old parent's emptiness are needed for
+        // this call.
+        // However, use a version *without* cut validation at the end
+        // since we know the cut hasn't been fixed up yet.
+        handleObjectRemovedNoCutValidation(cnode, objit, false /*not permanent*/,  old_parent->empty());
+    }
+
+
 
     // Fills in an event that corresponds to destroying the entire cut.
     void destroyCut(QueryEventType& destroyEvent) {
@@ -853,7 +1109,7 @@ protected:
     }
 
 
-    void removeObjectChildFromResults(const ObjectID& child_id, bool permanent) {
+    bool removeObjectChildFromResults(const ObjectID& child_id, bool permanent) {
         bool in_results = isInResults(child_id);
         if (in_results) {
             removeFromResults(child_id);
@@ -869,6 +1125,7 @@ protected:
                 events.push_back(evt);
             }
         }
+        return in_results;
     }
 
     void removeObjectChildrenFromResults(RTreeNodeType* from_node) {

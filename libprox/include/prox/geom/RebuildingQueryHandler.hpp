@@ -215,12 +215,7 @@ public:
     }
 
     virtual void reparent(const ObjectID& objid, const ObjectID& parentid) {
-        using std::tr1::placeholders::_1;
-        mPrimaryHandler->reparent(objid, parentid);
-        if (mustDefer())
-            mDeferredOperations.push(std::tr1::bind(&QueryHandlerType::reparent, _1, objid, parentid));
-        else if (mustDuplicate())
-            mRebuildingHandler->reparent(objid, parentid);
+        assert(false && "Getting a reparent call on a rebuilding query handler doesn't make sense since you can't have a rebuilding replicated tree.");
     }
 
     virtual void tick(const Time& t, bool report = true) {

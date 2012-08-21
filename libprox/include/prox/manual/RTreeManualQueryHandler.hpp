@@ -99,13 +99,17 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootCreatedAboveCut, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleRootDestroyedAboveCut, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplit, _1, _2, _3),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleSplitFinished, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleSplitAboveCut, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3, _4),
             std::tr1::bind(&CutNode<SimulationTraits>::handleNodeAddedAboveCut, _1, _2),
-            std::tr1::bind(&CutNode<SimulationTraits>::handleNodeRemoved, _1, _2)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleNodeRemoved, _1, _2),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleNodeReparented, _1, _2, _3, _4),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleNodeReparentedAboveCut, _1, _2, _3, _4),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectReparented, _1, _2, _3, _4)
         );
     }
 
@@ -251,7 +255,18 @@ public:
         return retval;
     }
 
-    void reparent(const ObjectID& objid, const ObjectID& parentid) {
+    void reparent(const ObjectID& nodeobjid, const ObjectID& parentid) {
+        typename ObjectSet::iterator obj_it = mObjects.find(nodeobjid);
+        if (obj_it != mObjects.end()) {
+            mRTree->reparentObject(obj_it->second, parentid, mLastTime);
+            return;
+        }
+
+        typename ObjectSet::iterator node_it = mNodes.find(nodeobjid);
+        if (node_it != mNodes.end()) {
+            mRTree->reparentNode(node_it->second, parentid, mLastTime);
+            return;
+        }
     }
 
     virtual void bulkLoad(const ObjectList& objects) {

@@ -220,7 +220,8 @@ public:
     }
 
     void reparent(const ObjectID& objid, const ObjectID& parentid) {
-        assert(false && "Brute force handler doesn't support replicating internal nodes.");
+        // Brute force doesn't need to care about reparenting since it just
+        // holds a list -- parents aren't important.
     }
 
     void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {

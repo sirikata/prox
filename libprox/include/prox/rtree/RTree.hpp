@@ -82,6 +82,9 @@ public:
     typedef typename RTreeNodeType::NodeAddedAboveCutCallback NodeAddedAboveCutCallback;
     typedef typename RTreeNodeType::NodeRemovedCallback NodeRemovedCallback;
 
+    typedef typename RTreeNodeType::NodeReparentedCallback NodeReparentedCallback;
+    typedef typename RTreeNodeType::ObjectReparentedCallback ObjectReparentedCallback;
+
     typedef typename RTreeNodeType::Index Index;
 
     RTree(Index elements_per_node, LocationServiceCacheType* loccache,
@@ -94,11 +97,15 @@ public:
         RootReplacedByChildCallback replicated_root_created_cb = 0,
         RootReplacedByChildCallback replicated_root_destroyed_cb = 0,
         NodeSplitCallback node_split_cb = 0,
+        NodeSplitCallback node_split_finished_cb = 0,
         NodeSplitCallback replicated_node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
         ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0,
         NodeAddedAboveCutCallback node_add_above_cb = 0,
-        NodeRemovedCallback node_rem_cb = 0
+        NodeRemovedCallback node_rem_cb = 0,
+        NodeReparentedCallback node_reparent_cb = 0,
+        NodeReparentedCallback node_reparent_above_cb = 0,
+        ObjectReparentedCallback object_reparent_cb = 0
     )
      : mLocCache(loccache),
        mElementsPerNode(elements_per_node),
@@ -118,6 +125,7 @@ public:
         mCallbacks.replicatedRootCreated = replicated_root_created_cb;
         mCallbacks.replicatedRootDestroyed = replicated_root_destroyed_cb;
         mCallbacks.nodeSplit = node_split_cb;
+        mCallbacks.nodeSplitFinished = node_split_finished_cb;
         mCallbacks.replicatedNodeSplit = replicated_node_split_cb;
         mCallbacks.liftCut = lift_cut_cb;
         mCallbacks.reorderCut = reorder_cut_cb;
@@ -125,6 +133,9 @@ public:
         mCallbacks.objectRemoved = obj_rem_cb;
         mCallbacks.nodeAddedAboveCut = node_add_above_cb;
         mCallbacks.nodeWithCutRemoved = node_rem_cb;
+        mCallbacks.nodeReparented = node_reparent_cb;
+        mCallbacks.nodeReparentedAboveCut = node_reparent_above_cb;
+        mCallbacks.objectReparented = object_reparent_cb;
         mRootCreatedCallback = root_created_cb;
 
         // If we're replicating a tree, we don't want our own root, we just want
@@ -219,6 +230,32 @@ public:
         if (!mStaticObjects && mRoot != NULL)
             mRoot = RTree_update_tree(mRoot, t);
     }
+
+
+    void reparentObject(const LocCacheIterator& obj, const ObjectID& parentid, const Time& t) {
+        // Currently taking the easy way out of this -- just perform a
+        // removal and then addition.
+        erase(obj, t, true);
+        insert(obj, parentid, t);
+    }
+
+    void reparentNode(const LocCacheIterator& node, const ObjectID& parentid, const Time& t) {
+        assert(replicated());
+
+        const ObjectID& nodeid = mLocCache->iteratorID(node);
+        typename ObjectIDNodeMap::const_iterator nodeit = mRTreeNodes.find(nodeid);
+        assert(nodeit != mRTreeNodes.end());
+        RTreeNodeType* rtnode = nodeit->second;
+
+        typename ObjectIDNodeMap::const_iterator parentit = mRTreeNodes.find(parentid);
+        assert(parentit != mRTreeNodes.end());
+        RTreeNodeType* parent_rtnode = parentit->second;
+
+        RTree_reparent_node(rtnode, parent_rtnode, t);
+
+        mRestructureMightHaveEffect = true;
+    }
+
 
     void reportBounds(const Time& t) {
         RTree_report_bounds(stdout, mRoot, t);

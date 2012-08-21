@@ -54,10 +54,18 @@ void TestLocationServiceCache::addObjectWithParent(
     assert( it == mObjects.end() || it->second->exists == false || aggregate);
     if (it == mObjects.end())
         mObjects[objid] = ObjectInfoPtr(
-            new ObjectInfo(objid, aggregate, loc, bounds_center_offset, bounds_center_bounds_radius, bounds_max_size, mesh)
+            new ObjectInfo(objid, parentid, aggregate, loc, bounds_center_offset, bounds_center_bounds_radius, bounds_max_size, mesh)
         );
-    else
+    else {
+        mObjects[objid]->parentid = parentid;
+        mObjects[objid]->aggregate = aggregate;
+        mObjects[objid]->loc = loc;
+        mObjects[objid]->bounds_center_offset = bounds_center_offset;
+        mObjects[objid]->bounds_center_bounds_radius = bounds_center_bounds_radius;
+        mObjects[objid]->bounds_max_size = bounds_max_size;
+        mObjects[objid]->mesh = mesh;
         mObjects[objid]->exists = true;
+    }
 
     if (notify)
         for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
@@ -80,6 +88,17 @@ void TestLocationServiceCache::removeObject(const ObjectID& objid) {
     // Then allow it to possibly be cleaned up
     it->second->refcount--;
     tryClearObject(it);
+}
+
+void TestLocationServiceCache::updateParent(const ObjectID& objid, const ObjectID& newpar) {
+    LOCK_AND_GET_OBJ_ENTRY(it, objid);
+
+    ObjectID oldval = it->second->parentid;
+    it->second->parentid = newpar;
+
+    for(ListenerSet::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+        (*it)->locationParentUpdated(objid, oldval, newpar);
+
 }
 
 void TestLocationServiceCache::updateLocation(const ObjectID& objid, const MotionVector3& newval) {
@@ -233,6 +252,11 @@ bool TestLocationServiceCache::contains(const ObjectID& id) {
         (mObjects.find(id) != mObjects.end()) &&
         mObjects[id]->exists
     );
+}
+
+TestLocationServiceCache::ObjectID TestLocationServiceCache::parent(const ObjectID& id) {
+    GET_OBJECT_INFO_FROM_ID(obj, id);
+    return obj->parentid;
 }
 
 TestLocationServiceCache::MotionVector3 TestLocationServiceCache::location(const ObjectID& id) {

@@ -42,6 +42,7 @@ public:
         const String& mesh,
         bool notify);
     void removeObject(const ObjectID& objid);
+    void updateParent(const ObjectID& objid, const ObjectID& newpar);
     void updateLocation(const ObjectID& objid, const MotionVector3& newval);
     void updateBounds(const ObjectID& objid,
         const Vector3& bounds_center_offset,
@@ -98,6 +99,7 @@ private:
 
     struct ObjectInfo {
         ObjectID objid;
+        ObjectID parentid;
         bool aggregate;
         MotionVector3 loc;
         Vector3 bounds_center_offset;
@@ -110,6 +112,7 @@ private:
 
         ObjectInfo()
          : objid(ObjectID::null()),
+           parentid(ObjectID::null()),
            loc(Time::null(), Vector3::nil(), Vector3::nil()),
            exists(false), refcount(0)
         {}
@@ -120,6 +123,24 @@ private:
             const float32 _bounds_max_size,
             const String& _mesh)
          : objid(_objid),
+           parentid(ObjectID::null()),
+           aggregate(_aggregate),
+           loc(_loc),
+           bounds_center_offset(_bounds_center_offset),
+           bounds_center_bounds_radius(_bounds_center_bounds_radius),
+           bounds_max_size(_bounds_max_size),
+           mesh(_mesh),
+           exists(true), refcount(0)
+        {}
+        ObjectInfo(const ObjectID& _objid,
+            const ObjectID& _parentid, bool _aggregate,
+            const MotionVector3& _loc,
+            const Vector3& _bounds_center_offset,
+            const float32 _bounds_center_bounds_radius,
+            const float32 _bounds_max_size,
+            const String& _mesh)
+         : objid(_objid),
+           parentid(_parentid),
            aggregate(_aggregate),
            loc(_loc),
            bounds_center_offset(_bounds_center_offset),

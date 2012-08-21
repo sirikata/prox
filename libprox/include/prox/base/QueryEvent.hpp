@@ -106,6 +106,7 @@ public:
         Action();
         ObjectID mID;
     };
+
     class Addition : private Action {
     public:
         // If parent == ObjectIDNull()() this is equivalent to no parent (or
@@ -134,6 +135,38 @@ public:
     };
     typedef std::vector<Addition> AdditionList;
 
+    // Reparenting moves an object or node (and its entire subtree) to
+    // a new node. This is like a remove/add sequence except it allows
+    // subtrees to move without having to move all their elements.
+    class Reparent : private Action {
+    public:
+        Reparent(ObjectID id, ObjectType type, ObjectID old_parent, ObjectID new_parent)
+         : Action(id),
+           mType(type),
+           mOldParent(old_parent),
+           mNewParent(new_parent)
+        {}
+        // Helper that fills in the ID and parent info from nodes
+        // (currently based of RTreeNode).
+        template <typename NodeType>
+        Reparent(const NodeType* node, const NodeType* old_parent, const NodeType* new_parent)
+         : Action(node->aggregateID()),
+           mType(Imposter),
+           mOldParent(old_parent->aggregateID()),
+           mNewParent(new_parent->aggregateID())
+        {}
+
+        using Action::id;
+        ObjectType type() const { return mType; }
+        ObjectID oldParent() const { return mOldParent; }
+        ObjectID newParent() const { return mNewParent; }
+    private:
+        ObjectType mType;
+        ObjectID mOldParent;
+        ObjectID mNewParent;
+    };
+    typedef std::vector<Reparent> ReparentList;
+
     class Removal : private Action {
     public:
         Removal(ObjectID id, ObjectEventPermanence perm)
@@ -160,22 +193,29 @@ public:
     {
         for(size_t i = 0; i < rhs.mAdditions.size(); i++)
             addAddition(rhs.mAdditions[i]);
+        for(size_t i = 0; i < rhs.mReparents.size(); i++)
+            addReparent(rhs.mReparents[i]);
         for(size_t i = 0; i < rhs.mRemovals.size(); i++)
             addRemoval(rhs.mRemovals[i]);
     }
     QueryEvent& operator=(const QueryEvent& rhs) {
         for(size_t i = 0; i < mAdditions.size(); i++)
             mLocCache->stopRefcountTracking(mAdditions[i].id());
+        for(size_t i = 0; i < mReparents.size(); i++)
+            mLocCache->stopRefcountTracking(mReparents[i].id());
         for(size_t i = 0; i < mRemovals.size(); i++)
             mLocCache->stopRefcountTracking(mRemovals[i].id());
 
         mLocCache = rhs.mLocCache;
         mIndexID = rhs.mIndexID;
         mAdditions.clear();
+        mReparents.clear();
         mRemovals.clear();
 
         for(size_t i = 0; i < rhs.mAdditions.size(); i++)
             addAddition(rhs.mAdditions[i]);
+        for(size_t i = 0; i < rhs.mReparents.size(); i++)
+            addReparent(rhs.mReparents[i]);
         for(size_t i = 0; i < rhs.mRemovals.size(); i++)
             addRemoval(rhs.mRemovals[i]);
 
@@ -184,6 +224,8 @@ public:
     ~QueryEvent() {
         for(size_t i = 0; i < mAdditions.size(); i++)
             mLocCache->stopRefcountTracking(mAdditions[i].id());
+        for(size_t i = 0; i < mReparents.size(); i++)
+            mLocCache->stopRefcountTracking(mReparents[i].id());
         for(size_t i = 0; i < mRemovals.size(); i++)
             mLocCache->stopRefcountTracking(mRemovals[i].id());
     }
@@ -196,19 +238,26 @@ public:
     }
     const AdditionList& additions() const { return mAdditions; }
 
+    void addReparent(const Reparent& a) {
+        mLocCache->startRefcountTracking(a.id());
+        mReparents.push_back(a);
+    }
+    const ReparentList& reparents() const { return mReparents; }
+
     void addRemoval(const Removal& r) {
         mLocCache->startRefcountTracking(r.id());
         mRemovals.push_back(r);
     }
     const RemovalList& removals() const { return mRemovals; }
 
-    uint32 size() const { return mAdditions.size() + mRemovals.size(); }
-    bool empty() const { return (mAdditions.empty() && mRemovals.empty()); }
+    uint32 size() const { return mAdditions.size() + mReparents.size() + mRemovals.size(); }
+    bool empty() const { return (mAdditions.empty() && mReparents.empty() && mRemovals.empty()); }
 
 private:
     LocationServiceCacheType* mLocCache;
     QueryHandlerIndexID mIndexID;
     AdditionList mAdditions;
+    ReparentList mReparents;
     RemovalList mRemovals;
 }; // class QueryEvent
 

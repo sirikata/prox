@@ -260,7 +260,18 @@ public:
     }
 
 
-    void reparent(const ObjectID& objid, const ObjectID& parentid) {
+    void reparent(const ObjectID& nodeobjid, const ObjectID& parentid) {
+        typename ObjectSet::iterator obj_it = mObjects.find(nodeobjid);
+        if (obj_it != mObjects.end()) {
+            mRTree->reparentObject(obj_it->second, parentid, mLastTime);
+            return;
+        }
+
+        typename ObjectSet::iterator node_it = mNodes.find(nodeobjid);
+        if (node_it != mNodes.end()) {
+            mRTree->reparentNode(node_it->second, parentid, mLastTime);
+            return;
+        }
     }
 
 
