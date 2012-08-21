@@ -266,7 +266,7 @@ public:
         TS_ASSERT_REPLICATED(3);
     }
 
-    void testRemovalAlongCut() {
+    void testNodeRemovalAlongCut() {
         addObject(ObjID(1), ObjID(0), true);
         addObject(ObjID(2), ObjID(1), true);
         addObject(ObjID(3), ObjID(1), true);
@@ -299,6 +299,41 @@ public:
         TS_ASSERT_EQUALS(replicated_handler->numNodes(), 1);
         verifyTreesMatch();
 #endif
+    }
+
+    // Test that removal of objects in a node with the cut does/does
+    // not generate events based on whether the node has been
+    // refined.
+    void testObjectRemovalAlongCut() {
+        // Build up root + object children
+        addObject(ObjID(1), ObjID(0), true);
+        addObject(ObjID(2), ObjID(1), false);
+        addObject(ObjID(3), ObjID(1), false);
+
+        // We should be at the root
+        verifyTreesMatch();
+        TS_ASSERT_REPLICATED(1);
+        TS_ASSERT_NOT_REPLICATED(2);
+        TS_ASSERT_NOT_REPLICATED(3);
+
+        // Remove object that shouldn't be in the results, which
+        // should change nothing in the replicated tree
+        removeObject(ObjID(2));
+        verifyTreesMatch();
+        TS_ASSERT_REPLICATED(1);
+        TS_ASSERT_NOT_REPLICATED(3);
+
+        // Refine everything and make sure we've gotten the object
+        refineToBottom();
+        verifyTreesMatch();
+        TS_ASSERT_REPLICATED(3);
+
+        // Then remove it and make sure the replicated tree has been
+        // updated with this info. The two trees should now be
+        // identical, having only the one root node.
+        removeObject(ObjID(3));
+        TS_ASSERT_TREES_IDENTICAL();
+
     }
 
     void testInsertionAboveCut() {
