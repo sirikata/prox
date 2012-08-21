@@ -181,6 +181,8 @@ public:
      */
     QueryHandlerIndexID handlerID() const { return mHandlerIndexID; }
 
+    /** Draw the data structure for this query handler. Useful for debugging. */
+    virtual void draw() { }
 protected:
 
     // Implementation of iterators

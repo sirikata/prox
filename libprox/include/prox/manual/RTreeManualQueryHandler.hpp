@@ -160,6 +160,7 @@ public:
         return mLocCache;
     }
 
+    virtual void draw() { mRTree->draw(); }
 
     void addObject(const ObjectID& obj_id) {
         addObject(mLocCache->startTracking(obj_id));
