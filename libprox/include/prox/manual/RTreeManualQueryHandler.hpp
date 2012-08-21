@@ -634,6 +634,7 @@ protected:
                 replaceParentWithChildren(cut_node_it, &evt);
                 query->pushEvent(evt);
             }
+            pushEvents();
             return true;
         }
 
