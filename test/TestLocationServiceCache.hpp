@@ -70,6 +70,8 @@ public:
     virtual String mesh(const Iterator& id);
     virtual bool isLocal(const Iterator& id);
 
+    bool contains(const ObjectID& id);
+    ObjectID parent(const ObjectID& id);
     MotionVector3 location(const ObjectID& id);
     Vector3 centerOffset(const ObjectID& id);
     float32 centerBoundsRadius(const ObjectID& id);

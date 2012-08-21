@@ -228,6 +228,13 @@ const TestLocationServiceCache::ObjectID& TestLocationServiceCache::iteratorID(c
     ObjectInfoPtr name = mObjects[from];               \
     assert(name)
 
+bool TestLocationServiceCache::contains(const ObjectID& id) {
+    return (
+        (mObjects.find(id) != mObjects.end()) &&
+        mObjects[id]->exists
+    );
+}
+
 TestLocationServiceCache::MotionVector3 TestLocationServiceCache::location(const ObjectID& id) {
     GET_OBJECT_INFO_FROM_ID(obj, id);
     return obj->loc;

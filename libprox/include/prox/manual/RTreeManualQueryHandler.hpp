@@ -529,13 +529,15 @@ protected:
             return results.size();
         }
         bool satisfiesQuery(RTreeNodeType* node, LocCacheIterator objit, int objidx) const {
-            // This will be called when a node is inserted and this cut is
-            // affected, i.e. when the node is inserted at a node this cut
-            // crosses. For manually controlled, always indicate that the node
-            // satisfies the query since we have no real test to perform. This
-            // will ensure that if other children are being observed, this one
-            // will be as well.
-            return true;
+            // This will be called when an object is inserted and this
+            // cut is affected, i.e. when the object is inserted at a
+            // node this cut crosses. The call is used to determine
+            // whether to refine the query to the children. For
+            // manually controlled, we don't want to automatically
+            // refine (we have no test that would tell us we should)
+            // so always indicate the the object does not satisfy the
+            // query.
+            return false;
         }
         bool includeAddition(ChangeReason act) const {
             // In this query handler we want tree replication. Real insertions

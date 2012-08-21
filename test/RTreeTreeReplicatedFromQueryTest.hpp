@@ -173,6 +173,11 @@ public:
         TS_ASSERT_EQUALS(orig_handler->numNodes(), replicated_handler->numNodes()); \
         TS_ASSERT_EQUALS(orig_handler->numObjects(), replicated_handler->numObjects()); \
         verifyTreesMatch();
+// Verify nodes have/haven't been replicated
+#define TS_ASSERT_NOT_REPLICATED(ii)                            \
+    TS_ASSERT(!replicated_loccache->contains(ObjID(ii)))
+#define TS_ASSERT_REPLICATED(ii)                                \
+    TS_ASSERT(replicated_loccache->contains(ObjID(ii)))
 
     static ObjectID ObjID(size_t id) {
         char raw[ObjectID::static_size];
@@ -189,7 +194,6 @@ public:
     // cut is at the root
     void refineToBottom() {
         for(QueryHandler::NodeIterator nit = orig_handler->nodesBegin(); nit != orig_handler->nodesEnd(); nit++) {
-            TS_ASSERT_EQUALS(nit.cuts(), 1);
             // It would be nice to assert success here, but we can't
             // because when we reach replicated leaf nodes the call
             // will fail
@@ -216,12 +220,12 @@ public:
         addObject(ObjID(3), ObjID(1), true);
         addObject(ObjID(4), ObjID(2), true);
         refineToBottom();
-        orig_handler->tick(Time::null());
         TS_ASSERT_TREES_IDENTICAL();
     }
 
-
-    void testInsertionAlongCut() {
+    // Test that insertion of a node along the cut immediately
+    // generates an event for the cut
+    void testNodeInsertionAlongCut() {
         addObject(ObjID(1), ObjID(0), true);
         addObject(ObjID(2), ObjID(1), true);
         addObject(ObjID(3), ObjID(1), true);
@@ -232,6 +236,34 @@ public:
         // (no split/merge) should always result in a simple addition to the cut
         addObject(ObjID(4), ObjID(1), true);
         TS_ASSERT_TREES_IDENTICAL();
+    }
+
+    // Test that insertion of an object in a node with the cut
+    // does/does not generate events based on whether that node has
+    // been refined
+    void testObjectInsertionAlongCut() {
+        // Just need a root node to put the cut through
+        addObject(ObjID(1), ObjID(0), true);
+        refineToBottom();
+        TS_ASSERT_TREES_IDENTICAL();
+
+        // Adding one object to that node should not generate an event
+        // because we haven't refined that node.
+        addObject(ObjID(2), ObjID(1), false);
+        verifyTreesMatch();
+        TS_ASSERT_NOT_REPLICATED(2);
+
+        // Then refine and make sure we find that object
+        refineToBottom();
+        verifyTreesMatch();
+        TS_ASSERT_REPLICATED(2);
+
+        // Finally, with the cut refined to the children, inserting a
+        // new object in that node should immediately result in
+        // getting that object replicated without additional refinement
+        addObject(ObjID(3), ObjID(1), false);
+        verifyTreesMatch();
+        TS_ASSERT_REPLICATED(3);
     }
 
     void testRemovalAlongCut() {

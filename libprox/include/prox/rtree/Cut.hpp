@@ -588,6 +588,8 @@ public:
             ObjectID child_id = getLocCache()->iteratorID(objit);
             updateMembership(child_id, child_satisfies);
         }
+
+        query->pushEvents(events);
     }
 
     void handleObjectRemoved(CutNodeType* cnode, const LocCacheIterator& objit, bool permanent, bool emptied) {
@@ -624,6 +626,7 @@ public:
         }
 
         validateCut();
+        query->pushEvents(events);
     }
 
     // A (replicated) node is being added somewhere in the tree above
