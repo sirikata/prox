@@ -650,6 +650,9 @@ public:
         return NodeData::selectBestChildNode(this, loc(), obj, t);
     }
 
+    static RTreeNode* selectBestChildNodeFromPair(RTreeNode* n1, RTreeNode* n2, const LocCacheIterator& obj, const Time& t) {
+        return NodeData::selectBestChildNodeFromPair(n1, n2, n1->loc(), obj, t);
+    }
 };
 
 
@@ -722,6 +725,25 @@ public:
 
         for(int i = 0; i < node->size(); i++) {
           RTreeNodeType* child_node = node->node(i);
+          BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+          float increase = merged.volume() - child_node->data().bounding_sphere.volume();
+          if (min_increase_node == NULL || increase < min_increase) {
+            min_increase = increase;
+            min_increase_node = child_node;
+          }
+        }
+
+        return min_increase_node;
+    }
+    static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+        float min_increase = 0.f;
+        RTreeNodeType* min_increase_node = NULL;
+
+        BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
+
+        RTreeNodeType* nodes[2] = { n1, n2 };
+        for(int i = 0; i < 2; i++) {
+          RTreeNodeType* child_node = nodes[i];
           BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
           float increase = merged.volume() - child_node->data().bounding_sphere.volume();
           if (min_increase_node == NULL || increase < min_increase) {
@@ -964,6 +986,29 @@ public:
 
         return min_increase_node;
     }
+    static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+        float min_increase = 0.f;
+        RTreeNodeType* min_increase_node = NULL;
+
+        BoundingSphere obj_bounds = loc->worldRegion(obj_id, t);
+        float obj_max_size = loc->maxSize(obj_id);
+
+        RTreeNodeType* nodes[2] = { n1, n2 };
+        for(int i = 0; i < 2; i++) {
+            RTreeNodeType* child_node = nodes[i];
+            BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+            float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
+            BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
+            BoundingSphere total(merged.center(), merged.radius() + new_max_size);
+            float increase = total.volume() - old_total.volume();
+            if (min_increase_node == NULL || increase < min_increase) {
+                min_increase = increase;
+                min_increase_node = child_node;
+            }
+        }
+
+        return min_increase_node;
+    }
 
     void verifyChild(const NodeData& child) const {
         BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::verifyChild(child);
@@ -1128,6 +1173,52 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       //similar objects for grouping.
       for (int i=0; i<node->size(); i++) {
         RTreeNodeType* child_node = node->node(i);
+        BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+        float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
+        BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
+        BoundingSphere total(merged.center(), merged.radius() + new_max_size);
+        float ns_minus_os =  (total.volume() - old_total.volume())/normalizer ;
+
+        ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
+
+        float nz_minus_mz = median_zd.minus(new_zd).l2Norm();
+
+        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;
+
+        if (chosen_node == NULL || metric < min_metric) {
+          min_metric = metric;
+          chosen_node = child_node;
+        }
+      }
+
+      return chosen_node;
+    }
+    static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+      //the metric used to choose the best child node.
+      float min_metric = FLT_MAX;
+
+      RTreeNodeType* chosen_node = NULL;
+
+      float obj_max_size = loc->maxSize(obj_id);
+      BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
+      const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+
+      float normalizer = 0.00000;
+      RTreeNodeType* nodes[2] = { n1, n2 };
+      for (int i=0; i<2; i++) {
+        RTreeNodeType* child_node = nodes[i];
+        BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
+	float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
+        BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
+        BoundingSphere total(merged.center(), merged.radius() + new_max_size);
+
+	if (total.volume() > normalizer) normalizer = total.volume();
+      }
+
+      //trying to balance between choosing far-away objects for grouping and choosing
+      //similar objects for grouping.
+      for (int i=0; i<2; i++) {
+        RTreeNodeType* child_node = nodes[i];
         BoundingSphere merged = child_node->data().bounding_sphere.merge(obj_bounds);
         float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
         BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
@@ -1904,12 +1995,17 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_insert_object_at_node(
     // The above loop deals with nodes-with-node-children splits. We
     // need to deal with a possible final node split at the leaf node.
     if (leaf_node->full()) {
-        RTree_split_node<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData, CutNode>::ObjectChildOperations>(leaf_node, t);
+        RTreeNodeType* new_leaf_node = RTree_split_node<SimulationTraits, NodeData, CutNode, typename LocationServiceCache<SimulationTraits>::Iterator, typename RTreeNode<SimulationTraits, NodeData, CutNode>::ObjectChildOperations>(leaf_node, t);
+        // Since we split the leaf we were going to insert into, we
+        // need to now choose where to put it. We *must* choose
+        // between only these two or we could end up just splitting
+        // things again.
+        leaf_node = RTreeNodeType::selectBestChildNodeFromPair(leaf_node, new_leaf_node, obj_id, t);
     }
 
     // The final step, once we've reached the bottom of the tree, is
     // to actually insert the object. The previous step should ensure
-    // that the leaf node isn't full
+    // that the leaf node isn't full.
     assert(!leaf_node->full());
     leaf_node->insert(obj_id, t);
 
