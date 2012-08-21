@@ -157,6 +157,17 @@ public:
     // results) along with the removal of the child object.
     typedef std::tr1::function<void(CutNode*, const LocCacheIterator&, bool permanent, bool emptiedNode)> ObjectRemovedCallback;
 
+    // Node is being removed (completely destroyed), but the cut is still
+    // passing through it (because we're not lifting cuts). The node is just
+    // being removed and should be empty, so handling this should be as simple
+    // as removing the cut node and reporting it to any listeners. This will
+    // *not* be invoked if the the node that needs to be removed is the last
+    // child of its parent: in that case, cuts will have to do the same thing as
+    // if we called the LiftCutCallback, so we just invoke that to keep
+    // NodeRemovedCallback implementations simpler.
+    typedef std::tr1::function<void(CutNode*, RTreeNode*)> NodeRemovedCallback;
+
+
     typedef uint16 Index;
 
     struct Callbacks {
@@ -176,6 +187,8 @@ public:
         ReorderCutCallback reorderCut;
         ObjectInsertedCallback objectInserted;
         ObjectRemovedCallback objectRemoved;
+        // When not lifting cuts, we need a few additional types of callbacks
+        NodeRemovedCallback nodeWithCutRemoved;
     };
 private:
     static const uint8 ObjectsFlag = 0x02; // elements are object pointers instead of node pointers
@@ -1083,11 +1096,11 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       float min_metric = FLT_MAX;
 
       RTreeNodeType* chosen_node = NULL;
-      
+
       float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
       const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
-      
+
       float normalizer = 0.00000;
       for (int i=0; i<node->size(); i++) {
 	RTreeNodeType* child_node = node->node(i);
@@ -1098,7 +1111,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
 	if (total.volume() > normalizer) normalizer = total.volume();
       }
-      
+
       //trying to balance between choosing far-away objects for grouping and choosing
       //similar objects for grouping.
       for (int i=0; i<node->size(); i++) {
@@ -1110,10 +1123,10 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         float ns_minus_os =  (total.volume() - old_total.volume())/normalizer ;
 
         ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
-  
+
         float nz_minus_mz = median_zd.minus(new_zd).l2Norm();
 
-        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;        
+        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;
 
         if (chosen_node == NULL || metric < min_metric) {
           min_metric = metric;
@@ -1210,12 +1223,12 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
             float metric0 = kShapeParameter * zdiff0 + kGeometryParameter * diff0;
             float metric1 = kShapeParameter * zdiff1 + kGeometryParameter * diff1;
 
-            float metric = fabs(metric0-metric1);  
+            float metric = fabs(metric0-metric1);
 
             if (metric > max_metric) {
                 max_metric = metric;
                 *next_child = i;
-                *selected_group = (metric0 < metric1) ? 0 : 1;                
+                *selected_group = (metric0 < metric1) ? 0 : 1;
             }
         }
     }
@@ -1293,6 +1306,18 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 // Cut notification utilities.
 // Notify all cuts passing through the given node by calling the method with the
 // CutNode and the given parameters.
+template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1>
+void RTree_notify_cuts(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    F func, const P1& p1
+)
+{
+    for(typename CutNodeContainer<CutNode>::CutNodeListConstIterator cut_it = node->cutNodesBegin(); cut_it != node->cutNodesEnd();) {
+        CutNode* cutnode = cut_it->second;
+        cut_it++; // Advance now to avoid invalidating iterator in callback
+        func(cutnode, p1);
+    }
+}
 template<typename SimulationTraits, typename NodeData, typename CutNode, typename F, typename P1, typename P2>
 void RTree_notify_cuts(
     RTreeNode<SimulationTraits, NodeData, CutNode>* node,
@@ -2236,13 +2261,17 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_condense_tree(
             // Even if we couldn't merge all siblings into the grandparent, this
             // node might still be empty.
 
-            // Get cuts out of this node. TODO(we could probably improve
-            // efficiency a bit by not lifting this up a node but just telling
-            // the cut to destroy the cutnode in this node
-            RTree_lift_cut_nodes(n, parent);
-
-            // Remove from parent and destroy
-            parent->erase(n);
+            // Remove from parent and destroy. Split erase/destroy so
+            // we can validate cuts in cut callback
+            // Get cuts out of this node.
+            if (parent->size() == 1) {
+                RTree_lift_cut_nodes(n, parent);
+                parent->erase(n);
+            }
+            else {
+                parent->erase(n);
+                RTree_notify_cuts(n, n->callbacks().nodeWithCutRemoved, n);
+            }
             n->destroy();
 
             // Force bounds recomputation on parents
@@ -2459,6 +2488,7 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_node(
     // since it's a partially replicated tree).
     assert(!parent->objectChildren());
     assert(node->empty());
+#ifdef LIBPROX_LIFT_CUTS
     // And we need to get cuts out of the way. lift_cut_nodes should be
     // sufficient (rather than lift_cut_nodes_from_tree) since there's nowhere
     // deeper to go
@@ -2466,6 +2496,23 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_delete_node(
     // And then erase the node and destroy it
     parent->erase(node);
     node->destroy();
+#else
+    // Or, for non-cut-lifting, we need to tell the cuts to clean this node out
+    // of their cut. If we're removing the last child of the parent, this
+    // degenerates to lifting anyway and we reuse the logic. Otherwise, we do a
+    // simple removal.
+    // We need to also erase the node and destroy it. Split
+    // erase/destroy so we can validate cuts in cut callback
+    if (parent->size() == 1) {
+        RTree_lift_cut_nodes(node, parent);
+        parent->erase(node);
+    }
+    else {
+        parent->erase(node);
+        RTree_notify_cuts(node, node->callbacks().nodeWithCutRemoved, node);
+    }
+    node->destroy();
+#endif
 
     // Removing nodes only makes sense when replicating trees. We don't want to
     // do any additional cleanup in that case, so we can just return the old

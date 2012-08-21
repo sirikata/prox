@@ -103,7 +103,8 @@ public:
             std::tr1::bind(&CutNode<SimulationTraits>::handleLiftCut, _1, _2),
             std::tr1::bind(&Cut::handleReorderCut, _1, _2),
             std::tr1::bind(&CutNode<SimulationTraits>::handleObjectInserted, _1, _2, _3),
-            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3, _4)
+            std::tr1::bind(&CutNode<SimulationTraits>::handleObjectRemoved, _1, _2, _3, _4),
+            std::tr1::bind(&CutNode<SimulationTraits>::handleNodeRemoved, _1, _2)
         );
     }
 

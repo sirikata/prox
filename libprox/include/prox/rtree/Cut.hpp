@@ -492,6 +492,7 @@ public:
         }
 
         validateCut();
+        query->pushEvents(events);
     }
 
     void handleReorderCut(const CutRangeVector& ranges) {
@@ -623,6 +624,30 @@ public:
         }
 
         validateCut();
+    }
+
+    // A node is being removed while we still have a cut node through it. Should
+    // be nothing below it (objects or other nodes) so it should be as simple as
+    // removing the cut node. See RTreeCore docs about siblings: we are
+    // guaranteed this will only be called if there are other siblings of this
+    // node (if it were the last child of the parent, we would get a lift cut
+    // call instead), so we are guaranteed it's safe to just remove the cutnode
+    // and generate the appropriate event.
+    void handleNodeRemoved(CutNodeType* cnode, RTreeNodeType* rem_node) {
+#ifdef LIBPROX_LIFT_CUTS
+        assert(false);
+#endif
+        QueryEventType evt(getLocCache(), parent->handlerID());
+        assert( std::find(nodes.begin(), nodes.end(), cnode) != nodes.end() );
+        nodes.erase(std::find(nodes.begin(), nodes.end(), cnode));
+        length--;
+        destroyCutNode(cnode, evt);
+        validateCut();
+
+        if (usesAggregates())
+            events.push_back(evt);
+
+        query->pushEvents(events);
     }
 
     // Fills in an event that corresponds to destroying the entire cut.

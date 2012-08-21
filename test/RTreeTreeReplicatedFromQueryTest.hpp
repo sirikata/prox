@@ -136,11 +136,10 @@ public:
         }
     }
 
-    // Helper that verifies the two query handler trees have identical structure
+    // Helper that verifies the two query handler trees have identical
+    // structure. Note that we don't check that they are fully identical, just
+    // that the replicated data matches the original structure.
     void verifyTreesMatch() {
-        TS_ASSERT_EQUALS(orig_handler->numObjects(), replicated_handler->numObjects());
-        TS_ASSERT_EQUALS(orig_handler->numNodes(), replicated_handler->numNodes());
-
         // The trees may not be replicated exactly, we really just
         // need to make sure they share the same structure and we want
         // to make sure we check it by traversing the actual data
@@ -158,13 +157,22 @@ public:
 
         // Then check that they really match
         TS_ASSERT_EQUALS(orig_pm.size(), replicated_pm.size());
-        for(ParentMap::const_iterator orig_it = orig_pm.begin(), replicated_it = replicated_pm.begin();
-            orig_it != orig_pm.end(), replicated_it != replicated_pm.end();
-            orig_it++, replicated_it++)
+        for(ParentMap::const_iterator replicated_it = replicated_pm.begin();
+            replicated_it != replicated_pm.end();
+            replicated_it++)
         {
-            TS_ASSERT_EQUALS(*orig_it, *replicated_it);
+            ParentMap::const_iterator orig_it = orig_pm.find(replicated_it->first);
+            TS_ASSERT_DIFFERS(orig_it, orig_pm.end());
+            if (orig_it == orig_pm.end()) continue;
+            TS_ASSERT_EQUALS(orig_it->second, replicated_it->second);
         }
     }
+// Provide this to check that trees are truly identical, rather than just that
+// the replicated data matches
+#define TS_ASSERT_TREES_IDENTICAL()                                     \
+        TS_ASSERT_EQUALS(orig_handler->numNodes(), replicated_handler->numNodes()); \
+        TS_ASSERT_EQUALS(orig_handler->numObjects(), replicated_handler->numObjects()); \
+        verifyTreesMatch();
 
     static ObjectID ObjID(size_t id) {
         char raw[ObjectID::static_size];
@@ -191,13 +199,13 @@ public:
 
     // Empty replicated trees should be the same
     void testEmptyTree() {
-        verifyTreesMatch();
+        TS_ASSERT_TREES_IDENTICAL();
     }
 
     // Test replication of a root node
     void testRoot() {
         addObject(ObjID(1), ObjID(0), true);
-        verifyTreesMatch();
+        TS_ASSERT_TREES_IDENTICAL();
     }
 
     // Test replication of a small tree, forcing refinement after all
@@ -209,9 +217,43 @@ public:
         addObject(ObjID(4), ObjID(2), true);
         refineToBottom();
         orig_handler->tick(Time::null());
-        verifyTreesMatch();
+        TS_ASSERT_TREES_IDENTICAL();
     }
 
+    void testRemovalAlongCut() {
+        addObject(ObjID(1), ObjID(0), true);
+        addObject(ObjID(2), ObjID(1), true);
+        addObject(ObjID(3), ObjID(1), true);
+        addObject(ObjID(4), ObjID(1), true);
+        refineToBottom();
+        verifyTreesMatch();
+
+#ifdef LIBPROX_LIFT_CUTS
+        removeObject(ObjID(4));
+        // When lifting, this'll force lifting up to the next node, in this case
+        // the root
+        TS_ASSERT_EQUALS(replicated_handler->numNodes(), 1);
+        // Removing the other two children should leave us in the same place
+        removeObject(ObjID(3));
+        TS_ASSERT_EQUALS(replicated_handler->numNodes(), 1);
+        removeObject(ObjID(2));
+        TS_ASSERT_EQUALS(replicated_handler->numNodes(), 1);
+#else
+        removeObject(ObjID(4));
+        // Removing one of the nodes, node 4, should leave the cut through the
+        // other two nodes, 2 and 3, intact.
+        TS_ASSERT_EQUALS(replicated_handler->numNodes(), 3);
+        verifyTreesMatch();
+        // We should be able to do the same with node 3
+        removeObject(ObjID(3));
+        TS_ASSERT_EQUALS(replicated_handler->numNodes(), 2);
+        verifyTreesMatch();
+        // And finally drop back to only the root
+        removeObject(ObjID(2));
+        TS_ASSERT_EQUALS(replicated_handler->numNodes(), 1);
+        verifyTreesMatch();
+#endif
+    }
 };
 
 #endif //_LIBPROX_TEST_RTREE_REPLICATED_FROM_QUERY_HPP_

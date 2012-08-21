@@ -79,6 +79,8 @@ public:
     typedef typename RTreeNodeType::ObjectInsertedCallback ObjectInsertedCallback;
     typedef typename RTreeNodeType::ObjectRemovedCallback ObjectRemovedCallback;
 
+    typedef typename RTreeNodeType::NodeRemovedCallback NodeRemovedCallback;
+
     typedef typename RTreeNodeType::Index Index;
 
     RTree(Index elements_per_node, LocationServiceCacheType* loccache,
@@ -93,7 +95,8 @@ public:
         NodeSplitCallback node_split_cb = 0,
         NodeSplitCallback replicated_node_split_cb = 0,
         LiftCutCallback lift_cut_cb = 0, ReorderCutCallback reorder_cut_cb = 0,
-        ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0
+        ObjectInsertedCallback obj_ins_cb = 0, ObjectRemovedCallback obj_rem_cb = 0,
+        NodeRemovedCallback node_rem_cb = 0
     )
      : mLocCache(loccache),
        mElementsPerNode(elements_per_node),
@@ -118,6 +121,7 @@ public:
         mCallbacks.reorderCut = reorder_cut_cb;
         mCallbacks.objectInserted = obj_ins_cb;
         mCallbacks.objectRemoved = obj_rem_cb;
+        mCallbacks.nodeWithCutRemoved = node_rem_cb;
         mRootCreatedCallback = root_created_cb;
 
         // If we're replicating a tree, we don't want our own root, we just want
