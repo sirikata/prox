@@ -268,6 +268,21 @@ public:
         verifyTreesMatch();
 #endif
     }
+
+    void testInsertionAboveCut() {
+        // Tree with 2 levels so we can get "above" the cut, rather
+        // than "next" to it as in testInsertionAlongCut
+        addObject(ObjID(1), ObjID(0), true);
+        addObject(ObjID(2), ObjID(1), true);
+        addObject(ObjID(3), ObjID(2), true);
+        refineToBottom();
+        TS_ASSERT_TREES_IDENTICAL();
+
+        // Now, inserting into the root should be above the cut (which
+        // should be down at node 3 only).
+        addObject(ObjID(4), ObjID(1), true);
+        TS_ASSERT_TREES_IDENTICAL();
+    }
 };
 
 #endif //_LIBPROX_TEST_RTREE_REPLICATED_FROM_QUERY_HPP_
