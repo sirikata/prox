@@ -868,7 +868,7 @@ public:
         //     B     --C-----cut            B'  C  B
         //    / \   /                            ... (more nodes below)
         // --D---E--
-        //  / \
+        //  / \                             (some text to stop compiler warning)
         // oF oG
         //
         // If we insert another object oH such that D overflows, it also causes
