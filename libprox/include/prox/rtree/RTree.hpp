@@ -226,6 +226,14 @@ public:
         mRestructureMightHaveEffect = true;
     }
 
+    void updateNode(const LocCacheIterator& node_locit, const Time& t) {
+        assert(replicated());
+        const ObjectID& objid = mLocCache->iteratorID(node_locit);
+        assert(mRTreeNodes.find(objid) != mRTreeNodes.end());
+
+        RTree_update_node(mRTreeNodes[objid], node_locit, t);
+    }
+
     void update(const Time& t) {
         if (!mStaticObjects && mRoot != NULL)
             mRoot = RTree_update_tree(mRoot, t);

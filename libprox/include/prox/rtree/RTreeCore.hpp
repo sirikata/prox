@@ -445,6 +445,22 @@ public:
             return node(i)->data();
     }
 
+    void updateReplicatedNodeData(const LocCacheIterator& node_locit, const Time& t) {
+        assert(owner()->replicated());
+        assert(loc()->iteratorID(node_locit) == aggregate);
+
+        BoundingSphere orig = mData.getBounds();
+        mData = NodeData(loc(), node_locit, t);
+        BoundingSphere updated = mData.getBounds();
+
+        if (callbacks().aggregate != NULL && updated != orig) {
+            callbacks().aggregate->aggregateBoundsUpdated(
+                callbacks().aggregator, aggregate,
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
+    }
+
     void recomputeData(const Time& t) {
         // We need to be careful about recomputing data to handle
         // replicas properly. For now, our policy is that for replicas
@@ -2606,6 +2622,26 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_update_object(
     RTree_recompute_bounds_from_node(leaf_with_obj, t);
 
     return root;
+}
+
+/* Updates the node in the given tree, and applies updates up the tree. Should
+ * only be used for replicated trees. Since this guarantees updates propagate up
+ * the tree, it only applies updates at nodes that do not have children (not
+ * equivalent to leaf nodes since you can have a replicated non-leaf node with
+ * no children replicated).
+ */
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_update_node(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+    const typename LocationServiceCache<SimulationTraits>::Iterator& node_locit,
+    const typename SimulationTraits::TimeType& t)
+{
+    if (!node->empty()) return;
+
+    // Need to force the update of , and only call recomputeData from the parent
+    // up since this node doesn't have any children.
+    node->updateReplicatedNodeData(node_locit, t);
+    RTree_recompute_bounds_from_node(node->parent(), t);
 }
 
 /* Updates objects in the tree with new positions. */

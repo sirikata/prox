@@ -405,9 +405,11 @@ protected:
 
     void updateObj(const ObjectID& obj_id, const Time& t) {
         typename ObjectSet::iterator it = mObjects.find(obj_id);
-        if (it == mObjects.end()) return;
-
-        mRTree->update(mObjects[obj_id], t);
+        if (it != mObjects.end())
+            mRTree->update(it->second, t);
+        typename ObjectSet::iterator nit = mNodes.find(obj_id);
+        if (nit != mNodes.end())
+            mRTree->updateNode(nit->second, t);
     }
 
     void deleteObj(const ObjectID& obj_id, const Time& t, bool temporary) {
