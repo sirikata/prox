@@ -1159,7 +1159,14 @@ protected:
 
     void removeObjectChildrenFromResults(RTreeNodeType* from_node) {
         // Notify any cuts that objects held by this node are gone
-        assert(from_node->objectChildren());
+
+        // This can be called to rebuild cuts in a replicated tree,
+        // where we may have replicated nodes which are internal, but
+        // not know of any of their children yet, so this assertion
+        // has to be a bit lax.
+        assert( from_node->objectChildren() ||
+            (from_node->replicated() && from_node->empty()) );
+
         for(typename RTreeNodeType::Index idx = 0; idx < from_node->size(); idx++) {
             removeObjectChildFromResults( getLocCache()->iteratorID(from_node->object(idx).object), false );
         }
