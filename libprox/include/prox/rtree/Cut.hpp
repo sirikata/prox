@@ -112,6 +112,10 @@ public:
     //    Whether to include intermediate events when moving cuts across more
     //    than one 'hop', i.e. if you lift a cut multiple levels. Allows cut
     //    replication and tree replication to work from the same code.
+    //  bool includeReparent() const;
+    //    Whether to pass along reparenting events to cuts that cut across or
+    //    below the reparenting event. Required for replicated trees but would
+    //    just be ignored for standard queries.
     //  bool includeIntermediateEvents() const;
     //
     // And these are helpers that make accessing these convenient within this
@@ -154,6 +158,9 @@ public:
     }
     bool includeRemoval(ChangeReason act) const {
         return getNativeThis()->includeRemoval(act);
+    }
+    bool includeReparent() const {
+        return getNativeThis()->includeReparent();
     }
     bool includeIntermediateEvents() const {
         return getNativeThis()->includeIntermediateEvents();
@@ -817,6 +824,18 @@ public:
                 CutNodeListIterator after_new_parent_it = nodes.erase(parent_cn_it);
                 length--;
                 parent_cn->destroy(parent, getAggregateListener());
+
+                // If the querier for this cut tracks the internal structure of
+                // the tree, it needs to know that a reparenting occurred (and
+                // similarly for cuts below the node, for
+                // handleNodeReparentedAboveCut). We basically just forward it
+                // along.
+                if (includeReparent()) {
+                    QueryEventType evt(getLocCache(), parent->handlerID());
+                    evt.addReparent( typename QueryEventType::Reparent(node, old_parent, new_parent) );
+                    events.push_back(evt);
+                }
+
                 // Move the cut node for the moved node into the right
                 // place. (See note in handleNodeReparentedAboveCut for why we
                 // take an entire segment when in this callback we should only
@@ -836,8 +855,18 @@ public:
                 // length remained same for above move
             }
             else {
-                // The parent doesn't have a cut. Cut segments should
-                // be disjoint (it's other children may have cut
+                // The parent doesn't have a cut.
+
+                // As in the case of the parent having the cut, the querier may
+                // track internal state and need to know about this move.
+                if (includeReparent()) {
+                    QueryEventType evt(getLocCache(), parent->handlerID());
+                    evt.addReparent( typename QueryEventType::Reparent(node, old_parent, new_parent) );
+                    events.push_back(evt);
+                }
+
+                // Cut segments should
+                // be disjoint (its other children may have cut
                 // nodes), but it's out of order.
                 // FIXME this could be done more efficiently since we
                 // know which sections have become jumbled

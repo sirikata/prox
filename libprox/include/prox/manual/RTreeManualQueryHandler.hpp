@@ -597,6 +597,11 @@ protected:
                 return false;
             }
         }
+        bool includeReparent() const {
+            // Must include reparents in inside of tree so replicated tree
+            // remains consistent.
+            return true;
+        }
         bool includeIntermediateEvents() const {
             // We can't jump across levels without including events for
             // intermediate nodes since we wouldn't adjust the tracked set

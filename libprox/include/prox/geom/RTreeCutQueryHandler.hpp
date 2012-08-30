@@ -669,6 +669,10 @@ private:
             // removal events should be forwarded.
             return true;
         }
+        bool includeReparent() const {
+            // Just need cut, adjustments to parents would just be ignored.
+            return false;
+        }
         bool includeIntermediateEvents() const {
             // As long as we maintain a cut, the client doesn't care -- it just
             // needs the result set.
