@@ -88,7 +88,10 @@ public:
         const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) = 0;
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) = 0;
 
-    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) = 0;
+    // Called when the number of observers (queries with the node in their
+    // results) changes. # of children below this node (objects or nodes) is
+    // also provided.
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers, uint32 nchildren) = 0;
 
 }; // class AggregateListener
 

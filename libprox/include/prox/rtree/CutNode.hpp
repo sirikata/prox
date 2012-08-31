@@ -36,14 +36,14 @@ struct CutNodeBase {
        satisfies(false)
     {
         rtnode->insertCutNode(getNativeThis());
-        if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize());
+        if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize(), rtnode->size());
     }
 
     CutType* getParent() const { return parent; }
 
     void destroy(QueryHandlerType* handler, AggregateListenerType* listener) {
         rtnode->eraseCutNode(getNativeThis());
-        if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize());
+        if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize(), rtnode->size());
         delete getNativeThis();
     }
 

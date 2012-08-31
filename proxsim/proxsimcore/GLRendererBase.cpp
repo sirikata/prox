@@ -135,7 +135,7 @@ void GLRendererBase::aggregateDestroyed(AggregatorType* handler, const ObjectIDT
     mAggregateBounds.erase(objid);
 }
 
-void GLRendererBase::aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) {
+void GLRendererBase::aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers, uint32 nchildren) {
     Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
 }

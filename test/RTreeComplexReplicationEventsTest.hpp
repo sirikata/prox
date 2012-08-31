@@ -95,7 +95,7 @@ public:
         if (handler == orig_handler)
             orig_loccache->removeObject(objid);
     }
-    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) {}
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers, uint32 nchildren) {}
 
 
     void setUp() {

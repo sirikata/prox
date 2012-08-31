@@ -535,9 +535,9 @@ protected:
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
         if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateDestroyed(this, objid);
     }
-    virtual void aggregateObserved(AggregatorType* handler, const ObjectID& objid, uint32 nobservers) {
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectID& objid, uint32 nobservers, uint32 nchildren) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
-        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateObserved(this, objid, nobservers);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateObserved(this, objid, nobservers, nchildren);
     }
 
 

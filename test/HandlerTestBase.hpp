@@ -237,7 +237,7 @@ public:
         if (add_aggregates_to_loc)
             loccache->removeObject(objid);
     }
-    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers) {}
+    virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers, uint32 nchildren) {}
 
 };
 
