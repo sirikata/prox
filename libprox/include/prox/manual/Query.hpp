@@ -54,6 +54,9 @@ public:
         return QueryBaseType::handler()->coarsen(this, objid);
     }
 
+    virtual uint32 numResults() const { return QueryBaseType::handler()->numResultsForQuery(this); }
+    virtual uint32 size() const { return QueryBaseType::handler()->sizeForQuery(this); }
+
 protected:
     friend class ManualQueryHandler<SimulationTraits>;
 

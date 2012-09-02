@@ -282,6 +282,19 @@ public:
         return count;
     }
 
+    virtual uint32 numResultsForQuery(const QueryType* q) const {
+        QueryMapConstIterator it = mQueries.find(const_cast<QueryType*>(q));
+        if (it == mQueries.end()) return 0; // For rebuilding query handler
+        QueryState* state = it->second;
+        return state->cut->resultsSize();
+    }
+    virtual uint32 sizeForQuery(const QueryType* q) const {
+        QueryMapConstIterator it = mQueries.find(const_cast<QueryType*>(q));
+        if (it == mQueries.end()) return 0; // For rebuilding query handler
+        QueryState* state = it->second;
+        return state->cut->cutSize();
+    }
+
     virtual LocationServiceCacheType* locationCache() const {
         return mLocCache;
     }

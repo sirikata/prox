@@ -64,7 +64,7 @@ public:
 
     typedef int ID;
 
-    ~Query() {}
+    virtual ~Query() {}
 
     /// Minimum solid angle of an object which still allows it to be returned as
     /// a result.
@@ -99,6 +99,8 @@ public:
     }
 
 
+    virtual uint32 numResults() const { return QueryBaseType::handler()->numResultsForQuery(this); }
+    virtual uint32 size() const { return QueryBaseType::handler()->sizeForQuery(this); }
 
 protected:
     friend class QueryHandler<SimulationTraits>;

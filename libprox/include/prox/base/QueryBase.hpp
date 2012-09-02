@@ -30,7 +30,7 @@ public:
 
     typedef int ID;
 
-    ~QueryBase() {
+    virtual ~QueryBase() {
         if (mValid)
             destroy(true);
 
@@ -131,6 +131,14 @@ public:
         mEventListener = NULL;
     }
 
+    /// Returns the number of results currently in this query's result set. The
+    /// exact meaning of this value depends on the type of query.
+    virtual uint32 numResults() const = 0;
+    /// The size of this query's data. Exact meaning depends on the query and
+    /// query handler types. In some cases this will be the same as the number
+    /// of results, in others it may account for different state, e.g. cut size,
+    /// which could be larger or smaller than the number of results.
+    virtual uint32 size() const = 0;
 
     void pushEvent(const QueryEventType& evt) {
         {

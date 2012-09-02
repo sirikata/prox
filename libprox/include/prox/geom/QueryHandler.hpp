@@ -102,6 +102,9 @@ public:
         return q;
     }
 
+    virtual uint32 numResultsForQuery(const QueryType* q) const = 0;
+    virtual uint32 sizeForQuery(const QueryType* q) const = 0;
+
     using BaseType::handlerID;
 
     virtual void rebuild() = 0;

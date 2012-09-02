@@ -160,6 +160,19 @@ public:
         return count;
     }
 
+    virtual uint32 numResultsForQuery(const QueryType* q) const {
+        QueryMapConstIterator it = mQueries.find(const_cast<QueryType*>(q));
+        assert( it != mQueries.end() );
+        QueryState* state = it->second;
+        return state->cut->resultsSize();
+    }
+    virtual uint32 sizeForQuery(const QueryType* q) const {
+        QueryMapConstIterator it = mQueries.find(const_cast<QueryType*>(q));
+        assert( it != mQueries.end() );
+        QueryState* state = it->second;
+        return state->cut->cutSize();
+    }
+
     virtual LocationServiceCacheType* locationCache() const {
         return mLocCache;
     }
@@ -706,6 +719,7 @@ protected:
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
+    typedef typename QueryMap::const_iterator QueryMapConstIterator;
 
     AggregateListenerType* aggregateListener() {
         // Currently we only support cuts in the manual query handler -- its the

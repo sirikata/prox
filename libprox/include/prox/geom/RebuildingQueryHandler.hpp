@@ -252,7 +252,12 @@ public:
     virtual uint32 numNodes() const {
         return mPrimaryHandler->numNodes() + (mustDuplicate() ? mRebuildingHandler->numNodes() : 0);
     }
-
+    virtual uint32 numResultsForQuery(const QueryType* q) const {
+        return mPrimaryHandler->numResultsForQuery(q) + (mustDuplicate() ? mRebuildingHandler->numResultsForQuery(q) : 0);
+    }
+    virtual uint32 sizeForQuery(const QueryType* q) const {
+        return mPrimaryHandler->sizeForQuery(q) + (mustDuplicate() ? mRebuildingHandler->sizeForQuery(q) : 0);
+    }
 
     virtual LocationServiceCacheType* locationCache() const {
         return mLocCache;

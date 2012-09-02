@@ -172,6 +172,17 @@ public:
         return count;
     }
 
+    virtual uint32 numResultsForQuery(const QueryType* q) const {
+        QueryMapConstIterator it = mQueries.find(const_cast<QueryType*>(q));
+        if (it == mQueries.end()) return 0; // For rebuilding query handler
+        QueryState* state = it->second;
+        return state->cache.size();
+    }
+    virtual uint32 sizeForQuery(const QueryType* q) const {
+        // Same as numResults since it's just the set of objects we're tracking
+        return numResultsForQuery(q);
+    }
+
     virtual LocationServiceCacheType* locationCache() const {
         return mLocCache;
     }
@@ -460,6 +471,7 @@ protected:
     typedef typename ObjectSet::iterator ObjectSetIterator;
     typedef std::tr1::unordered_map<QueryType*, QueryState*> QueryMap;
     typedef typename QueryMap::iterator QueryMapIterator;
+    typedef typename QueryMap::const_iterator QueryMapConstIterator;
 
     struct Cut {
         void rebuildCutOrder() {}
