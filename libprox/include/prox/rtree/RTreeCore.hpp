@@ -489,16 +489,8 @@ public:
 
 private:
     void notifyRemoved(const LocCacheIterator& obj, bool permanent) {
-        ObjectID obj_id = loc()->iteratorID(obj);
         if (callbacks().objectRemoved)
             RTree_notify_cuts(this, callbacks().objectRemoved, obj, permanent, empty());
-
-        if (callbacks().aggregate != NULL) {
-            callbacks().aggregate->aggregateChildRemoved(
-                callbacks().aggregator, aggregate, obj_id,
-                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
-            );
-        }
     }
 
 public:
@@ -511,6 +503,13 @@ public:
         if (objectChildren()) {
             for(int i = 0; i < old_count; i++) {
                 count = old_count-i-1;
+                if (callbacks().aggregate != NULL) {
+                    ObjectID obj_id = loc()->iteratorID(this->elements.objects[old_count-i-1].object);
+                    callbacks().aggregate->aggregateChildRemoved(
+                        callbacks().aggregator, aggregate, obj_id,
+                        mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+                    );
+                }
                 notifyRemoved(this->elements.objects[old_count-i-1].object, false);
                 // Explicitly call destructor, necessary since we use placement
                 // new to handle constructing objects in place (see insert())
@@ -636,6 +635,14 @@ private:
         this->elements.objects[count-1].~ObjectNode();
         // Finally, reduce the count
         count--;
+
+        if (callbacks().aggregate != NULL) {
+            ObjectID obj_id = loc()->iteratorID(obj);
+            callbacks().aggregate->aggregateChildRemoved(
+                callbacks().aggregator, aggregate, obj_id,
+                mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
     }
 
     // NOTE: does not recalculate the bounding sphere.
