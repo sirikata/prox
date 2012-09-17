@@ -422,6 +422,16 @@ public:
         return r;
     }
 
+    int level() const {
+        RTreeNode* r = const_cast<RTreeNode*>(this);
+        int lev = 0;
+        while(r->parent() != NULL) {
+            lev++;
+            r = r->parent();
+        }
+        return lev;
+    }
+
     const ObjectNode& object(int i) const {
         assert( objectChildren() );
         assert( i < count );
