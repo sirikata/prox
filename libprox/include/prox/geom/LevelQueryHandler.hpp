@@ -55,11 +55,11 @@ public:
 
     typedef typename QueryHandlerType::NodeIterator NodeIterator;
 
-    static LevelQueryHandler* construct(uint16 elements_per_node, bool with_aggregates) {
-        return new LevelQueryHandler(elements_per_node, with_aggregates);
+    static LevelQueryHandler* construct(uint16 elements_per_node) {
+        return new LevelQueryHandler(elements_per_node);
     }
-    static QueryHandlerCreator Constructor(uint16 elements_per_node, bool with_aggregates) {
-        return std::tr1::bind(&LevelQueryHandler::construct, elements_per_node, with_aggregates);
+    static QueryHandlerCreator Constructor(uint16 elements_per_node) {
+        return std::tr1::bind(&LevelQueryHandler::construct, elements_per_node);
     }
 
     LevelQueryHandler(uint16 elements_per_node)
