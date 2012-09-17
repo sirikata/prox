@@ -103,6 +103,19 @@ public:
         checkCorrectResultsSize(2, 19);
     }
 
+    // Test a single queries results as a sanity check that they are working properly.
+    void testMaxQueryResults() {
+        init(true, false);
+        addObjects(0, 100);
+        // Add query at level way above the # of levels we should have in the
+        // tree
+        addQuery(10);
+        tick();
+        // Should be exact number since it should include all leaf children and
+        // only leaf children.
+        checkCorrectResultsSize(0, 100);
+    }
+
 };
 
 #endif //_LIBPROX_TEST_LEVEL_QUERY_HANDLER_TEST_HPP_
