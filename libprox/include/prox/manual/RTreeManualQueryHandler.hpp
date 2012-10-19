@@ -385,15 +385,15 @@ protected:
         query->addChangeListener(this);
     }
 
-    bool refine(QueryType* query, const ObjectID& objid) {
+    ManualQueryOpResult refine(QueryType* query, const ObjectID& objid) {
         // If it's a leaf objects, we can't refine
-        if (containsObject(objid)) return false;
+        if (containsObject(objid)) return MANUAL_QUERY_OP_NODE_IS_LEAF;
 
         Cut* cut = mQueries[query]->cut;
         return cut->refine(objid);
     }
 
-    bool coarsen(QueryType* query, const ObjectID& objid) {
+    ManualQueryOpResult coarsen(QueryType* query, const ObjectID& objid) {
         Cut* cut = mQueries[query]->cut;
         return cut->coarsen(objid);
     }
@@ -652,18 +652,18 @@ protected:
             return cut_node_it;
         }
 
-        bool refine(const ObjectID& objid) {
+        ManualQueryOpResult refine(const ObjectID& objid) {
             // Check that it is refinable. It must be in the results still to be
             // refinable
-            if (!isInResults(objid)) return false;
+            if (!isInResults(objid)) return MANUAL_QUERY_OP_NODE_NOT_IN_CUT;
 
             // Find the cut node
             CutNodeListIterator cut_node_it = findCutNode(objid);
-            if (cut_node_it == nodes.end()) return false;
+            if (cut_node_it == nodes.end()) return MANUAL_QUERY_OP_NODE_NOT_IN_CUT;
             // and refine it
             CutNode<SimulationTraits>* cnode = *cut_node_it;
             // But only if it actually has children
-            if (cnode->rtnode->empty()) return false;
+            if (cnode->rtnode->empty()) return MANUAL_QUERY_OP_NODE_HAS_NO_CHILDREN;
             if (cnode->rtnode->objectChildren()) {
                 replaceParentWithChildrenResults(cnode);
             }
@@ -673,10 +673,10 @@ protected:
                 query->pushEvent(evt);
             }
             pushEvents();
-            return true;
+            return MANUAL_QUERY_OP_OK;
         }
 
-        bool coarsen(const ObjectID& objid) {
+        ManualQueryOpResult coarsen(const ObjectID& objid) {
             // Coarsening is essentially the same operation as lifting a
             // cut. We'll just reuse that logic, meaning we need to find a
             // CutNode to lift and the RTreeNode to lift up to. The CutNode can
@@ -685,19 +685,19 @@ protected:
 
             // Find the associated CutNode, which might be out of date.
             CutNodeListIterator cut_node_it = findCutNode(objid);
-            if (cut_node_it == nodes.end()) return false;
+            if (cut_node_it == nodes.end()) return MANUAL_QUERY_OP_NODE_NOT_IN_CUT;
 
             // Get the parent RTreeNode
             CutNode<SimulationTraits>* from_cut_node = *cut_node_it;
             RTreeNodeType* to_rtree_node = from_cut_node->rtnode->parent();
-            if (to_rtree_node == NULL) return false;
+            if (to_rtree_node == NULL) return MANUAL_QUERY_OP_NODE_IS_ROOT;
 
             // And just reuse the lift cut operation
             handleLiftCut(from_cut_node, to_rtree_node);
 
             pushEvents();
 
-            return true;
+            return MANUAL_QUERY_OP_OK;
         }
 
     };
