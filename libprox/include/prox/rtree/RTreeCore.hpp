@@ -38,14 +38,25 @@
 #include <prox/rtree/Constraints.hpp>
 #include <prox/base/AggregateListener.hpp>
 #include <float.h>
+#include <sirikata/core/options/Options.hpp>
+
+#include <sirikata/core/options/CommonOptions.hpp>
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
 
 // Currently the following two are arbitrarily selected parameters.
 // Need to explore this parameter space.
 
-#define kShapeParameter 0.5f
-#define kGeometryParameter (1.0 - kShapeParameter)
+
+//#define KSHAPEPARAMETER (atof(getenv("ZERNIKEPARAM"))/10.0)
+//#define KGEOMETRYPARAMETER (1.0 - KSHAPEPARAMETER)
+//#define KTEXTUREPARAMETER (atof(getenv("TEXPARAM"))/10.0)
+
+#define KSHAPEPARAMETER 0.95
+#define KGEOMETRYPARAMETER (1.0 - KSHAPEPARAMETER)
+#define KTEXTUREPARAMETER 0.0
+
+
 
 namespace Prox {
 
@@ -1022,7 +1033,6 @@ public:
      : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
        mMaxRadius(0.f)
     {
-
     }
 
     MaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
@@ -1202,7 +1212,6 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         mMaxRadius(0.f), zernike_descriptor(ZernikeDescriptor::null()),
         mesh(""), descriptorReader(DescriptorReader::getDescriptorReader())
     {
-
     }
 
     SimilarMaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
@@ -1216,6 +1225,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       // difference in satisfiesConstraints
       ThisBase::bounding_sphere = loc->worldRegion(obj_id, t);
       zernike_descriptor = descriptorReader->getZernikeDescriptor(mesh);
+      texture_descriptor = descriptorReader->getTextureDescriptor(mesh);
     }
 
     NodeData merge(const NodeData& other) const {
@@ -1230,6 +1240,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
 
       zernike_descriptor = zernike_descriptor.multiply(currentChildrenCount-1).plus(other.zernike_descriptor).divide(currentChildrenCount);
+      texture_descriptor = texture_descriptor.multiply(currentChildrenCount-1).plus(other.texture_descriptor).divide(currentChildrenCount);
     }
 
     // Check if this data satisfies the query constraints given
@@ -1253,6 +1264,9 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
     // Given an object and a time, select the best child node to put the object in
     static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+      static float kShapeParameter = KSHAPEPARAMETER;
+      static float kGeometryParameter = KGEOMETRYPARAMETER;
+      static float kTextureParameter = KTEXTUREPARAMETER;
       //the metric used to choose the best child node.
       float min_metric = FLT_MAX;
 
@@ -1261,7 +1275,10 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
       const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+      const ZernikeDescriptor new_td = DescriptorReader::getDescriptorReader()->getTextureDescriptor(loc->mesh(obj_id)); 
 
+      //std::cout << new_zd.toString() << " : new_zd\n";
+      
       float normalizer = 0.00000;
       for (int i=0; i<node->size(); i++) {
 	RTreeNodeType* child_node = node->node(i);
@@ -1273,6 +1290,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 	if (total.volume() > normalizer) normalizer = total.volume();
       }
 
+      if (normalizer == 0) normalizer = 1e-9;
       //trying to balance between choosing far-away objects for grouping and choosing
       //similar objects for grouping.
       for (int i=0; i<node->size(); i++) {
@@ -1281,13 +1299,15 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         float new_max_size = std::max(child_node->data().mMaxRadius, obj_max_size);
         BoundingSphere old_total( child_node->data().bounding_sphere.center(), child_node->data().bounding_sphere.radius() + child_node->data().mMaxRadius );
         BoundingSphere total(merged.center(), merged.radius() + new_max_size);
-        float ns_minus_os =  (total.volume() - old_total.volume())/normalizer ;
+        float ns_minus_os = (total.volume() - old_total.volume())/normalizer;
 
         ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
-
+        ZernikeDescriptor median_td = child_node->data().texture_descriptor;
+  
         float nz_minus_mz = median_zd.minus(new_zd).l2Norm();
+        float nt_minus_mt = (median_td.minus(new_td).l2Norm())/6701.0;
 
-        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;
+        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * ( (1.0-kTextureParameter)*nz_minus_mz+kTextureParameter*nt_minus_mt);
 
         if (chosen_node == NULL || metric < min_metric) {
           min_metric = metric;
@@ -1298,6 +1318,10 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       return chosen_node;
     }
     static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+      static float kShapeParameter = KSHAPEPARAMETER;
+      static float kGeometryParameter = KGEOMETRYPARAMETER;
+      static float kTextureParameter = KTEXTUREPARAMETER;
+
       //the metric used to choose the best child node.
       float min_metric = FLT_MAX;
 
@@ -1306,6 +1330,8 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
       const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+      const ZernikeDescriptor new_td = DescriptorReader::getDescriptorReader()->getTextureDescriptor(loc->mesh(obj_id));
+
 
       float normalizer = 0.00000;
       RTreeNodeType* nodes[2] = { n1, n2 };
@@ -1319,6 +1345,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 	if (total.volume() > normalizer) normalizer = total.volume();
       }
 
+      if (normalizer == 0) normalizer = 1e-9;
       //trying to balance between choosing far-away objects for grouping and choosing
       //similar objects for grouping.
       for (int i=0; i<2; i++) {
@@ -1330,10 +1357,14 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         float ns_minus_os =  (total.volume() - old_total.volume())/normalizer ;
 
         ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
+        ZernikeDescriptor median_td = child_node->data().texture_descriptor;
+
 
         float nz_minus_mz = median_zd.minus(new_zd).l2Norm();
+        float nt_minus_mt = (median_td.minus(new_td).l2Norm())/6701.0;
 
-        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * nz_minus_mz;
+
+        float metric = kGeometryParameter * ns_minus_os + kShapeParameter * ((1.0-kTextureParameter)*nz_minus_mz+kTextureParameter*nt_minus_mt);
 
         if (chosen_node == NULL || metric < min_metric) {
           min_metric = metric;
@@ -1346,6 +1377,10 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
     // Given a list of child data, choose two seeds for the splitting process in quadratic time
     static void pickSeedsQuadratic(const std::vector<NodeData>& split_data, int32* seed0, int32* seed1) {
+      static float kShapeParameter = KSHAPEPARAMETER;
+      static float kGeometryParameter = KGEOMETRYPARAMETER;
+      static float kTextureParameter = KTEXTUREPARAMETER;
+
       float THRESHOLD_PARAMETER = 0.8f;
 
       *seed0 = -1; *seed1 = -1;
@@ -1391,11 +1426,14 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
                 }
             }
       }
-
     }
 
     // Given list of split data and current group assignments as well as current group data, select the next child to be added and its group
     static void pickNextChild(std::vector<NodeData>& split_data, const SplitGroups& split_groups, const NodeData& group_data_0, const NodeData& group_data_1, int32* next_child, int32* selected_group)  {
+      static float kShapeParameter = KSHAPEPARAMETER;
+      static float kGeometryParameter = KGEOMETRYPARAMETER;
+      static float kTextureParameter = KTEXTUREPARAMETER;
+
         float max_metric = -1.0;
         *next_child = -1;
         *selected_group = -1;
@@ -1404,8 +1442,6 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 	for(uint32 i = 0; i < split_data.size(); i++) {
             if (split_groups[i] != UnassignedGroup) continue;
 
-            //Not doing any normalizing of these diffs for now, because it causes worse results. For example, if a sphere inflates from 2->10, it
-            //is much worse than if it inflates from 1->5. But normalizing the two diffs makes them seems equally bad.
             BoundingSphere merged0 = group_data_0.bounding_sphere.merge(split_data[i].bounding_sphere);
             BoundingSphere merged1 = group_data_1.bounding_sphere.merge(split_data[i].bounding_sphere);
 
@@ -1413,22 +1449,25 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
             if (merged1.volume() > normalizer) normalizer = merged1.volume();
 	}
 
+        if (normalizer == 0) normalizer = 1e-9;
+
         for(uint32 i = 0; i < split_data.size(); i++) {
             if (split_groups[i] != UnassignedGroup) continue;
 
-	    //Not doing any normalizing of these diffs for now, because it causes worse results. For example, if a sphere inflates from 2->10, it
-	    //is much worse than if it inflates from 1->5. But normalizing the two diffs makes them seems equally bad.
             BoundingSphere merged0 = group_data_0.bounding_sphere.merge(split_data[i].bounding_sphere);
             BoundingSphere merged1 = group_data_1.bounding_sphere.merge(split_data[i].bounding_sphere);
 
             float diff0 = (merged0.volume() - group_data_0.bounding_sphere.volume())/normalizer;
             float diff1 = (merged1.volume() - group_data_1.bounding_sphere.volume())/normalizer;
-
+   //std::cout << group_data_0.zernike_descriptor.toString() << " desc\n";
             float zdiff0 = group_data_0.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() ;
             float zdiff1 = group_data_1.zernike_descriptor.minus(split_data[i].zernike_descriptor).l2Norm() ;
 
-            float metric0 = kShapeParameter * zdiff0 + kGeometryParameter * diff0;
-            float metric1 = kShapeParameter * zdiff1 + kGeometryParameter * diff1;
+            float tdiff0 = (group_data_0.texture_descriptor.minus(split_data[i].texture_descriptor).l2Norm())/6701.0;
+            float tdiff1 = (group_data_1.texture_descriptor.minus(split_data[i].texture_descriptor).l2Norm())/6701.0;
+
+            float metric0 = kShapeParameter * (kTextureParameter * tdiff0 + (1.0 - kTextureParameter) * zdiff0) + kGeometryParameter * diff0;
+            float metric1 = kShapeParameter * (kTextureParameter * tdiff1 + (1.0 - kTextureParameter) * zdiff1) + kGeometryParameter * diff1;
 
             float metric = fabs(metric0-metric1);
 
@@ -1503,9 +1542,9 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
   private:
     float mMaxRadius;
     ZernikeDescriptor zernike_descriptor;
+    ZernikeDescriptor texture_descriptor;
     String mesh;
     DescriptorReader* descriptorReader;
-
 };
 
 

@@ -71,6 +71,16 @@ class ZernikeDescriptor {
      return mZernikeMoments.size();
    }
 
+   float l1Norm() const {
+     float l2norm = 0;
+     for (uint32 i = 0; i <  mZernikeMoments.size(); i++) {
+       l2norm += abs(mZernikeMoments[i] );
+     }
+
+     return (l2norm);
+   }
+
+
    float l2Norm() const {
      float l2norm = 0;
      for (uint32 i = 0; i <  mZernikeMoments.size(); i++) {
@@ -159,9 +169,14 @@ public:
         String descriptorStr = line.substr(idx+1);
 
         meshname = meshname.substr(meshname.find_last_of('/')+1);
-        meshname = "meerkat:///tahirazim/apiupload/" + meshname + "/optimized/0/" + meshname;
+        String meshnamefull = "meerkat:///tahirazim/apiupload/" + meshname + "/optimized/0/" + meshname;
 
-        mZernikeDescriptorMap[meshname] = ZernikeDescriptor(descriptorStr);
+        mZernikeDescriptorMap[meshnamefull] = ZernikeDescriptor(descriptorStr);
+ 
+        meshnamefull = "meerkat:///tahirazim/apiupload/" + meshname + "/original/0/" + meshname;
+        mZernikeDescriptorMap[meshnamefull] = ZernikeDescriptor(descriptorStr);
+
+
       }
     }
 
@@ -179,10 +194,16 @@ public:
         String meshname = line.substr(0,idx);
         String descriptorStr = line.substr(idx+1);
 
-        meshname = meshname.substr(meshname.find_last_of('/')+1);
-        meshname = "meerkat:///tahirazim/apiupload/" + meshname + "/optimized/0/" + meshname;
-
-        mTextureDescriptorMap[meshname] = ZernikeDescriptor(descriptorStr);
+        if (meshname.find("meerkat:///") != 0) {
+          //meshname = meshname.substr(meshname.find_last_of('/')+1); //this is no longer needed with ~/all_csds.txt
+          String meshnamefull = "meerkat:///tahirazim/apiupload/" + meshname + "/optimized/0/" + meshname;
+          mTextureDescriptorMap[meshnamefull] = ZernikeDescriptor(descriptorStr);
+          meshnamefull = "meerkat:///tahirazim/apiupload/" + meshname + "/original/0/" + meshname;
+          mTextureDescriptorMap[meshnamefull] = ZernikeDescriptor(descriptorStr);
+        }
+        else {
+          mTextureDescriptorMap[meshname] = ZernikeDescriptor(descriptorStr);
+        }
       }
     }
 
@@ -276,14 +297,16 @@ public:
 
   ZernikeDescriptor& getTextureDescriptor(const String& mesh) {
     if (mTextureDescriptorMap.find(mesh) == mTextureDescriptorMap.end()) {
+      //std::cout << "TEXTURE DESCRIPTOR NOT FOUND: " << mesh << "\n";
       return ZernikeDescriptor::null();
     }
 
+    //std::cout << "FOUND!\n";
     return mTextureDescriptorMap[mesh];
   }
 
   ZernikeDescriptor& getDominantColorDescriptor(const String& mesh) {
-    std::cout << mesh << " : getDominantCOlorDesc\n";
+    //std::cout << mesh << " : getDominantCOlorDesc\n";
     if (mDominantColorMap.find(mesh) == mDominantColorMap.end()) {
       return ZernikeDescriptor::null();
     }
@@ -296,7 +319,8 @@ public:
 
     if (sDescriptorReader == NULL) {
       std::cout << "Launching new DescriptorReader\n";
-      sDescriptorReader = new DescriptorReader("/home/tazim/zernike_desc.txt", "/home/tazim/desc.txt", "/home/tazim/desc1.txt");
+      //sDescriptorReader = new DescriptorReader("/home/ubuntu/sirikata/bin/zernike_desc.txt", "/home/ubuntu/sirikata/bin/all_csds.txt", "/home/ubuntu/sirikata/bin/desc1.txt");
+      sDescriptorReader = new DescriptorReader("/home/tazim/zernike_desc.txt", "/home/tazim/all_csds.txt", "/home/tazim/desc1.txt");
     }
 
     return sDescriptorReader;
