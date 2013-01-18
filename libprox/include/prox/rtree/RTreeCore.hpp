@@ -38,9 +38,6 @@
 #include <prox/rtree/Constraints.hpp>
 #include <prox/base/AggregateListener.hpp>
 #include <float.h>
-#include <sirikata/core/options/Options.hpp>
-
-#include <sirikata/core/options/CommonOptions.hpp>
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
 
@@ -1275,10 +1272,10 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
       float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
       const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
-      const ZernikeDescriptor new_td = DescriptorReader::getDescriptorReader()->getTextureDescriptor(loc->mesh(obj_id)); 
+      const ZernikeDescriptor new_td = DescriptorReader::getDescriptorReader()->getTextureDescriptor(loc->mesh(obj_id));
 
       //std::cout << new_zd.toString() << " : new_zd\n";
-      
+
       float normalizer = 0.00000;
       for (int i=0; i<node->size(); i++) {
 	RTreeNodeType* child_node = node->node(i);
@@ -1303,7 +1300,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
         ZernikeDescriptor median_zd = child_node->data().zernike_descriptor;
         ZernikeDescriptor median_td = child_node->data().texture_descriptor;
-  
+
         float nz_minus_mz = median_zd.minus(new_zd).l2Norm();
         float nt_minus_mt = (median_td.minus(new_td).l2Norm())/6701.0;
 
