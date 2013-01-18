@@ -241,12 +241,12 @@ int main(int argc, char** argv) {
     // Setup query handler
     QueryHandler* handler = NULL;
     if (handler_type == "rtree") {
-        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits>(
             Prox::RTreeAngleQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching), 10
         );
     }
     else if (handler_type == "rtreedist") {
-        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits>(
             Prox::RTreeDistanceQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching), 10
         );
         // In case they didn't reduce it, force a lower default
@@ -254,17 +254,17 @@ int main(int argc, char** argv) {
             query_max_distance = 20; // Reasonable match for 200x200x200 region
     }
     else if (handler_type == "rtreecut") {
-        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits>(
             Prox::RTreeCutQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching, false), 10
         );
     }
     else if (handler_type == "rtreecutagg") {
-        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits>(
             Prox::RTreeCutQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching, true), 10
         );
     }
     else {
-        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits>(
             Prox::BruteForceQueryHandler<Prox::DefaultSimulationTraits>::Constructor(), 10
         );
     }

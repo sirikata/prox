@@ -9,12 +9,12 @@
 
 namespace Prox {
 
-template<typename SimulationTraits, typename NodeDataType>
+template<typename SimulationTraits>
 class RebuildingQueryHandler;
 
 namespace RebuildingQueryHandlerImpl {
 
-template<typename SimulationTraits, typename NodeDataType>
+template<typename SimulationTraits>
 class NodeIteratorImpl : public Prox::QueryHandlerBaseImpl::NodeIteratorImpl<SimulationTraits> {
 private:
     // We need an extra flag to know which of the ranges we're covering because
