@@ -22,7 +22,7 @@ namespace Prox {
 /** Implementation of QueryHandler that tracks a cut at a given level,
  *  i.e. tries to keep all results at the same depth in the tree.
  */
-template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+template<typename SimulationTraits, typename NodeDataType>
 class LevelQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;

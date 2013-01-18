@@ -50,7 +50,7 @@ namespace Prox {
  *  without cuts and QueryCaches to resolve queries.  It provides a bunch of
  *  utility code, but no real query processing.
  */
-template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+template<typename SimulationTraits, typename NodeDataType>
 class RTreeQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;

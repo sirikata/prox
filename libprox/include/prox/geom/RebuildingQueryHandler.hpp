@@ -53,7 +53,7 @@ namespace Prox {
  *  to continue, including addition and removal of objects and queries, while
  *  the rebuilding is in progress.
  */
-template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+template<typename SimulationTraits, typename NodeDataType>
 class RebuildingQueryHandler :
         public QueryHandler<SimulationTraits>,
         protected QueryEventListener<SimulationTraits, Query<SimulationTraits> >,

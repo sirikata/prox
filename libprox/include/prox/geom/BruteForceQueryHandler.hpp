@@ -46,7 +46,7 @@
 
 namespace Prox {
 
-template<typename SimulationTraits = DefaultSimulationTraits>
+template<typename SimulationTraits>
 class BruteForceQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;

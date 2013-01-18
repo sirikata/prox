@@ -50,7 +50,7 @@ namespace Prox {
 /** Implementation of QueryHandler which uses cuts through an RTree to track the
  *  active set of objects/nodes for a query.
  */
-template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+template<typename SimulationTraits, typename NodeDataType>
 class RTreeCutQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;

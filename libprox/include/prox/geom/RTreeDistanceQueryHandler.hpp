@@ -40,7 +40,7 @@ namespace Prox {
 /** RTreeDistanceQueryHandler implements distance query processing (return
  *  objects closer than distance d, and if requested, choose the top N).
  */
-template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+template<typename SimulationTraits, typename NodeDataType>
 class RTreeDistanceQueryHandler : public RTreeQueryHandler<SimulationTraits, NodeDataType> {
 public:
     typedef RTreeQueryHandler<SimulationTraits, NodeDataType> RTreeQueryHandlerType;

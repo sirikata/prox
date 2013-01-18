@@ -23,7 +23,7 @@ namespace Prox {
  *  controlled -- upon request, cuts are moved up or down, or adjusted due to
  *  object additions and removals.
  */
-template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+template<typename SimulationTraits, typename NodeDataType>
 class RTreeManualQueryHandler : public ManualQueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;
