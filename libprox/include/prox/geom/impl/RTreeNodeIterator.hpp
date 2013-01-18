@@ -9,17 +9,17 @@
 
 namespace Prox {
 
-template<typename SimulationTraits>
+template<typename SimulationTraits, typename NodeDataType>
 class RTreeQueryHandler;
 
 namespace RTreeQueryHandlerImpl {
 
-template<typename SimulationTraits>
+template<typename SimulationTraits, typename NodeDataType>
 class NodeIteratorImpl :
-        public RTreeHandlerImpl::NodeIteratorImpl<SimulationTraits, typename RTreeQueryHandler<SimulationTraits>::RTree>
+        public RTreeHandlerImpl::NodeIteratorImpl<SimulationTraits, typename RTreeQueryHandler<SimulationTraits, NodeDataType>::RTree>
 {
 public:
-    typedef typename RTreeHandlerImpl::NodeIteratorImpl<SimulationTraits, typename RTreeQueryHandler<SimulationTraits>::RTree> Base;
+    typedef typename RTreeHandlerImpl::NodeIteratorImpl<SimulationTraits, typename RTreeQueryHandler<SimulationTraits, NodeDataType>::RTree> Base;
 
     NodeIteratorImpl(typename Base::RTreeNodeIterator rit)
      : Base(rit)

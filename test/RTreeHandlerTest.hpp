@@ -4,10 +4,11 @@
 
 #include "GeomHandlerTest.hpp"
 #include <prox/geom/RTreeAngleQueryHandler.hpp>
+#include "TestSettings.hpp"
 
 class RTreeHandlerTest : public CxxTest::TestSuite, public GeomHandlerTest {
 public:
-    typedef Prox::RTreeAngleQueryHandler<Prox::DefaultSimulationTraits> RTreeAngleQueryHandler;
+    typedef Prox::RTreeAngleQueryHandler<Prox::DefaultSimulationTraits, TestNodeData> RTreeAngleQueryHandler;
 
     RTreeHandlerTest()
      : GeomHandlerTest(true)

@@ -8,6 +8,7 @@
 #include <cxxtest/TestSuite.h>
 #include "HandlerTestBase.hpp"
 #include <prox/geom/LevelQueryHandler.hpp>
+#include "TestSettings.hpp"
 
 // Test of the level query handler, ensuring it returns the expected set of
 // results at a given level.
@@ -15,7 +16,7 @@ class LevelQueryHandlerTest : public CxxTest::TestSuite,
     public HandlerTestBase<Prox::QueryHandler<Prox::DefaultSimulationTraits>, Prox::Query<Prox::DefaultSimulationTraits> >
 {
     typedef HandlerTestBase<Prox::QueryHandler<Prox::DefaultSimulationTraits>, Prox::Query<Prox::DefaultSimulationTraits> > HandlerTestBaseType;
-    typedef Prox::LevelQueryHandler<Prox::DefaultSimulationTraits> LevelQueryHandler;
+    typedef Prox::LevelQueryHandler<Prox::DefaultSimulationTraits, TestNodeData> LevelQueryHandler;
 public:
     LevelQueryHandlerTest()
      : HandlerTestBaseType(true)

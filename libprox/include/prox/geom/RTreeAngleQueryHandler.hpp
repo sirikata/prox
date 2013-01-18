@@ -41,10 +41,10 @@ namespace Prox {
  *  objects with > solid angle omega, if requested, constrain by distance and
  *  choose the top N).
  */
-template<typename SimulationTraits = DefaultSimulationTraits>
-class RTreeAngleQueryHandler : public RTreeQueryHandler<SimulationTraits> {
+template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
+class RTreeAngleQueryHandler : public RTreeQueryHandler<SimulationTraits, NodeDataType> {
 public:
-    typedef RTreeQueryHandler<SimulationTraits> RTreeQueryHandlerType;
+    typedef RTreeQueryHandler<SimulationTraits, NodeDataType> RTreeQueryHandlerType;
 
     typedef typename RTreeQueryHandlerType::QueryHandlerType QueryHandlerType;
 
@@ -75,7 +75,7 @@ public:
 
 
     RTreeAngleQueryHandler(uint16 elements_per_node)
-     : RTreeQueryHandler<SimulationTraits>(elements_per_node)
+     : RTreeQueryHandler<SimulationTraits, NodeDataType>(elements_per_node)
     {
     }
 

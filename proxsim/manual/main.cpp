@@ -123,9 +123,22 @@ int main(int argc, char** argv) {
 
     srand(seed);
 
+#ifndef LIBPROX_RTREE_DATA
+# error "You must define LIBPROX_RTREE_DATA to either LIBPROX_RTREE_DATA_BOUNDS or LIBPROX_RTREE_DATA_MAXSIZE"
+#endif
+#if LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_BOUNDS
+    typedef Prox::BoundingSphereData<Prox::DefaultSimulationTraits> NodeData;
+#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_MAXSIZE
+    typedef Prox::MaxSphereData<Prox::DefaultSimulationTraits> NodeData;
+#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_SIMILARMAXSIZE
+    typedef Prox::SimilarMaxSphereData<Prox::DefaultSimulationTraits> NodeData;
+#else
+# error "Invalid setting for LIBPROX_RTREE_DATA"
+#endif
+
     ManualQueryHandler* handler = NULL;
     if (handler_type == "rtree") {
-        handler = new Prox::RTreeManualQueryHandler<>(branching);
+        handler = new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits, NodeData>(branching);
     }
 
     Simulator* simulator = new Simulator(handler, duration, Duration::milliseconds((unsigned int)timestep), iterations, realtime);

@@ -4,10 +4,11 @@
 
 #include "GeomHandlerTest.hpp"
 #include <prox/geom/RTreeCutQueryHandler.hpp>
+#include "TestSettings.hpp"
 
 class RTreeCutHandlerTest : public CxxTest::TestSuite, public GeomHandlerTest {
 public:
-    typedef Prox::RTreeCutQueryHandler<Prox::DefaultSimulationTraits> RTreeCutQueryHandler;
+    typedef Prox::RTreeCutQueryHandler<Prox::DefaultSimulationTraits, TestNodeData> RTreeCutQueryHandler;
 
     RTreeCutHandlerTest()
      : GeomHandlerTest(true)

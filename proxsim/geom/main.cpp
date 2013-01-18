@@ -225,34 +225,47 @@ int main(int argc, char** argv) {
 
     srand(seed);
 
+#ifndef LIBPROX_RTREE_DATA
+# error "You must define LIBPROX_RTREE_DATA to either LIBPROX_RTREE_DATA_BOUNDS or LIBPROX_RTREE_DATA_MAXSIZE"
+#endif
+#if LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_BOUNDS
+    typedef Prox::BoundingSphereData<Prox::DefaultSimulationTraits> NodeData;
+#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_MAXSIZE
+    typedef Prox::MaxSphereData<Prox::DefaultSimulationTraits> NodeData;
+#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_SIMILARMAXSIZE
+    typedef Prox::SimilarMaxSphereData<Prox::DefaultSimulationTraits> NodeData;
+#else
+# error "Invalid setting for LIBPROX_RTREE_DATA"
+#endif
+
     // Setup query handler
     QueryHandler* handler = NULL;
     if (handler_type == "rtree") {
-        handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeAngleQueryHandler<>::Constructor(branching), 10
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+            Prox::RTreeAngleQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching), 10
         );
     }
     else if (handler_type == "rtreedist") {
-        handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeDistanceQueryHandler<>::Constructor(branching), 10
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+            Prox::RTreeDistanceQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching), 10
         );
         // In case they didn't reduce it, force a lower default
         if (query_max_distance == Prox::DefaultSimulationTraits::InfiniteRadius)
             query_max_distance = 20; // Reasonable match for 200x200x200 region
     }
     else if (handler_type == "rtreecut") {
-        handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeCutQueryHandler<>::Constructor(branching, false), 10
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+            Prox::RTreeCutQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching, false), 10
         );
     }
     else if (handler_type == "rtreecutagg") {
-        handler = new Prox::RebuildingQueryHandler<>(
-            Prox::RTreeCutQueryHandler<>::Constructor(branching, true), 10
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+            Prox::RTreeCutQueryHandler<Prox::DefaultSimulationTraits, NodeData>::Constructor(branching, true), 10
         );
     }
     else {
-        handler = new Prox::RebuildingQueryHandler<>(
-            Prox::BruteForceQueryHandler<>::Constructor(), 10
+        handler = new Prox::RebuildingQueryHandler<Prox::DefaultSimulationTraits, NodeData>(
+            Prox::BruteForceQueryHandler<Prox::DefaultSimulationTraits>::Constructor(), 10
         );
     }
 

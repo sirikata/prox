@@ -50,7 +50,7 @@ namespace Prox {
  *  without cuts and QueryCaches to resolve queries.  It provides a bunch of
  *  utility code, but no real query processing.
  */
-template<typename SimulationTraits = DefaultSimulationTraits>
+template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
 class RTreeQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;
@@ -439,18 +439,6 @@ protected:
     }
 
 
-
-    typedef typename RTreeQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
-    friend class RTreeQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
-
-    virtual NodeIteratorImpl* nodesBeginImpl() const {
-        return new NodeIteratorImpl(mRTree->nodesBegin());
-    }
-    virtual NodeIteratorImpl* nodesEndImpl() const {
-        return new NodeIteratorImpl(mRTree->nodesEnd());
-    }
-
-
     void handleRootCreated() {
         // We don't care about this because we just start from the root and
         // reevaluate each time. Not having a root just means we didn't have any
@@ -484,19 +472,19 @@ protected:
     };
 
 public: // Public for the sake of implementation -- node iterators are separate classes
-#ifndef LIBPROX_RTREE_DATA
-# error "You must define LIBPROX_RTREE_DATA to either LIBPROX_RTREE_DATA_BOUNDS or LIBPROX_RTREE_DATA_MAXSIZE"
-#endif
-#if LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_BOUNDS
-    typedef BoundingSphereData<SimulationTraits, CutNode> NodeData;
-#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_MAXSIZE
-    typedef MaxSphereData<SimulationTraits, CutNode> NodeData;
-#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_SIMILARMAXSIZE
-    typedef SimilarMaxSphereData<SimulationTraits, CutNode> NodeData;
-#else
-# error "Invalid setting for LIBPROX_RTREE_DATA"
-#endif
+    typedef NodeDataType NodeData;
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode> RTree;
+protected:
+    typedef typename RTreeQueryHandlerImpl::NodeIteratorImpl<SimulationTraits, NodeData> NodeIteratorImpl;
+    friend class RTreeQueryHandlerImpl::NodeIteratorImpl<SimulationTraits, NodeData>;
+
+    virtual NodeIteratorImpl* nodesBeginImpl() const {
+        return new NodeIteratorImpl(mRTree->nodesBegin());
+    }
+    virtual NodeIteratorImpl* nodesEndImpl() const {
+        return new NodeIteratorImpl(mRTree->nodesEnd());
+    }
+
 protected:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
 

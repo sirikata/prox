@@ -50,7 +50,7 @@ namespace Prox {
 /** Implementation of QueryHandler which uses cuts through an RTree to track the
  *  active set of objects/nodes for a query.
  */
-template<typename SimulationTraits = DefaultSimulationTraits>
+template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
 class RTreeCutQueryHandler : public QueryHandler<SimulationTraits> {
 public:
     typedef SimulationTraits SimulationTraitsType;
@@ -550,18 +550,7 @@ private:
     struct Cut;
 
 public: // Public for the sake of implementation -- node iterators are separate classes
-#ifndef LIBPROX_RTREE_DATA
-# error "You must define LIBPROX_RTREE_DATA to either LIBPROX_RTREE_DATA_BOUNDS or LIBPROX_RTREE_DATA_MAXSIZE"
-#endif
-#if LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_BOUNDS
-    typedef BoundingSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
-#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_MAXSIZE
-    typedef MaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
-#elif LIBPROX_RTREE_DATA == LIBPROX_RTREE_DATA_SIMILARMAXSIZE
-    typedef SimilarMaxSphereData<SimulationTraits, CutNode<SimulationTraits> > NodeData;
-#else
-# error "Invalid setting for LIBPROX_RTREE_DATA"
-#endif
+    typedef NodeDataType NodeData;
     typedef Prox::RTree<SimulationTraits, NodeData, CutNode<SimulationTraits> > RTree;
 private:
     typedef typename RTree::RTreeNodeType RTreeNodeType;
@@ -1016,8 +1005,8 @@ private:
     }
 
 
-    typedef typename RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
-    friend class RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+    typedef typename RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits, NodeDataType> NodeIteratorImpl;
+    friend class RTreeCutQueryHandlerImpl::NodeIteratorImpl<SimulationTraits, NodeDataType>;
 
     virtual NodeIteratorImpl* nodesBeginImpl() const {
         return new NodeIteratorImpl(mRTree->nodesBegin());

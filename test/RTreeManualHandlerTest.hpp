@@ -8,6 +8,7 @@
 #include <cxxtest/TestSuite.h>
 #include "HandlerTestBase.hpp"
 #include <prox/manual/RTreeManualQueryHandler.hpp>
+#include "TestSettings.hpp"
 
 // Test of just the functionality of the manual query handler given a known
 // replicated tree.
@@ -23,7 +24,7 @@ public:
     {}
 
     virtual QueryHandler* createHandler() {
-        return new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits>(10);
+        return new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits, TestNodeData>(10);
     }
 
     void addQuery() {

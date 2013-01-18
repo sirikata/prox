@@ -8,6 +8,7 @@
 #include <cxxtest/TestSuite.h>
 #include "HandlerTestBase.hpp"
 #include <prox/manual/RTreeManualQueryHandler.hpp>
+#include "TestSettings.hpp"
 
 // Test of tree replication into a manual RTree query handler
 class RTreeReplicatedTreeTest : public CxxTest::TestSuite,
@@ -44,7 +45,7 @@ public:
     typedef std::map<ObjectID, Node> NodeMap;
 
     virtual QueryHandler* createHandler() {
-        return new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits>(10);
+        return new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits, TestNodeData>(10);
     }
 
     void setUp() {

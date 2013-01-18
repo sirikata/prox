@@ -53,7 +53,7 @@ namespace Prox {
  *  to continue, including addition and removal of objects and queries, while
  *  the rebuilding is in progress.
  */
-template<typename SimulationTraits = DefaultSimulationTraits>
+template<typename SimulationTraits = DefaultSimulationTraits, typename NodeDataType = BoundingSphereData<SimulationTraits> >
 class RebuildingQueryHandler :
         public QueryHandler<SimulationTraits>,
         protected QueryEventListener<SimulationTraits, Query<SimulationTraits> >,
@@ -92,6 +92,8 @@ public:
 
     typedef typename QueryHandlerType::ShouldTrackCallback ShouldTrackCallback;
     typedef typename QueryHandlerType::ObjectList ObjectList;
+
+    typedef NodeDataType NodeData;
 
     typedef std::tr1::function<QueryHandlerType*()> ImplConstructor;
 
@@ -546,8 +548,8 @@ protected:
     }
 
 
-    typedef typename RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits> NodeIteratorImpl;
-    friend class RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits>;
+    typedef typename RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits, NodeData> NodeIteratorImpl;
+    friend class RebuildingQueryHandlerImpl::NodeIteratorImpl<SimulationTraits, NodeData>;
     typedef typename QueryHandlerBaseImpl::NodeIterator<SimulationTraits> NodeIterator;
 
     virtual NodeIteratorImpl* nodesBeginImpl() const {

@@ -773,7 +773,7 @@ static const int32 UnassignedGroup = -1;
 typedef std::vector<int32> SplitGroups;
 
 
-template<typename SimulationTraits, typename NodeData, typename CutNode>
+template<typename SimulationTraits, typename NodeData>
 class BoundingSphereDataBase {
 public:
     typedef typename SimulationTraits::ObjectIDType ObjectID;
@@ -785,8 +785,6 @@ public:
 
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
-
-    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
     BoundingSphereDataBase()
       : bounding_sphere(Vector3(0,0,0), -1.f) // Invalid, should merge properly
@@ -829,7 +827,13 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    template<typename CutNode>
+    static RTreeNode<SimulationTraits, NodeData, CutNode>* selectBestChildNode(
+        const RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+        LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    {
+        typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -847,7 +851,13 @@ public:
 
         return min_increase_node;
     }
-    static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    template<typename CutNode>
+    static RTreeNode<SimulationTraits, NodeData, CutNode>* selectBestChildNodeFromPair(
+        RTreeNode<SimulationTraits, NodeData, CutNode>* n1,
+        RTreeNode<SimulationTraits, NodeData, CutNode>* n2,
+        LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    {
+        typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -984,10 +994,10 @@ protected:
 };
 
 
-template<typename SimulationTraits, typename CutNode>
-class BoundingSphereData : public BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode>, CutNode> {
+template<typename SimulationTraits>
+class BoundingSphereData : public BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits> > {
 public:
-    typedef BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
+    typedef BoundingSphereDataBase<SimulationTraits, BoundingSphereData<SimulationTraits> > ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::TimeType Time;
@@ -995,12 +1005,12 @@ public:
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
     BoundingSphereData()
-     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData, CutNode>()
+     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>()
     {
     }
 
     BoundingSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData, CutNode>( loc, obj_id, t )
+     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>( loc, obj_id, t )
     {
     }
 };
@@ -1009,11 +1019,11 @@ public:
  * We can cull if the largest bounding sphere, centered at the closest point on the
  * hierarchical bounding sphere, does not satisfy the constraints.
  */
-template<typename SimulationTraits, typename CutNode>
-class MaxSphereData : public BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits, CutNode>, CutNode> {
+template<typename SimulationTraits>
+class MaxSphereData : public BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits> > {
 public:
     typedef MaxSphereData NodeData; // For convenience/consistency
-    typedef BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
+    typedef BoundingSphereDataBase<SimulationTraits, MaxSphereData<SimulationTraits> > ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::realType Real;
@@ -1024,16 +1034,14 @@ public:
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
-    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
-
     MaxSphereData()
-     : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(),
+     : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(),
        mMaxRadius(0.f)
     {
     }
 
     MaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-      : BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>(loc, obj_id, t),
+      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(loc, obj_id, t),
        mMaxRadius( loc->maxSize(obj_id) )
     {
         // Note: we override this here because we need worldCompleteBounds for
@@ -1044,14 +1052,14 @@ public:
     }
 
     NodeData merge(const NodeData& other) const {
-        NodeData result = BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::merge(other);
+        NodeData result = BoundingSphereDataBase<SimulationTraits, MaxSphereData>::merge(other);
         result.mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
         return result;
     }
 
     // Merge the given info into this info
   void mergeIn(const NodeData& other, uint32 currentChildrenCount) {
-    BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::mergeIn(other, currentChildrenCount);
+    BoundingSphereDataBase<SimulationTraits, MaxSphereData>::mergeIn(other, currentChildrenCount);
     mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
   }
 
@@ -1075,7 +1083,12 @@ public:
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    template<typename CutNode>
+    static RTreeNode<SimulationTraits, NodeData, CutNode>* selectBestChildNode(
+        const RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+        LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    {
+        typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -1097,7 +1110,14 @@ public:
 
         return min_increase_node;
     }
-    static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    template<typename CutNode>
+    static RTreeNode<SimulationTraits, NodeData, CutNode>* selectBestChildNodeFromPair(
+        RTreeNode<SimulationTraits, NodeData, CutNode>* n1,
+        RTreeNode<SimulationTraits, NodeData, CutNode>* n2,
+        LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    {
+        typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
         float min_increase = 0.f;
         RTreeNodeType* min_increase_node = NULL;
 
@@ -1122,7 +1142,7 @@ public:
     }
 
     void verifyChild(const NodeData& child) const {
-        BoundingSphereDataBase<SimulationTraits, MaxSphereData, CutNode>::verifyChild(child);
+        BoundingSphereDataBase<SimulationTraits, MaxSphereData>::verifyChild(child);
 
         if ( child.mMaxRadius > mMaxRadius) {
             printf(
@@ -1187,11 +1207,11 @@ private:
    But it also tries to group similar objects together as much as it can based on their zernike
    descriptors.
 */
-template<typename SimulationTraits, typename CutNode>
-class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits, CutNode>, CutNode> {
+template<typename SimulationTraits>
+class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits> > {
   public:
     typedef SimilarMaxSphereData NodeData; // For convenience/consistency
-    typedef BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits, CutNode>, CutNode> ThisBase;
+    typedef BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData<SimulationTraits> > ThisBase;
 
     typedef typename SimulationTraits::ObjectIDType ObjectID;
     typedef typename SimulationTraits::realType Real;
@@ -1202,17 +1222,15 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     typedef LocationServiceCache<SimulationTraits> LocationServiceCacheType;
     typedef typename LocationServiceCacheType::Iterator LocCacheIterator;
 
-    typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
-
     SimilarMaxSphereData()
-      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>(),
+      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>(),
         mMaxRadius(0.f), zernike_descriptor(ZernikeDescriptor::null()),
         mesh(""), descriptorReader(DescriptorReader::getDescriptorReader())
     {
     }
 
     SimilarMaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>(loc, obj_id, t),
+      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>(loc, obj_id, t),
         mMaxRadius( loc->maxSize(obj_id) ), zernike_descriptor(loc->zernikeDescriptor(obj_id)),
         mesh(loc->mesh(obj_id)), descriptorReader(DescriptorReader::getDescriptorReader())
     {
@@ -1226,14 +1244,14 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     }
 
     NodeData merge(const NodeData& other) const {
-      NodeData result = BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>::merge(other);
+      NodeData result = BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>::merge(other);
       result.mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
       return result;
     }
 
     // Merge the given info into this info
     void mergeIn(const NodeData& other, uint32 currentChildrenCount) {
-      BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>::mergeIn(other, currentChildrenCount);
+      BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>::mergeIn(other, currentChildrenCount);
       mMaxRadius = std::max( mMaxRadius, other.mMaxRadius );
 
       zernike_descriptor = zernike_descriptor.multiply(currentChildrenCount-1).plus(other.zernike_descriptor).divide(currentChildrenCount);
@@ -1260,7 +1278,13 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     }
 
     // Given an object and a time, select the best child node to put the object in
-    static RTreeNodeType* selectBestChildNode(const RTreeNodeType* node, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    template<typename CutNode>
+    static RTreeNode<SimulationTraits, NodeData, CutNode>* selectBestChildNode(
+        const RTreeNode<SimulationTraits, NodeData, CutNode>* node,
+        LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    {
+        typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
       static float kShapeParameter = KSHAPEPARAMETER;
       static float kGeometryParameter = KGEOMETRYPARAMETER;
       static float kTextureParameter = KTEXTUREPARAMETER;
@@ -1314,7 +1338,14 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
       return chosen_node;
     }
-    static RTreeNodeType* selectBestChildNodeFromPair(RTreeNodeType* n1, RTreeNodeType* n2, LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t) {
+    template<typename CutNode>
+    static RTreeNode<SimulationTraits, NodeData, CutNode>* selectBestChildNodeFromPair(
+        RTreeNode<SimulationTraits, NodeData, CutNode>* n1,
+        RTreeNode<SimulationTraits, NodeData, CutNode>* n2,
+        LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
+    {
+        typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
+
       static float kShapeParameter = KSHAPEPARAMETER;
       static float kGeometryParameter = KGEOMETRYPARAMETER;
       static float kTextureParameter = KTEXTUREPARAMETER;
@@ -1477,7 +1508,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     }
 
     void verifyChild(const NodeData& child) const {
-      BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData, CutNode>::verifyChild(child);
+      BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>::verifyChild(child);
 
       if ( child.mMaxRadius > mMaxRadius) {
         printf(

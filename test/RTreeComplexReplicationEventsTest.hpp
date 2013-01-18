@@ -11,6 +11,7 @@
 #include <prox/base/QueryEventListener.hpp>
 #include <prox/base/AggregateListener.hpp>
 #include <prox/manual/RTreeManualQueryHandler.hpp>
+#include "TestSettings.hpp"
 
 // Tests focused on complex events that occur and could mess with replication,
 // e.g. splits/merges in the orignal RTree. These are isolated because the setup
@@ -101,7 +102,7 @@ public:
     void setUp() {
         // Note small branching factor to make tests smaller when checking split behavior
         orig_loccache = new TestLocationServiceCache();
-        orig_handler = new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits>(3);
+        orig_handler = new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits, TestNodeData>(3);
         orig_handler->setAggregateListener(this);
         orig_handler->initialize(
             orig_loccache, orig_loccache,
@@ -109,7 +110,7 @@ public:
         );
 
         replicated_loccache = new TestLocationServiceCache();
-        replicated_handler = new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits>(3);
+        replicated_handler = new Prox::RTreeManualQueryHandler<Prox::DefaultSimulationTraits, TestNodeData>(3);
         replicated_handler->initialize(
             replicated_loccache, replicated_loccache,
             true, true
