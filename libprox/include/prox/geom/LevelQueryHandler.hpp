@@ -425,6 +425,13 @@ public:
         validateCuts();
     }
 
+    void locationQueryDataUpdated(const ObjectID& obj_id, const String& old_query_data, const String& new_query_data) {
+        updateObj(obj_id, mLastTime); // FIXME new time?
+
+        mRTree->verifyConstraints(mLastTime);
+        validateCuts();
+    }
+
     void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
         removeObject(obj_id, temporary);
         removeNode(obj_id, temporary);

@@ -264,6 +264,10 @@ public:
         // Nothing to be done, we use values directly from the object
     }
 
+    void locationQueryDataUpdated(const ObjectID& obj_id, const String& old_query_data, const String& new_query_data) {
+        // Nothing to be done, we use values directly from the object
+    }
+
     void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
         removeObject(obj_id, temporary);
     }

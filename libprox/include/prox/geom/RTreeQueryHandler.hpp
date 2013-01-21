@@ -335,6 +335,10 @@ public:
         updateObj(obj_id, mLastTime); // FIXME new time?
     }
 
+    void locationQueryDataUpdated(const ObjectID& obj_id, const String& old_query_data, const String& new_query_data) {
+        updateObj(obj_id, mLastTime); // FIXME new time?
+    }
+
     void locationDisconnected(const ObjectID& obj_id, bool temporary = false) {
         removeObject(obj_id, temporary);
     }

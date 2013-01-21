@@ -31,7 +31,7 @@ public:
             const Vector3& center_pos,
             const Prox::float32 center_bounds_radius,
             const Prox::float32 max_size,
-            const Prox::String& zernike,
+            const Prox::String& query_data,
             const Prox::String& mesh
         ) {}
         virtual Iterator startTracking(const ObjectID& id) { return Iterator(); }
@@ -42,8 +42,8 @@ public:
         virtual Vector3 centerOffset(const Iterator& id) { return Vector3(0, 0, 0); }
         virtual Prox::float32 centerBoundsRadius(const Iterator& id) { return 0.f; }
         virtual Prox::float32 maxSize(const Iterator& id) { return 0.f; }
-        virtual Prox::ZernikeDescriptor& zernikeDescriptor(const Iterator& id) { }
         virtual Prox::String mesh(const Iterator& id) { return ""; }
+        virtual Prox::String queryData(const Iterator& id) { return ""; }
 
 
         virtual bool isLocal(const Iterator& id) { return true; }

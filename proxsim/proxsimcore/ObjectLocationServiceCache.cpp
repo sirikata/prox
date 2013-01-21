@@ -77,7 +77,7 @@ void ObjectLocationServiceCache::addPlaceholderImposter(
     const Vector3& center_offset,
     const float32 center_bounds_radius,
     const float32 max_size,
-    const String& zernike,
+    const String& query_data,
     const String& mesh
 ) {
     // We don't actually have a corresponding object for this, and we don't have
@@ -155,13 +155,12 @@ float32 ObjectLocationServiceCache::maxSize(const Iterator& id) {
     return obj->bounds().radius();
 }
 
-ZernikeDescriptor& ObjectLocationServiceCache::zernikeDescriptor(const Iterator& id) {
+String ObjectLocationServiceCache::mesh(const Iterator& id) {
     // This test code doesn't currently support meshes/zernike descriptors
-    static ZernikeDescriptor dummy_zd;
-    return dummy_zd;
+    return "";
 }
 
-String ObjectLocationServiceCache::mesh(const Iterator& id) {
+String ObjectLocationServiceCache::queryData(const Iterator& id) {
     // This test code doesn't currently support meshes/zernike descriptors
     return "";
 }

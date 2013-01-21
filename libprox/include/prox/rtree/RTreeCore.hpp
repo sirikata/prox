@@ -37,6 +37,7 @@
 #include <prox/base/LocationServiceCache.hpp>
 #include <prox/rtree/Constraints.hpp>
 #include <prox/base/AggregateListener.hpp>
+#include <prox/base/ZernikeDescriptor.hpp>
 #include <float.h>
 
 #define RTREE_BOUNDS_EPSILON 0.1f // FIXME how should we choose this epsilon?
@@ -315,7 +316,7 @@ public:
             _owner->loc()->addPlaceholderImposter(
                 aggregate,
                 data().getBoundsCenter(), data().getBoundsCenterBoundsRadius(), data().getBoundsMaxObjectSize(),
-                // Zernike descriptor and mesh are just default value placeholders
+                // Query data and mesh are just default value placeholders
                 "", ""
             );
             callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
@@ -345,7 +346,7 @@ public:
             _owner->loc()->addPlaceholderImposter(
                 aggregate,
                 data().getBoundsCenter(), data().getBoundsCenterBoundsRadius(), data().getBoundsMaxObjectSize(),
-                // Zernike descriptor and mesh are just default value placeholders
+                // Query data and mesh are just default value placeholders
                 "", ""
             );
             callbacks().aggregate->aggregateCreated(callbacks().aggregator, aggregate);
@@ -1231,7 +1232,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
     SimilarMaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
       : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>(loc, obj_id, t),
-        mMaxRadius( loc->maxSize(obj_id) ), zernike_descriptor(loc->zernikeDescriptor(obj_id)),
+        mMaxRadius( loc->maxSize(obj_id) ), zernike_descriptor(loc->queryData(obj_id)),
         mesh(loc->mesh(obj_id)), descriptorReader(DescriptorReader::getDescriptorReader())
     {
       // Note: we override this here because we need worldCompleteBounds for
@@ -1295,7 +1296,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
       float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
-      const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+      ZernikeDescriptor new_zd(loc->queryData(obj_id));
       const ZernikeDescriptor new_td = DescriptorReader::getDescriptorReader()->getTextureDescriptor(loc->mesh(obj_id));
 
       //std::cout << new_zd.toString() << " : new_zd\n";
@@ -1357,7 +1358,7 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 
       float obj_max_size = loc->maxSize(obj_id);
       BoundingSphere obj_bounds = loc->worldCompleteBounds(obj_id, t);
-      const ZernikeDescriptor& new_zd = loc->zernikeDescriptor(obj_id);
+      ZernikeDescriptor new_zd(loc->queryData(obj_id));
       const ZernikeDescriptor new_td = DescriptorReader::getDescriptorReader()->getTextureDescriptor(loc->mesh(obj_id));
 
 

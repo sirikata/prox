@@ -15,7 +15,6 @@ class TestLocationServiceCache : public Prox::LocationServiceCache<Prox::Default
 public:
     typedef Prox::float32 float32;
     typedef Prox::String String;
-    typedef Prox::ZernikeDescriptor ZernikeDescriptor;
 
     TestLocationServiceCache();
     virtual ~TestLocationServiceCache();
@@ -54,7 +53,7 @@ public:
         const Vector3& center_offset,
         const float32 center_bounds_radius,
         const float32 max_size,
-        const String& zernike,
+        const String& query_data,
         const String& mesh
     );
 
@@ -67,8 +66,8 @@ public:
     virtual Vector3 centerOffset(const Iterator& id);
     virtual float32 centerBoundsRadius(const Iterator& id);
     virtual float32 maxSize(const Iterator& id);
-    virtual ZernikeDescriptor& zernikeDescriptor(const Iterator& id);
     virtual String mesh(const Iterator& id);
+    virtual String queryData(const Iterator& id);
     virtual bool isLocal(const Iterator& id);
 
     bool contains(const ObjectID& id);

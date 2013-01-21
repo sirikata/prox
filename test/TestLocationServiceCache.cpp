@@ -146,7 +146,7 @@ void TestLocationServiceCache::addPlaceholderImposter(
     const Vector3& center_offset,
     const float32 center_bounds_radius,
     const float32 max_size,
-    const String& zernike,
+    const String& query_data,
     const String& mesh
 ) {
     // We don't actually have a corresponding object for this, and we don't have
@@ -222,15 +222,14 @@ TestLocationServiceCache::float32 TestLocationServiceCache::maxSize(const Iterat
     return (*obj)->bounds_max_size;
 }
 
-TestLocationServiceCache::ZernikeDescriptor& TestLocationServiceCache::zernikeDescriptor(const Iterator& id) {
-    // This test code doesn't currently support meshes/zernike descriptors
-    static ZernikeDescriptor dummy_zd;
-    return dummy_zd;
-}
-
 TestLocationServiceCache::String TestLocationServiceCache::mesh(const Iterator& id) {
     GET_OBJECT_INFO_PTR(obj, id);
     return (*obj)->mesh;
+}
+
+TestLocationServiceCache::String TestLocationServiceCache::queryData(const Iterator& id) {
+    static String dummy_query_data;
+    return dummy_query_data;
 }
 
 bool TestLocationServiceCache::isLocal(const Iterator& id) {

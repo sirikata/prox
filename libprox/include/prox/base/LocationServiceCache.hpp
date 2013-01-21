@@ -35,7 +35,6 @@
 
 #include <prox/util/Platform.hpp>
 #include <prox/base/LocationUpdateListener.hpp>
-#include <prox/base/ZernikeDescriptor.hpp>
 
 namespace Prox {
 
@@ -97,7 +96,7 @@ public:
         const Vector3& center_pos,
         const float32 center_bounds_radius,
         const float32 max_size,
-        const String& zernike,
+        const String& query_data,
         const String& mesh
     ) = 0;
 
@@ -176,8 +175,8 @@ public:
         return BoundingSphere( reg.center() + location(id).position(t), reg.radius() + maxSize(id) );
     }
 
-    virtual ZernikeDescriptor& zernikeDescriptor(const Iterator& id) = 0;
     virtual String mesh(const Iterator& id) = 0;
+    virtual String queryData(const Iterator& id) = 0;
 
     // Returns true if the object is local, false if it is a replica
     virtual bool isLocal(const Iterator& id) = 0;
