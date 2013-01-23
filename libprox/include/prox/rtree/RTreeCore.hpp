@@ -469,13 +469,21 @@ public:
         assert(loc()->iteratorID(node_locit) == aggregate);
 
         BoundingSphere orig = mData.getBounds();
+        String orig_data = mData.getSerializedExtraData();
         mData = NodeData(loc(), node_locit, t);
         BoundingSphere updated = mData.getBounds();
+        String updated_data = mData.getSerializedExtraData();
 
         if (callbacks().aggregate != NULL && updated != orig) {
             callbacks().aggregate->aggregateBoundsUpdated(
                 callbacks().aggregator, aggregate,
                 mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+        }
+        if (callbacks().aggregate != NULL && updated_data != orig_data) {
+            callbacks().aggregate->aggregateQueryDataUpdated(
+                callbacks().aggregator, aggregate,
+                updated_data
             );
         }
     }
@@ -494,16 +502,25 @@ public:
         if (replicated() && empty()) return;
 
         BoundingSphere orig = mData.getBounds();
+        String orig_data = mData.getSerializedExtraData();
         mData = NodeData();
         for(int i = 0; i < size(); i++)
           mData.mergeIn( childData(i, t), size() );
         BoundingSphere updated = mData.getBounds();
+        String updated_data = mData.getSerializedExtraData();
         if (callbacks().aggregate != NULL && updated != orig) {
             callbacks().aggregate->aggregateBoundsUpdated(
                 callbacks().aggregator, aggregate,
                 mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
             );
         }
+        if (callbacks().aggregate != NULL && updated_data != orig_data) {
+            callbacks().aggregate->aggregateQueryDataUpdated(
+                callbacks().aggregator, aggregate,
+                updated_data
+            );
+        }
+
     }
 
 private:
@@ -558,6 +575,11 @@ public:
 #endif
 
         mData = NodeData();
+        if (callbacks().aggregate != NULL) {
+            callbacks().aggregate->aggregateQueryDataUpdated(
+                callbacks().aggregator, aggregate, mData.getSerializedExtraData()
+            );
+        }
     }
 
 private:
@@ -579,6 +601,10 @@ private:
             callbacks().aggregate->aggregateChildAdded(
                 callbacks().aggregator, aggregate, loc()->iteratorID(obj),
                 mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+            callbacks().aggregate->aggregateQueryDataUpdated(
+                callbacks().aggregator, aggregate,
+                mData.getSerializedExtraData()
             );
         }
         return idx;
@@ -621,6 +647,9 @@ public:
             callbacks().aggregate->aggregateChildAdded(
                 callbacks().aggregator, aggregate, node->aggregate,
                 mData.getBoundsCenter(), mData.getBoundsCenterBoundsRadius(), mData.getBoundsMaxObjectSize()
+            );
+            callbacks().aggregate->aggregateQueryDataUpdated(
+                callbacks().aggregator, aggregate, node->data().getSerializedExtraData()
             );
         }
     }
@@ -960,6 +989,12 @@ public:
         return bounding_sphere.radius();
     }
 
+    /** Gets any extra query data generated for this node. This should be
+     * overridden by custom NodeData implementations.
+     */
+    String getSerializedExtraData() const {
+        return String();
+    }
 
     /** Gets the volume of this bounds of this region. */
     float volume() const {
@@ -1577,6 +1612,12 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
 };
 
 
+// Decls
+template<typename SimulationTraits, typename NodeData, typename CutNode>
+void RTree_recompute_bounds_from_node(
+    RTreeNode<SimulationTraits, NodeData, CutNode>* leaf_node,
+    const typename SimulationTraits::TimeType& t);
+
 
 // Cut notification utilities.
 // Notify all cuts passing through the given node by calling the method with the
@@ -1772,6 +1813,13 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_split_node(
     RTreeNodeType* nn = RTree_split_node_generate_new_node<SimulationTraits, NodeData, CutNode>(node);
     RTree_split_node_prepare<SimulationTraits, NodeData, CutNode>(node, nn, t);
     RTree_split_node_main<SimulationTraits, NodeData, CutNode, ChildType, ChildOperations>(node, nn, t);
+    // After reparenting, bounds need recomputing. This is especially important
+    // for some types of node data which might track old data that incorrectly
+    // causes queries to be marked as satisfied. Handle the two split nodes on
+    // their own then the rest of the way up the tree to avoid duplicate work.
+    node->recomputeData(t);
+    nn->recomputeData(t);
+    RTree_recompute_bounds_from_node<SimulationTraits, NodeData, CutNode>(node->parent(), t);
     RTree_split_node_cleanup<SimulationTraits, NodeData, CutNode, ChildType, ChildOperations>(node, nn, t);
     return nn;
 }

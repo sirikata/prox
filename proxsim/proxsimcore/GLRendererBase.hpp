@@ -38,6 +38,8 @@ protected:
         const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size);
     virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid,
         const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size);
+    virtual void aggregateQueryDataUpdated(AggregatorType* handler, const ObjectIDType& objid,
+        const String& extra_query_data);
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid);
     virtual void aggregateObserved(AggregatorType* handler, const ObjectIDType& objid, uint32 nobservers, uint32 nchildren);
 

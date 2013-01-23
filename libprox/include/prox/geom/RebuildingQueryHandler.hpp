@@ -348,6 +348,10 @@ public:
     virtual void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) {
         mImplQueryMap[query]->maxResults(new_val);
     }
+    virtual void queryCustomQueryChanged(QueryType* query, const String& old_val, const String& new_val) {
+        mImplQueryMap[query]->customQuery(new_val);
+    }
+
     virtual void queryDestroyed(QueryType* query, bool implicit) {
         typename QueryToQueryMap::iterator it = mImplQueryMap.find(const_cast<QueryType*>(query));
         assert( it != mImplQueryMap.end() );
@@ -543,6 +547,12 @@ protected:
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
         if (AggregatorType::mAggregateListener)
             AggregatorType::mAggregateListener->aggregateBoundsUpdated(this, objid, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
+    }
+    virtual void aggregateQueryDataUpdated(AggregatorType* handler, const ObjectID& objid,
+        const String& extra_query_data) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (AggregatorType::mAggregateListener)
+            AggregatorType::mAggregateListener->aggregateQueryDataUpdated(this, objid, extra_query_data);
     }
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectID& objid) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);

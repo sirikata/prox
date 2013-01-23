@@ -59,6 +59,7 @@ public:
     virtual void queryMaxSizeChanged(QueryType* query, real old_ms, real new_ms) = 0;
     virtual void queryAngleChanged(QueryType* query, const SolidAngle& old_val, const SolidAngle& new_val) = 0;
     virtual void queryMaxResultsChanged(QueryType* query, const uint32 old_val, const uint32 new_val) = 0;
+    virtual void queryCustomQueryChanged(QueryType* query, const String& old_val, const String& new_val) = 0;
     // If implicit is true, then the query was destroyed as part of the deletion
     // process and nobody will be able to collect any more results from the query.
     virtual void queryDestroyed(QueryType* query, bool implicit) = 0;

@@ -91,6 +91,13 @@ public:
     void reportCost(bool r) { mReportCost = r; }
     void reportQueryStats(bool r) { mReportQueryStats = r; }
 
+    // Implementations should override and return true if they want to handle
+    // their own query creation via the registerQuery(string) function.
+    virtual bool customQueryType() const { return false; }
+    // Override this method to parse your own query parameters and store them
+    // however you like, as long as you use a subclass of QueryType.
+    virtual QueryType* registerCustomQuery(const String& query_arg) { assert(false); return NULL; }
+    // Plain, old-style geometric query registration
     QueryType* registerQuery(const MotionVector3& pos, const BoundingSphere& region, Real maxSize, const SolidAngle& minAngle) {
         QueryType* q = new QueryType(this, mQueryIDSource++, pos, region, maxSize, minAngle);
         registerQuery(q);

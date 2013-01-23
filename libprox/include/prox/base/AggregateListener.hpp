@@ -86,6 +86,9 @@ public:
     // callback for childAdded and childRemoved.
     virtual void aggregateBoundsUpdated(AggregatorType* handler, const ObjectIDType& objid,
         const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) = 0;
+    // Notification if the query data was updated.
+    virtual void aggregateQueryDataUpdated(AggregatorType* handler, const ObjectIDType& objid,
+        const String& extra_query_data) = 0;
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) = 0;
 
     // Called when the number of observers (queries with the node in their

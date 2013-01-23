@@ -126,6 +126,14 @@ void GLRendererBase::aggregateBoundsUpdated(AggregatorType* handler, const Objec
         mAggregateBounds[objid] = BoundsInfo(bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
 }
 
+void GLRendererBase::aggregateQueryDataUpdated(AggregatorType* handler, const ObjectIDType& objid,
+    const String& extra_query_data)
+{
+    Lock lck(mAggregateMutex);
+    assert( mAggregateObjects.find(objid) != mAggregateObjects.end() );
+    // Nothing else to do, we don't track this for rendering
+}
+
 void GLRendererBase::aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
     Lock lck(mAggregateMutex);
     AggregateObjectMap::iterator it = mAggregateObjects.find(objid);

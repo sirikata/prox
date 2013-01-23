@@ -92,6 +92,10 @@ public:
         if (handler == orig_handler)
             orig_loccache->updateBounds(objid, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
     }
+    virtual void aggregateQueryDataUpdated(AggregatorType* handler, const ObjectIDType& objid,
+        const String& extra_query_data) {
+        // Test loc cache doesn't track query data
+    }
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
         if (handler == orig_handler)
             orig_loccache->removeObject(objid);

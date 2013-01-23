@@ -233,6 +233,10 @@ public:
         if (add_aggregates_to_loc)
             loccache->updateBounds(objid, bnds_center_offset, bnds_center_bounds_radius, bnds_max_object_size);
     }
+    virtual void aggregateQueryDataUpdated(AggregatorType* handler, const ObjectIDType& objid,
+        const String& extra_query_data) {
+        // Ignored by this loccache, nothing to do for test
+    }
     virtual void aggregateDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
         if (add_aggregates_to_loc)
             loccache->removeObject(objid);

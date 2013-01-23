@@ -98,6 +98,12 @@ public:
             (*it)->queryMaxResultsChanged(this, old_mr, new_mr);
     }
 
+    virtual void customQuery(const String& new_cqs) {
+        // Unless you're using custom queries, you should never get these
+        // updates as the custom query string should never be set
+        assert(false);
+    }
+
 
     virtual uint32 numResults() const { return QueryBaseType::handler()->numResultsForQuery(this); }
     virtual uint32 size() const { return QueryBaseType::handler()->sizeForQuery(this); }

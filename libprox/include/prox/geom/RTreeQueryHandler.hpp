@@ -368,6 +368,10 @@ public:
         // Query).
     }
 
+    void queryCustomQueryChanged(QueryType* query, const String& old_val, const String& new_val) {
+        // No custom queries...
+    }
+
     void queryDestroyed(QueryType* query, bool implicit) {
         QueryMapIterator it = mQueries.find(const_cast<QueryType*>(query));
         assert( it != mQueries.end() );
