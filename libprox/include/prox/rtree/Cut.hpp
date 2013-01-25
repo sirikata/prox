@@ -849,10 +849,23 @@ public:
                 // semantics since findCutSegment pulls out the last cut node
                 // within the subtree
                 reparented_end_it++;
-                for(CutNodeListIterator repit = reparented_start_it; repit != reparented_end_it; repit++)
-                    nodes.insert(after_new_parent_it, *repit);
-                nodes.erase(reparented_start_it, reparented_end_it);
-                // length remained same for above move
+                // Because of this shift, we can end up with
+                // reparented_end_it == after_new_parent_it. If we
+                // then insert before after_new_parent_it, we'll also
+                // continually increase the range we're copying and
+                // get in an infinite loop. However, if this case
+                // arises, then things are already arranged as they
+                // should be (the reparented_start_it to
+                // reparented_end_it are right before
+                // after_new_parent_it where they should
+                // be. Therefore, we only apply this if these
+                // iterators differ.
+                if (reparented_end_it != after_new_parent_it) {
+                    for(CutNodeListIterator repit = reparented_start_it; repit != reparented_end_it; repit++)
+                        nodes.insert(after_new_parent_it, *repit);
+                    nodes.erase(reparented_start_it, reparented_end_it);
+                    // length remained same for above move
+                }
             }
             else {
                 // The parent doesn't have a cut.
