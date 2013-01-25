@@ -213,7 +213,7 @@ public:
         }
         else {
             RTreeNodeType* at_node = mRTreeNodes[parent];
-            RTree_insert_new_node_at_node(new_node, at_node);
+            RTree_insert_new_node_at_node(new_node, at_node, t);
         }
     }
 

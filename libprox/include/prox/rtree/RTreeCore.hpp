@@ -2360,7 +2360,8 @@ RTreeNode<SimulationTraits, NodeData, CutNode>* RTree_create_new_node(
 template<typename SimulationTraits, typename NodeData, typename CutNode>
 void RTree_insert_new_node_at_node(
     RTreeNode<SimulationTraits, NodeData, CutNode>* new_node,
-    RTreeNode<SimulationTraits, NodeData, CutNode>* parent_node)
+    RTreeNode<SimulationTraits, NodeData, CutNode>* parent_node,
+    const typename SimulationTraits::TimeType& t)
 {
     typedef RTreeNode<SimulationTraits, NodeData, CutNode> RTreeNodeType;
 
@@ -2375,6 +2376,18 @@ void RTree_insert_new_node_at_node(
     parent_node->insert(new_node);
 
     // No cleanup -- cannot cause overflow and splitting
+    // However, this will affect the per-node data of nodes. Since we
+    // inserted into parent_node, it should be fine, but its ancestors
+    // will have incorrect state.
+    // FIXME it's really unclear what the right thing to do with
+    // replicated trees is. If we don't update immediately, the tree
+    // isn't in a properly consistent state. However, if we do update
+    // immediately, we could end up with incorrect state as location
+    // and proximity info comes in on different streams and this code
+    // has no way of resolving them... For now, update to make sure we
+    // see the changes and hope for the best...
+    if (parent_node->parent() != NULL)
+        RTree_recompute_bounds_from_node(parent_node->parent(), t);
 
     // Let any cuts that are below this one know that a new node was
     // added. If the node was empty, there couldn't have been any
