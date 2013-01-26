@@ -69,6 +69,10 @@ public:
     // we need to add/remove aggregates to the loccache. Normally these would
     // arrive via the LocationService, but we just push them in directly here to
     // avoid including more pieces.
+    virtual void aggregateObjectCreated(AggregatorType* handler, const ObjectIDType& objid) {
+    }
+    virtual void aggregateObjectDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
+    }
     virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) {
         if (handler == orig_handler) {
             orig_loccache->addObject(

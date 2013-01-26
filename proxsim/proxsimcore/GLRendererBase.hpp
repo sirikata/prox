@@ -31,6 +31,8 @@ public:
 
 protected:
     // AggregateListener Interface
+    virtual void aggregateObjectCreated(AggregatorType* handler, const ObjectIDType& objid);
+    virtual void aggregateObjectDestroyed(AggregatorType* handler, const ObjectIDType& objid);
     virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid);
     virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
         const Vector3& bnds_center_offset, const float32 bnds_center_bounds_radius, const float32 bnds_max_object_size);

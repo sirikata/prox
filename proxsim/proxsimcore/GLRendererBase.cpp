@@ -97,6 +97,14 @@ void GLRendererBase::run() {
     }
 }
 
+void GLRendererBase::aggregateObjectCreated(AggregatorType* handler, const ObjectIDType& objid) {
+    // Ignored, we already know about objects
+}
+
+void GLRendererBase::aggregateObjectDestroyed(AggregatorType* handler, const ObjectIDType& objid) {
+    // Ignored, we already know about objects
+}
+
 void GLRendererBase::aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) {
     Lock lck(mAggregateMutex);
     assert( mAggregateObjects.find(objid) == mAggregateObjects.end() );

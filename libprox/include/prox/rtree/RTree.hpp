@@ -170,6 +170,11 @@ public:
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
 
+        // Ensure aggregate listeners know about the object before it's used as
+        // a child
+        if (callbacks().aggregate != NULL)
+            callbacks().aggregate->aggregateObjectCreated(callbacks().aggregator, objid);
+
         ensureHaveRoot();
         mRoot = RTree_insert_object(mRoot, obj, t);
 
@@ -182,6 +187,11 @@ public:
         const ObjectID& objid = mLocCache->iteratorID(obj);
         assert(mObjectLeaves.find(objid) == mObjectLeaves.end());
         mObjectLeaves[objid] = NULL;
+
+        // Ensure aggregate listeners know about the object before it's used as
+        // a child
+        if (callbacks().aggregate != NULL)
+            callbacks().aggregate->aggregateObjectCreated(callbacks().aggregator, objid);
 
         assert(mRTreeNodes.find(parent) != mRTreeNodes.end());
         RTreeNodeType* at_node = mRTreeNodes[parent];
@@ -289,6 +299,9 @@ public:
 
         mRoot = RTree_delete_object(mRoot, obj, t, temporary);
         mObjectLeaves.erase(objid);
+
+        if (!temporary && callbacks().aggregate != NULL)
+            callbacks().aggregate->aggregateObjectDestroyed(callbacks().aggregator, objid);
 
         mRestructureMightHaveEffect = true;
     }

@@ -77,6 +77,15 @@ public:
     AggregateListener() {}
     virtual ~AggregateListener() {}
 
+    // These indicate when objects are added and removed. They may
+    // seem out of place, but you need to know about these in the same
+    // stream of callbacks as aggregates since individual objects are
+    // added as children of aggregates at the leaves. No data is
+    // provided directly because you can extract it from whatever
+    // LocationServiceCache you've allocated.
+    virtual void aggregateObjectCreated(AggregatorType* handler, const ObjectIDType& objid) = 0;
+    virtual void aggregateObjectDestroyed(AggregatorType* handler, const ObjectIDType& objid) = 0;
+    // And the rest are really about aggregates
     virtual void aggregateCreated(AggregatorType* handler, const ObjectIDType& objid) = 0;
     virtual void aggregateChildAdded(AggregatorType* handler, const ObjectIDType& objid, const ObjectIDType& child,
         const Vector3Type& bnds_center_offset, const realType bnds_center_bounds_radius, const realType bnds_max_object_size) = 0;

@@ -526,6 +526,14 @@ protected:
     }
 
     // AggregateListener Interface - just need to pass these along
+    virtual void aggregateObjectCreated(AggregatorType* handler, const ObjectID& objid) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateObjectCreated(this, objid);
+    }
+    virtual void aggregateObjectDestroyed(AggregatorType* handler, const ObjectID& objid) {
+        assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
+        if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateObjectDestroyed(this, objid);
+    }
     virtual void aggregateCreated(AggregatorType* handler, const ObjectID& objid) {
         assert(handler == mPrimaryHandler || handler == mRebuildingHandler);
         if (AggregatorType::mAggregateListener) AggregatorType::mAggregateListener->aggregateCreated(this, objid);
