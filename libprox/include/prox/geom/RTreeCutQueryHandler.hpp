@@ -282,6 +282,10 @@ public:
         return count;
     }
 
+    virtual ObjectID rootAggregateID()  {
+        return (mRTree->root() ? mRTree->root()->aggregateID() : typename SimulationTraits::ObjectIDNullType()());
+    }
+
     virtual uint32 numResultsForQuery(const QueryType* q) const {
         QueryMapConstIterator it = mQueries.find(const_cast<QueryType*>(q));
         if (it == mQueries.end()) return 0; // For rebuilding query handler

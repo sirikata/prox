@@ -18,11 +18,12 @@ class Aggregator {
 public:
     typedef Aggregator<SimulationTraits> AggregatorType;
     typedef AggregateListener<SimulationTraits> AggregateListenerType;
+    typedef typename SimulationTraits::ObjectIDType ObjectID;
 
     Aggregator()
      : mAggregateListener(NULL)
     {}
-    ~Aggregator() {}
+    virtual ~Aggregator() {}
 
     void setAggregateListener(AggregateListenerType* listener) {
         mAggregateListener = listener;
@@ -30,6 +31,9 @@ public:
     void removeAggregateListener() {
         mAggregateListener = NULL;
     }
+
+    virtual ObjectID rootAggregateID() = 0;
+
 protected:
     AggregateListenerType* mAggregateListener;
 };

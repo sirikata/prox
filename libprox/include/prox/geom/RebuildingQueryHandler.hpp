@@ -252,6 +252,11 @@ public:
     virtual uint32 numNodes() const {
         return mPrimaryHandler->numNodes() + (mustDuplicate() ? mRebuildingHandler->numNodes() : 0);
     }
+
+    virtual ObjectID rootAggregateID()  {
+        return mPrimaryHandler->rootAggregateID();
+    }
+
     virtual uint32 numResultsForQuery(const QueryType* q) const {
         return mPrimaryHandler->numResultsForQuery(q) + (mustDuplicate() ? mRebuildingHandler->numResultsForQuery(q) : 0);
     }
