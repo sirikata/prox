@@ -126,6 +126,7 @@ public:
         mLocUpdateProvider->removeUpdateListener(this);
     }
 
+
     virtual void initialize(LocationServiceCacheType* loc_cache, LocationUpdateProviderType* loc_up_provider, bool static_objects, bool replicated, ShouldTrackCallback should_track_cb = 0) {
         // Rebuilding doesn't make sense if you're using replicated data.
         assert(!replicated);
@@ -139,7 +140,15 @@ public:
 
         // Construct
         mPrimaryHandler = mImplConstructor();
-        // And pass along
+        // Pass along all debug/analysis settings
+        mPrimaryHandler->trackChecks(QueryHandlerType::mTrackChecks);
+        mPrimaryHandler->shouldRestructure(QueryHandlerType::mShouldRestructure);
+        mPrimaryHandler->setReportRestructures(QueryHandlerType::mReportRestructures);
+        mPrimaryHandler->reportHealth(QueryHandlerType::mReportHealth);
+        mPrimaryHandler->reportHealthFrequency(QueryHandlerType::mReportHealthFrequency);
+        mPrimaryHandler->reportCost(QueryHandlerType::mReportCost);
+        mPrimaryHandler->reportQueryStats(QueryHandlerType::mReportQueryStats);
+        // And pass along the remainder of settings and initialize
         mPrimaryHandler->setAggregateListener(this);
         mPrimaryHandler->initialize(mLocCache, this, mStaticObjects, false, mShouldTrackCB);
     }
@@ -438,6 +447,13 @@ protected:
             if (exiting()) return;
 
             mRebuildingHandler = mImplConstructor();
+            mRebuildingHandler->trackChecks(QueryHandlerType::mTrackChecks);
+            mRebuildingHandler->shouldRestructure(QueryHandlerType::mShouldRestructure);
+            mRebuildingHandler->setReportRestructures(QueryHandlerType::mReportRestructures);
+            mRebuildingHandler->reportHealth(QueryHandlerType::mReportHealth);
+            mRebuildingHandler->reportHealthFrequency(QueryHandlerType::mReportHealthFrequency);
+            mRebuildingHandler->reportCost(QueryHandlerType::mReportCost);
+            mRebuildingHandler->reportQueryStats(QueryHandlerType::mReportQueryStats);
             mRebuildingHandler->setAggregateListener(this);
             mRebuildingHandler->initialize(mLocCache, this, mStaticObjects, false, mShouldTrackCB);
             mRebuildingHandler->bulkLoad(mRebuildObjectList);

@@ -312,16 +312,10 @@ int main(int argc, char** argv) {
     // Sometimes we're not perfect, but let's aim for 99% of the target objects.
     assert(simulator->allObjectsSize() >= .99f * nobjects);
 
-    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max), query_max_distance, query_max_results);
-
-    if (!csvmotionfile.empty() && !static_queries)
-        simulator->createCSVQueries(nqueries, csvmotionfile);
-    else
-        simulator->createRandomQueries(nqueries, static_queries);
-
-    simulator->run();
-
-    // Optional logging, triggers
+    // Optional logging, triggers. Set before calling simulator initialize so
+    // they are called before handler->initialize, which, with rebuilding query
+    // handlers, will ensure that the settings are propagated to the real query
+    // handlers.
     handler->trackChecks(track_checks);
     handler->shouldRestructure(restructure);
     handler->reportHealth(report_health);
@@ -332,6 +326,15 @@ int main(int argc, char** argv) {
     simulator->printRate(report_rate);
     simulator->forceRebuild(force_rebuild);
     simulator->forceInitialRebuild(force_initial_rebuild);
+
+    simulator->initialize(churn_rate, SolidAngle(query_angle_min), SolidAngle(query_angle_max), query_max_distance, query_max_results);
+
+    if (!csvmotionfile.empty() && !static_queries)
+        simulator->createCSVQueries(nqueries, csvmotionfile);
+    else
+        simulator->createRandomQueries(nqueries, static_queries);
+
+    simulator->run();
 
     renderer->run();
     simulator->shutdown();
