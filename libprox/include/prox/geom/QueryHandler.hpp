@@ -115,6 +115,10 @@ public:
     using BaseType::handlerID;
 
     virtual void rebuild() = 0;
+    // Block, waiting for rebuild to finish. Default implementation returns
+    // immediately because this only needs to do something if rebuilds are
+    // performed asynchronously.
+    virtual void waitForRebuild() { return; }
 
     /** Get an estimation of the cost of evaluating a query on this query
      *  handler.

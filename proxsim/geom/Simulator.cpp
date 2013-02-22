@@ -135,6 +135,9 @@ void Simulator::tick_work(Time last_time, Duration elapsed) {
 
     if (mForceRebuild || (mForceInitialRebuild && last_time == Time::null())) {
         mHandler->rebuild();
+        // For the tests run in the simulator, we want to perform rebuilds
+        // synchronously
+        mHandler->waitForRebuild();
     }
     else {
 

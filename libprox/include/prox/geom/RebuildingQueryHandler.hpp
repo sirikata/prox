@@ -108,6 +108,7 @@ public:
        mRebuildObjectList(),
        mRebuildingMutex(),
        mRebuildRequest(),
+       mRebuildStepFinished(),
        mRebuildThread(&RebuildingQueryHandler::asyncRebuildThread, this),
        mMaxQueriesTransitionedPerIteration(batch_size)
     {
@@ -243,6 +244,9 @@ public:
         if (mState != IDLE) return;
 
         beginAsyncRebuild();
+    }
+    virtual void waitForRebuild() {
+        waitForAsyncRebuild();
     }
 
     virtual float cost() {
@@ -437,6 +441,24 @@ protected:
         mRebuildRequest.notify_one();
     }
 
+    void waitForAsyncRebuild() {
+        Lock lck(mRebuildingMutex);
+        while (mState != IDLE) {
+            // We need to follow the same process the normal ticks would follow
+            // to get things transitioned over, but we can't rely on being
+            // reinvoked to slowly transition queries like tick() would be
+            if (mState == BEGIN_MOVING_QUERIES)
+                startSwappingQueries();
+
+            if (mState == MOVING_QUERIES) {
+                while(!mUntransitionedQueries.empty())
+                    swapSomeQueries();
+            }
+
+            mRebuildStepFinished.wait(lck);
+        }
+    }
+
     // Handles the actual rebuilding.
     void asyncRebuildThread() {
         while(true) {
@@ -462,6 +484,7 @@ protected:
             // Process continues when main thread picks up that this flag was
             // triggered
             setRebuildingState(BEGIN_MOVING_QUERIES);
+            mRebuildStepFinished.notify_one();
 
             // Wait until main thread says its done with deferred handler and we
             // can clear it out
@@ -476,6 +499,7 @@ protected:
             mRebuildingHandler = NULL;
 
             setRebuildingState(IDLE);
+            mRebuildStepFinished.notify_one();
         }
     }
 
@@ -686,6 +710,7 @@ protected:
     ObjectList mRebuildObjectList;
     Mutex mRebuildingMutex;
     CondVar mRebuildRequest;
+    CondVar mRebuildStepFinished;
     // Note that this is last to ensure initialization order
     Thread mRebuildThread;
 
