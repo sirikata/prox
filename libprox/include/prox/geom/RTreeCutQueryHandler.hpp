@@ -403,6 +403,17 @@ public:
         }
     }
 
+    virtual void bulkLoad(const ObjectList& objects) {
+        bool static_objects = mRTree->staticObjects();
+        assert(mObjects.size() == 0);
+
+        // Copy iterators into our storage
+        for(typename ObjectList::const_iterator it = objects.begin(); it != objects.end(); it++)
+            mObjects[mLocCache->iteratorID(*it)] = *it;
+
+        mRTree->bulkLoad(objects, mLastTime);
+    }
+
 
     void locationConnected(const ObjectID& obj_id, bool aggregate, bool local, const MotionVector3& pos, const BoundingSphere& region, Real ms) {
         assert(mObjects.find(obj_id) == mObjects.end());
