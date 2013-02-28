@@ -121,13 +121,14 @@ float32 satisfiesConstraintsBoundsAndMaxSize(
     // case the above description isn't accurate: in this case the worst position for the stand in object
     // is the exact location of the query.  So just let it pass.
     // FIXME we do this check manually for now, but BoundingSphere should provide it
-    if (query_rad + obj_radius + obj_max_size >= (query_pos-obj_pos).length())
+    Vector3 to_obj = obj_pos - query_pos;
+    float worst_query_obj_radius = query_rad + obj_radius + obj_max_size;
+    if (worst_query_obj_radius*worst_query_obj_radius >= to_obj.lengthSquared())
         return SolidAngle::Max.asFloat();
 
     float standin_radius = obj_max_size;
 
-    Vector3 to_obj = obj_pos - query_pos;
-    to_obj = to_obj - to_obj.normal() * (obj_radius + obj_max_size + query_rad);
+    to_obj = to_obj - to_obj.normal() * (worst_query_obj_radius);
 
     // Must satisfy radius constraint
     if (qradius != SimulationTraits::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
