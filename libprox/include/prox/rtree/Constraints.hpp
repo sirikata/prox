@@ -63,25 +63,31 @@ float32 satisfiesConstraintsBounds(
     // equivalent to extending the radius by the size of the largest object.
     float query_rad = qbounds.radius() + qmaxsize;
 
-    // Must satisfy radius constraint
-    if (qradius != SimulationTraits::InfiniteRadius && (obj_pos-query_pos).lengthSquared() > qradius*qradius)
-        return -1;
-
     // Must satisfy solid angle constraint
     // If it falls inside the query bounds, then it definitely satisfies the solid angle constraint
-    // FIXME we do this check manually for now, but BoundingSphere should provide it
-    if (query_rad + obj_radius >= (query_pos-obj_pos).length()) {
+    // FIXME we do this check manually for now, but BoundingSphere should
+    // provide it
+    Vector3 to_obj = obj_pos - query_pos;
+    float worst_query_obj_radius = query_rad + obj_radius;
+    if (worst_query_obj_radius*worst_query_obj_radius >= to_obj.lengthSquared()) {
         return SolidAngle::Max.asFloat();
     }
     // Otherwise we need to check the closest possible query position to the object
-    Vector3 to_obj = obj_pos - query_pos;
-    to_obj = to_obj - to_obj.normal() * query_rad;
-    SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, obj_radius);
 
-    if (solid_angle >= qangle)
-        return solid_angle.asFloat();
+    // Could compute the actual, final vector to the object:
+    //   to_obj = to_obj - to_obj.normal()*query_rad;
+    // but we only need the distance. Unfortunately we can't avoid the sqrt
+    // here.
+    float to_obj_dist = to_obj.length() - query_rad;
+    float to_obj_dist_sq = to_obj_dist*to_obj_dist;
 
-    return -1;
+    // Must satisfy radius constraint
+    if (qradius != SimulationTraits::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
+        return -1;
+
+    // Must satisfy solid angle constraint. lessThanEqualDistanceSqRadius gets us
+    // the right value -- -1 if false, positive score for the standin if true
+    return qangle.lessThanEqualDistanceSqRadius(to_obj_dist_sq, obj_radius);
 }
 
 // Check if an object satisfies the constraints of a query using bounds and max
@@ -128,19 +134,20 @@ float32 satisfiesConstraintsBoundsAndMaxSize(
 
     float standin_radius = obj_max_size;
 
-    to_obj = to_obj - to_obj.normal() * (worst_query_obj_radius);
+    // Could compute the actual, final vector to the object:
+    //   to_obj = to_obj - to_obj.normal()*worst_query_obj_radius;
+    // but we only need the distance. Unfortunately we can't avoid the sqrt
+    // here.
+    float to_obj_dist = to_obj.length() - worst_query_obj_radius;
+    float to_obj_dist_sq = to_obj_dist*to_obj_dist;
 
     // Must satisfy radius constraint
-    if (qradius != SimulationTraits::InfiniteRadius && to_obj.lengthSquared() > qradius*qradius)
+    if (qradius != SimulationTraits::InfiniteRadius && to_obj_dist_sq > qradius*qradius)
         return -1;
 
-    // Must satisfy solid angle constraint
-    SolidAngle solid_angle = SolidAngle::fromCenterRadius(to_obj, standin_radius);
-
-    if (solid_angle >= qangle)
-        return solid_angle.asFloat();
-
-    return -1;
+    // Must satisfy solid angle constraint. lessThanEqualDistanceSqRadius gets us
+    // the right value -- -1 if false, positive score for the standin if true
+    return qangle.lessThanEqualDistanceSqRadius(to_obj_dist_sq, standin_radius);
 }
 
 } // namespace Prox
