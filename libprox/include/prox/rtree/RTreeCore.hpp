@@ -821,13 +821,11 @@ public:
     {
     }
 
-
-    BoundingSphereDataBase(LocationServiceCacheType* loc, const LocCacheIterator& obj,  const Time& t)
-      : bounding_sphere( loc->worldCompleteBounds(obj, t) )
+    // Some subclasses want to track a different version of the bounding sphere
+    // since they have extra data
+    BoundingSphereDataBase(const BoundingSphere& bs)
+      : bounding_sphere(bs)
     {
-        // Note use of worldCompleteBounds above instead of worldRegion because
-        // we need to take into account the size of the objects as well as their
-        // locations.
     }
 
     // Return the result of merging this info with the given info
@@ -1046,8 +1044,11 @@ public:
     }
 
     BoundingSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>( loc, obj_id, t )
+     : BoundingSphereDataBase<SimulationTraits, BoundingSphereData>(loc->worldCompleteBounds(obj_id, t) )
     {
+        // Note use of worldCompleteBounds above instead of worldRegion because
+        // we need to take into account the size of the objects as well as their
+        // locations.
     }
 };
 
@@ -1077,14 +1078,13 @@ public:
     }
 
     MaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(loc, obj_id, t),
+      : BoundingSphereDataBase<SimulationTraits, MaxSphereData>(loc->worldRegion(obj_id, t)),
        mMaxRadius( loc->maxSize(obj_id) )
     {
-        // Note: we override this here because we need worldCompleteBounds for
+        // Note: we use worldRegion here because we need worldCompleteBounds for
         // just the bounds data, but with the max size values, we can use the
         // smaller worldRegion along with the maximum size object.  Note
         // difference in satisfiesConstraints
-        ThisBase::bounding_sphere = loc->worldRegion(obj_id, t);
     }
 
     NodeData merge(const NodeData& other) const {
@@ -1266,15 +1266,15 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
     }
 
     SimilarMaxSphereData(LocationServiceCacheType* loc, const LocCacheIterator& obj_id, const Time& t)
-      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>(loc, obj_id, t),
+      : BoundingSphereDataBase<SimulationTraits, SimilarMaxSphereData>(loc->worldRegion(obj_id, t)),
         mMaxRadius( loc->maxSize(obj_id) ), zernike_descriptor(loc->queryData(obj_id)),
         mesh(loc->mesh(obj_id)), descriptorReader(DescriptorReader::getDescriptorReader())
     {
-      // Note: we override this here because we need worldCompleteBounds for
-      // just the bounds data, but with the max size values, we can use the
-      // smaller worldRegion along with the maximum size object.  Note
-      // difference in satisfiesConstraints
-      ThisBase::bounding_sphere = loc->worldRegion(obj_id, t);
+        // Note: we use worldRegion here because we need worldCompleteBounds for
+        // just the bounds data, but with the max size values, we can use the
+        // smaller worldRegion along with the maximum size object.  Note
+        // difference in satisfiesConstraints
+
       zernike_descriptor = descriptorReader->getZernikeDescriptor(mesh);
       texture_descriptor = descriptorReader->getTextureDescriptor(mesh);
     }
