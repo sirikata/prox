@@ -808,12 +808,11 @@ private:
                             // to includeAddition() because we know it always
                             // returns true
                             evt.addAddition( typename QueryEventType::Addition(node->rtnode, QueryEventType::Imposter) );
-                            results.insert( node->rtnode->aggregateID() );
+                            addResult( node->rtnode->aggregateID() );
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                                typename ResultSet::iterator result_it = results.find(child_id);
-                                assert(result_it != results.end());
-                                results.erase(result_it);
+                                assert(results.find(child_id) != results.end());
+                                removeResult(child_id);
                                 // No need to check like Cut code does for
                                 // whether to includeRemoval() because we know
                                 // it always returns true
