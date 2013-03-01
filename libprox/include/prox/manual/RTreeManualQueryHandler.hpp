@@ -544,15 +544,64 @@ protected:
         bool rebuilding() const {
             return false;
         }
-        void addResult(const ObjectID& objid) {
+
+        void addResult(CutNodeType* cnode) {
+            assert(!inResultsSlow(cnode->rtnode->aggregateID()));
+            assert(!cnode->active_result);
+
+            cnode->active_result = true;
+            results.insert(cnode->rtnode->aggregateID());
+        }
+        void addResult(CutNodeType* cnode, const ObjectID& objid) {
+            // Verify with assert, but just trust that they gave us a
+            // real object child
+            assert(cnode->rtnode->aggregateID() != objid);
+            assert(cnode->rtnode->objectChildren());
+            assert(!inResultsSlow(objid));
+            // Would be nice but we need to guarantee some ordering of
+            //remove/add, and depends on aggs vs. no aggs
+            //assert(!cnode->active_result);
             results.insert(objid);
         }
-        size_t removeResult(const ObjectID& objid) {
+        size_t removeResult(CutNodeType* cnode) {
+            assert(inResultsSlow(cnode->rtnode->aggregateID()));
+            assert(cnode->active_result);
+            cnode->active_result = false;
+            return results.erase(cnode->rtnode->aggregateID());
+        }
+        size_t removeResult(CutNodeType* cnode, const ObjectID& objid) {
+            // Verify with assert, but just trust that they gave us a
+            // real object child
+            assert(cnode->rtnode->aggregateID() != objid);
+            assert(cnode->rtnode->objectChildren());
+            assert(inResultsSlow(objid));
+            // Would be nice but we need to guarantee some ordering of
+            //remove/add, and depends on aggs vs. no aggs
+            //assert(cnode->active_result);
             return results.erase(objid);
         }
-        bool inResults(const ObjectID& objid) const {
+        bool inResults(CutNodeType* cnode) const {
+            assert( (results.find(cnode->rtnode->aggregateID()) != results.end()) == cnode->active_result);
+            return cnode->active_result;
+        }
+        bool inResults(CutNodeType* cnode, const ObjectID& objid) const {
+            // Verify with assert, but just trust that they gave us a
+            // real object child
+            assert((cnode->rtnode->aggregateID() != objid));
+            assert(cnode->rtnode->objectChildren());
+            // Can't necessarily make this fast since we have nowhere
+            // to store the bit, but we can shortcut if we know the
+            // parent is a result
+            if (cnode->active_result) {
+                assert((results.find(objid) == results.end()));
+                return false;
+            }
+            return inResultsSlow(objid);
+        }
+        bool inResultsSlow(const ObjectID& objid) const {
             return results.find(objid) != results.end();
         }
+
         int resultsSize() const {
             return results.size();
         }
@@ -652,7 +701,7 @@ protected:
         ManualQueryOpResult refine(const ObjectID& objid) {
             // Check that it is refinable. It must be in the results still to be
             // refinable
-            if (!isInResults(objid)) return MANUAL_QUERY_OP_NODE_NOT_IN_CUT;
+            if (!isInResultsSlow(objid)) return MANUAL_QUERY_OP_NODE_NOT_IN_CUT;
 
             // Find the cut node
             CutNodeListIterator cut_node_it = findCutNode(objid);

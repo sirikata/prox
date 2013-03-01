@@ -81,6 +81,9 @@ public:
     bool operator==(const ObjectID& rhs) const {
         return memcmp(mID,rhs.mID,UUID_SIZE)==0;
     }
+    bool operator!=(const ObjectID& rhs) const {
+        return !(*this == rhs);
+    }
 
     struct Hasher {
         size_t operator() (const ObjectID& objid) const {

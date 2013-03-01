@@ -669,15 +669,64 @@ private:
         bool rebuilding() const {
             return parent->mRebuilding;
         }
-        void addResult(const ObjectID& objid) {
+
+        void addResult(CutNodeType* cnode) {
+            assert(!inResultsSlow(cnode->rtnode->aggregateID()));
+            assert(!cnode->active_result);
+
+            cnode->active_result = true;
+            results.insert(cnode->rtnode->aggregateID());
+        }
+        void addResult(CutNodeType* cnode, const ObjectID& objid) {
+            // Verify with assert, but just trust that they gave us a
+            // real object child
+            assert((cnode->rtnode->aggregateID() != objid));
+            assert(cnode->rtnode->objectChildren());
+            assert(!inResultsSlow(objid));
+            // Would be nice but we need to guarantee some ordering of
+            //remove/add, and depends on aggs vs. no aggs
+            //assert(!cnode->active_result);
             results.insert(objid);
         }
-        size_t removeResult(const ObjectID& objid) {
+        size_t removeResult(CutNodeType* cnode) {
+            assert(inResultsSlow(cnode->rtnode->aggregateID()));
+            assert(cnode->active_result);
+            cnode->active_result = false;
+            return results.erase(cnode->rtnode->aggregateID());
+        }
+        size_t removeResult(CutNodeType* cnode, const ObjectID& objid) {
+            // Verify with assert, but just trust that they gave us a
+            // real object child
+            assert((cnode->rtnode->aggregateID() != objid));
+            assert(cnode->rtnode->objectChildren());
+            assert(inResultsSlow(objid));
+            // Would be nice but we need to guarantee some ordering of
+            //remove/add, and depends on aggs vs. no aggs
+            //assert(cnode->active_result);
             return results.erase(objid);
         }
-        bool inResults(const ObjectID& objid) const {
+        bool inResults(CutNodeType* cnode) const {
+            assert( (results.find(cnode->rtnode->aggregateID()) != results.end()) == cnode->active_result);
+            return cnode->active_result;
+        }
+        bool inResults(CutNodeType* cnode, const ObjectID& objid) const {
+            // Verify with assert, but just trust that they gave us a
+            // real object child
+            assert((cnode->rtnode->aggregateID() != objid));
+            assert(cnode->rtnode->objectChildren());
+            // Can't necessarily make this fast since we have nowhere
+            // to store the bit, but we can shortcut if we know the
+            // parent is a result
+            if (cnode->active_result) {
+                assert((results.find(objid) == results.end()));
+                return false;
+            }
+            return inResultsSlow(objid);
+        }
+        bool inResultsSlow(const ObjectID& objid) const {
             return results.find(objid) != results.end();
         }
+
         int resultsSize() const {
             return results.size();
         }
@@ -723,9 +772,9 @@ private:
     public:
         // Checks for child_id's membership in the result set.  This version
         // should be used for non-aggregate queries.
-        void checkMembership(const ObjectID& child_id, const NodeData& child_data, const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
+        void checkMembership(CutNodeType* cnode, const ObjectID& child_id, const NodeData& child_data, const Vector3& qpos, const BoundingSphere& qregion, float qmaxsize, const SolidAngle& qangle, float qradius) {
             bool child_satisfies = child_data.satisfiesConstraints(qpos, qregion, qmaxsize, qangle, qradius);
-            updateMembership(child_id, child_satisfies);
+            updateMembership(cnode, child_id, child_satisfies);
         }
 
         // Returns the number of "nodes" visited, including objects.
@@ -808,11 +857,11 @@ private:
                             // to includeAddition() because we know it always
                             // returns true
                             evt.addAddition( typename QueryEventType::Addition(node->rtnode, QueryEventType::Imposter) );
-                            addResult( node->rtnode->aggregateID() );
+                            addResult(node);
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
                                 assert(results.find(child_id) != results.end());
-                                removeResult(child_id);
+                                removeResult(node, child_id);
                                 // No need to check like Cut code does for
                                 // whether to includeRemoval() because we know
                                 // it always returns true
@@ -827,7 +876,7 @@ private:
                         if (node->objectChildren()) {
                             for(int i = 0; i < node->rtnode->size(); i++) {
                                 ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                                checkMembership(child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
+                                checkMembership(node, child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
                                 visited++;
                             }
                         }
@@ -1013,7 +1062,7 @@ private:
                         // membership is correct.
                         for(int i = 0; i < node->rtnode->size(); i++) {
                             ObjectID child_id = loc->iteratorID(node->rtnode->object(i).object);
-                            checkMembership(child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
+                            checkMembership(node, child_id, node->rtnode->childData(i, t), qpos, qregion, qmaxsize, qangle, qradius);
                             visited++;
                         }
                     }

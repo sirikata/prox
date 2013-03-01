@@ -28,12 +28,14 @@ struct CutNodeBase {
     CutType* parent;
     typedef typename Prox::RTree<SimulationTraits, NodeDataType, CutNodeType>::RTreeNodeType RTreeNodeType;
     RTreeNodeType * rtnode;
-    bool satisfies;
+    bool satisfies:1;
+    bool active_result:1;
 
     CutNodeBase(QueryHandlerType* handler, CutType* _parent, RTreeNodeType* _rt, AggregateListenerType* listener)
      : parent(_parent),
        rtnode(_rt),
-       satisfies(false)
+       satisfies(false),
+       active_result(false)
     {
         rtnode->insertCutNode(getNativeThis());
         if (listener != NULL) listener->aggregateObserved(handler, rtnode->aggregateID(), rtnode->cutNodesSize(), rtnode->size());
