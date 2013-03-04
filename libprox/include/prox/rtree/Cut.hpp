@@ -101,8 +101,10 @@ public:
     //    object ID is picked up automatically for internal nodes.
     //  void addResult(CutNodeType* cnode);
     //  void addResult(CutNodeType* cnode, const ObjectID& objid);
-    //  size_t removeResult(CutNodeType* cnode);
-    //  size_t removeResult(CutNodeType* cnode, const ObjectID& objid);
+    //  void removeResult(CutNodeType* cnode);
+    //  void removeResult(CutNodeType* cnode, const ObjectID& objid);
+    //  size_t tryRemoveResult(CutNodeType* cnode);
+    //  size_t tryRemoveResult(CutNodeType* cnode, const ObjectID& objid);
     //  bool inResults(CutNodeType* cnode) const;
     //  bool inResults(CutNodeType* cnode, const ObjectID& objid) const;
     //  bool inResultsSlow(const ObjectID& objid) const;
@@ -157,11 +159,17 @@ public:
     void addToResults(CutNodeType* cnode, const ObjectID& objid) {
         getNativeThis()->addResult(cnode, objid);
     }
-    size_t removeFromResults(CutNodeType* cnode) {
+    void removeFromResults(CutNodeType* cnode) {
         return getNativeThis()->removeResult(cnode);
     }
-    size_t removeFromResults(CutNodeType* cnode, const ObjectID& objid) {
+    void removeFromResults(CutNodeType* cnode, const ObjectID& objid) {
         return getNativeThis()->removeResult(cnode, objid);
+    }
+    size_t tryRemoveFromResults(CutNodeType* cnode) {
+        return getNativeThis()->tryRemoveResult(cnode);
+    }
+    size_t tryRemoveFromResults(CutNodeType* cnode, const ObjectID& objid) {
+        return getNativeThis()->tryRemoveResult(cnode, objid);
     }
     bool isInResults(CutNodeType* cnode) const {
         return getNativeThis()->inResults(cnode);
@@ -633,7 +641,10 @@ public:
             if (!parent_in_results) {
                 // Just add the child
                 ObjectID child_id = getLocCache()->iteratorID(objit);
-                assert(!isInResults(cnode, child_id));
+                // Note that this is the "slow" check because we need
+                // to really verify it's absence, not rely on it's
+                // parent's indicator since it's a new node
+                assert(!isInResultsSlow(/*cnode,*/ child_id));
 
                 addToResults(cnode, child_id);
 
@@ -1025,7 +1036,7 @@ public:
                 if (node->objectChildren()) {
                     for(int leaf_idx = 0; leaf_idx < node->size(); leaf_idx++) {
                         ObjectID leaf_id = getLocCache()->iteratorID(node->object(leaf_idx).object);
-                        size_t leaf_removed = removeFromResults(cnode, leaf_id);
+                        size_t leaf_removed = tryRemoveFromResults(cnode, leaf_id);
                         if (leaf_removed > 0) {
                             if (includeRemoval(Change_Coarsened))
                                 destroyEvent.addRemoval( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
@@ -1227,7 +1238,7 @@ protected:
             // events (e.g., because here if we have the children in the
             // results, we need to remove them *as well as* the aggregate
             // itself).
-            size_t nremoved = removeFromResults(node);
+            size_t nremoved = tryRemoveFromResults(node);
             // If necessary, make sure children removal is entered into the
             // event first
             if (nremoved == 0) {
@@ -1304,7 +1315,7 @@ protected:
         // it is the same as the total number of children
         for(int leafidx = 0; leafidx < node->size(); leafidx++) {
             ObjectID leaf_id = getLocCache()->iteratorID(node->object(leafidx).object);
-            size_t n_leaf_removed = removeFromResults(cnode, leaf_id);
+            size_t n_leaf_removed = tryRemoveFromResults(cnode, leaf_id);
             if (n_leaf_removed > 0) {
                 if (includeRemoval(Change_Coarsened))
                     qevt_out->addRemoval( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
@@ -1349,7 +1360,7 @@ protected:
             bool aggregate_was_in_results = false;
             // Only try to remove the child node from results for aggregates
             if (usesAggregates()) {
-                size_t nremoved = removeFromResults(child_cn);
+                size_t nremoved = tryRemoveFromResults(child_cn);
                 if (nremoved > 0) {
                     aggregate_was_in_results = true;
                     if (includeRemoval(Change_Coarsened))
@@ -1369,7 +1380,7 @@ protected:
                 // it is the same as the total number of children
                 for(int leafidx = 0; leafidx < child_rtnode->size(); leafidx++) {
                     ObjectID leaf_id = getLocCache()->iteratorID(child_rtnode->object(leafidx).object);
-                    size_t n_leaf_removed = removeFromResults(child_cn, leaf_id);
+                    size_t n_leaf_removed = tryRemoveFromResults(child_cn, leaf_id);
                     if (n_leaf_removed > 0) {
                         if (includeRemoval(Change_Coarsened))
                             qevt_out->addRemoval( typename QueryEventType::Removal(leaf_id, QueryEventType::Transient) );
@@ -1414,8 +1425,7 @@ protected:
         // is breaking, even though I can't see how
         //result_it could ever be invalid. Instead, do
         //it the hard way and assert:
-        size_t nremoved = removeFromResults(cnode);
-        assert(nremoved == 1);
+        removeFromResults(cnode);
         if (includeRemoval(Change_Refined))
             evt.addRemoval( typename QueryEventType::Removal(cnode->rtnode->aggregateID(), QueryEventType::Transient) );
         events.push_back(evt);

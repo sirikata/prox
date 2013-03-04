@@ -656,22 +656,30 @@ private:
             //assert(!cnode->active_result);
             results.insert(objid);
         }
-        size_t removeResult(CutNodeType* cnode) {
-            assert(inResultsSlow(cnode->rtnode->aggregateID()));
-            assert(cnode->active_result);
+        size_t tryRemoveResult(CutNodeType* cnode) {
             cnode->active_result = false;
             return results.erase(cnode->rtnode->aggregateID());
         }
-        size_t removeResult(CutNodeType* cnode, const ObjectID& objid) {
+        size_t tryRemoveResult(CutNodeType* cnode, const ObjectID& objid) {
             // Verify with assert, but just trust that they gave us a
             // real object child
             assert((cnode->rtnode->aggregateID() != objid));
             assert(cnode->rtnode->objectChildren());
-            assert(inResultsSlow(objid));
             // Would be nice but we need to guarantee some ordering of
             //remove/add, and depends on aggs vs. no aggs
             //assert(cnode->active_result);
             return results.erase(objid);
+        }
+        void removeResult(CutNodeType* cnode) {
+            assert(inResultsSlow(cnode->rtnode->aggregateID()));
+            assert(cnode->active_result);
+            size_t removed = tryRemoveResult(cnode);
+            assert(removed);
+        }
+        void removeResult(CutNodeType* cnode, const ObjectID& objid) {
+            assert(inResultsSlow(objid));
+            size_t removed = tryRemoveResult(cnode, objid);
+            assert(removed);
         }
         bool inResults(CutNodeType* cnode) const {
             assert( (results.find(cnode->rtnode->aggregateID()) != results.end()) == cnode->active_result);
@@ -688,6 +696,12 @@ private:
             if (cnode->active_result) {
                 assert((results.find(objid) == results.end()));
                 return false;
+            }
+            else if (withAggregates()) {
+                // However, with aggregates this can be fast again
+                // because we should have the child in the results
+                assert((results.find(objid) != results.end()));
+                return true;
             }
             return inResultsSlow(objid);
         }
