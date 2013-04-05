@@ -13,6 +13,11 @@
 
 namespace Prox {
 
+// Maximum number of queued events that should be allowed to pile up before
+// flushing to the querier. This ensures prompt progress is made in reporting
+// the results.
+#define LIBPROX_QUERY_MAX_QUEUED_EVENTS 10
+
 template<typename SimulationTraits, typename QueryTypeT, typename QueryHandlerTypeT, typename QueryChangeListenerTypeT>
 class QueryBase {
 public:
