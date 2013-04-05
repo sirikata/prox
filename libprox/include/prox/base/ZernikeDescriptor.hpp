@@ -222,7 +222,7 @@ public:
       std::getline(fp3, line);  //percentage, color value, color variance table head.
 
       String value="abcde";
-      int r,g,b;
+      int r = 0, g = 0, b = 0;
       std::getline(fp3, value);
 
       int maxPercentage = 0;
