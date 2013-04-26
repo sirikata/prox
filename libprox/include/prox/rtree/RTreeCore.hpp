@@ -1275,8 +1275,12 @@ class SimilarMaxSphereData : public BoundingSphereDataBase<SimulationTraits, Sim
         // smaller worldRegion along with the maximum size object.  Note
         // difference in satisfiesConstraints
 
-      zernike_descriptor = descriptorReader->getZernikeDescriptor(mesh);
-      texture_descriptor = descriptorReader->getTextureDescriptor(mesh);
+      ZernikeDescriptor zd = descriptorReader->getZernikeDescriptor(mesh);
+      ZernikeDescriptor td = descriptorReader->getTextureDescriptor(mesh);
+
+      if (zernike_descriptor.size() == 0) zernike_descriptor = zd;
+      if (texture_descriptor.size() == 0) texture_descriptor = td;
+
     }
 
     NodeData merge(const NodeData& other) const {
